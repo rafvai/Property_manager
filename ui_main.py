@@ -13,11 +13,11 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from matplotlib.patches import Circle
 from dialogs import *
+from datetime import datetime, timedelta
 
 import Functions
+from styles import *
 
-COLORE_WIDGET_1 = "#D0D0D0"
-COLORE_WIDGET_2 = "#F0F0F0"
 DOCS_DIR = "docs"  # cartella dove conservi i documenti
 #FOLDER_ICON = QIcon('icons/folder.png')
 
@@ -26,6 +26,7 @@ class DashboardWindow(QMainWindow):
         super().__init__()
         self.conn = conn
         self.cursor = conn.cursor()
+        self.cursor_read_only = conn.cursor()
         # inizializza icona cartella (dopo QApplication)
         icon_path = os.path.join(os.path.dirname(__file__), "icons", "folder.png")
         if os.path.exists(icon_path):
@@ -58,7 +59,7 @@ class DashboardWindow(QMainWindow):
 
         container = QWidget()
         container.setLayout(main_layout)
-        container.setStyleSheet("background-color: black;")
+        container.setStyleSheet(f"background-color: {COLORE_BACKGROUND};")
         self.setCentralWidget(container)
 
         self.show_dashboard_ui()
@@ -77,22 +78,7 @@ class DashboardWindow(QMainWindow):
         # Selettore proprietà
         self.property_selector = QComboBox()
         self.property_selector.addItems([p["name"] for p in self.proprieta])
-        self.property_selector.setStyleSheet("""
-            QComboBox {
-                background-color: white;
-                padding: 10px;
-                border-radius: 5px;
-                color: black;
-                font-size: 14px;
-            }
-            QComboBox::drop-down {
-                border: 0px;
-            }
-            QComboBox QAbstractItemView::item:hover {
-                background-color: #007BFF;
-                color: white;
-            }
-        """)
+        self.property_selector.setStyleSheet(default_combo_box_style)
 
         add_button = QPushButton("+")
         add_button.setFixedSize(30, self.property_selector.sizeHint().height())
@@ -125,27 +111,29 @@ class DashboardWindow(QMainWindow):
         info_container.setLayout(wrapper_layout)
         top_layout.addWidget(info_container, alignment=Qt.AlignTop)
 
-        # Grafico
+        # --- Creazione frame grafico ---
         chart_frame = QFrame()
         chart_frame.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
         chart_layout = QVBoxLayout()
-        fig = Figure(figsize=(4, 4), facecolor=COLORE_WIDGET_2)
-        canvas = FigureCanvas(fig)
-        ax = fig.add_subplot(111, facecolor=COLORE_WIDGET_2)
-        entrate, uscite = 4500, 1200
-        sizes, colors = [entrate, uscite], ["green", "red"]
-        ax.pie(sizes, colors=colors, autopct='%1.1f%%', startangle=90, wedgeprops=dict(width=0.4))
-        centre_circle = Circle((0, 0), 0.70, fc=COLORE_WIDGET_2)
-        ax.add_artist(centre_circle)
-        ax.text(0, 0, f"€ {entrate - uscite}", horizontalalignment='center', verticalalignment='center',
-                fontsize=16, fontweight='bold', color='black')
-        ax.set_facecolor(COLORE_WIDGET_2)
-        fig.patch.set_facecolor(COLORE_WIDGET_2)
-        fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
-        ax.set_title("Entrate vs Uscite", color="black")
-        chart_layout.addWidget(canvas)
+        # --- ComboBox per intervallo ---
+        self.period_selector = QComboBox()
+        self.period_selector.setStyleSheet(default_combo_box_style)
+        # todo: si potrebbe pensare di farlo dinamico
+        self.period_selector.addItems(["1 mese", "6 mesi", "1 anno", "3 anni"])
+        self.period_selector.currentIndexChanged.connect(self.update_chart)  # ridisegna al cambio
+        chart_layout.addWidget(self.period_selector)
+
+        # --- Canvas Matplotlib ---
+        self.fig = Figure(figsize=(4, 4), facecolor=COLORE_WIDGET_2)
+        self.chart_canvas = FigureCanvas(self.fig)
+        self.ax = self.fig.add_subplot(111, facecolor=COLORE_WIDGET_2)
+        chart_layout.addWidget(self.chart_canvas)
+
         chart_frame.setLayout(chart_layout)
         top_layout.addWidget(chart_frame)
+
+        # --- Richiamo iniziale per caricare subito il grafico ---
+        self.update_chart()
 
         center_layout.addLayout(top_layout)
 
@@ -166,6 +154,35 @@ class DashboardWindow(QMainWindow):
         self.property_selector.currentIndexChanged.connect(self.update_info_box)
         add_button.clicked.connect(self.add_property)
 
+    # --- Funzione per aggiornare il grafico ---
+    def update_chart(self):
+        text = self.period_selector.currentText()
+        mesi = {"1 mese": 1, "6 mesi": 6, "1 anno": 12, "3 anni": 36}[text]
+        end_date = datetime.today()
+        start_date = end_date - timedelta(days=30 * mesi)
+
+        # recupero dati dal DB
+        rows = Functions.get_transactions(
+            self.cursor_read_only,
+            start_date.strftime("%Y-%m-%d"),
+            end_date.strftime("%Y-%m-%d"),
+            self.selected_property["id"]
+        )
+
+        entrate = sum(row[2] for row in rows if row[1] == "Entrata")
+        uscite = sum(row[2] for row in rows if row[1] == "Uscita")
+
+        # pulisco e ridisegno grafico
+        self.ax.clear()
+        sizes, colors = [entrate, uscite], ["green", "red"]
+        self.ax.pie(sizes, colors=colors, autopct='%1.1f%%', pctdistance=1.25, startangle=90, wedgeprops=dict(width=0.4))
+        centre_circle = Circle((0, 0), 0.70, fc=COLORE_WIDGET_2)
+        self.ax.add_artist(centre_circle)
+        self.ax.text(0, 0, f"€ {entrate - uscite}", horizontalalignment='center', verticalalignment='center',
+                     fontsize=16, fontweight='bold', color='black')
+        self.ax.set_title("Entrate vs Uscite", color="black", y=1.1)
+        self.chart_canvas.draw()
+
     def update_info_box(self, index):
         if index < 0 or index >= len(self.proprieta):
             return
@@ -174,6 +191,7 @@ class DashboardWindow(QMainWindow):
         self.info_layout.itemAt(0).widget().setText(f"🏡 Proprietà: {prop['name']}")
         self.info_layout.itemAt(1).widget().setText(f"📍 Indirizzo: {prop['address']}")
         self.info_layout.itemAt(2).widget().setText(f"👤 Proprietario: {prop['owner']}")
+        self.update_chart()
 
     def add_property(self):
         dialog = QDialog(self)
@@ -201,6 +219,7 @@ class DashboardWindow(QMainWindow):
                 self.property_selector.clear()
                 self.property_selector.addItems([p["name"] for p in self.proprieta])
                 self.property_selector.setCurrentIndex(len(self.proprieta) - 1)
+                self.update_chart()
 
     # ===================== NAVIGATION =====================
     def menu_navigation(self, index):
@@ -281,7 +300,7 @@ class DashboardWindow(QMainWindow):
             item = QListWidgetItem(f)
             item.setSizeHint(QSize(100, 35))
             item.setForeground(QColor("black"))
-            item.setBackground(QColor(COLORE_WIDGET_2 if idx_f % 2 == 0 else COLORE_WIDGET_1))
+            item.setBackground(QColor(COLORE_RIGA_2 if idx_f % 2 == 0 else COLORE_RIGA_1))
 
             if os.path.isdir(file_path):
                 item.setIcon(self.folder_icon)  # icona cartella

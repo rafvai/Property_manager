@@ -98,3 +98,28 @@ def get_dati_proprieta():
     except Exception as e:
         print("Errore nel recupero proprietà:", e)
     return properties
+
+def get_transactions(cursor, start_date, end_date, property_id=None):
+    query = """
+        SELECT 
+            substr(date, 7, 4) || '-' || substr(date, 4, 2) AS year_month,
+            type,
+            SUM(amount) AS total
+        FROM transactions
+        WHERE 
+            date(substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2))
+            BETWEEN date(?) AND date(?)
+    """
+    params = [start_date, end_date]
+    if property_id:
+        query += " AND property_id = ?"
+        params.append(property_id)
+
+    query += """
+        GROUP BY year_month, type
+        ORDER BY year_month ASC
+    """
+
+    cursor.execute(query, params)
+    return cursor.fetchall()
+
