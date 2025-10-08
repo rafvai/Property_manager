@@ -3,7 +3,7 @@ import os
 import shutil
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QMessageBox,
-    QFileDialog, QListWidget, QFormLayout, QLineEdit, QComboBox, QDialogButtonBox, QDateEdit
+    QFileDialog, QListWidget, QFormLayout, QLineEdit, QComboBox, QDialogButtonBox, QDateEdit, QWidget, QHBoxLayout
 )
 from PySide6.QtCore import Qt, QDate
 
@@ -131,3 +131,45 @@ class AddDocumentDialog(QDialog):
 
         except Exception as e:
             print(f"Errore copiando {filename}: {e}")
+
+class CustomTitleBar(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setStyleSheet("""
+            background-color: #0A192F;        /* Blu scuro elegante */
+            color: white;
+            padding: 10px 15px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        """)
+
+        layout = QHBoxLayout()
+        layout.setContentsMargins(10, 0, 10, 0)
+        layout.setSpacing(10)
+
+        # Titolo principale
+        title_label = QLabel("🏠 Property Manager")
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        layout.addWidget(title_label)
+
+        layout.addStretch()
+
+        # Pulsanti finestra
+        close_btn = QPushButton("✕")
+        close_btn.setFixedSize(25, 25)
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: white;
+                border: none;
+                font-size: 16px;
+            }
+            QPushButton:hover {
+                background-color: #e74c3c;
+                border-radius: 4px;
+            }
+        """)
+        close_btn.clicked.connect(parent.close)
+
+        layout.addWidget(close_btn)
+        self.setLayout(layout)

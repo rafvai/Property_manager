@@ -46,16 +46,13 @@ class DashboardWindow(QMainWindow):
         self.setGeometry(200, 200, 1000, 600)
 
         main_layout = QHBoxLayout()
-        menu = QListWidget()
-        menu.addItems(["🏠 Dashboard", "Le mie proprietà", "📄 Documenti", "💶 Contabilità", "📊 Report", "⚙️ Impostazioni"])
-        menu.setMaximumWidth(150)
-        menu.setStyleSheet("""
-            QListWidget { color: white; background-color: #222; }
-            QListWidget::item { padding: 10px 10px 10px 20px; font-size: 16px; }
-            QListWidget::item:selected { background: #444; color: #00BFFF; }
-        """)
-        main_layout.addWidget(menu)
-        menu.currentRowChanged.connect(self.menu_navigation)
+        self.menu = QListWidget()
+        self.menu.addItems(["🏠 Dashboard", "Le mie proprietà", "📄 Documenti", "💶 Contabilità", "📊 Report", "⚙️ Impostazioni"])
+        self.menu.setFixedWidth(int(self.width() * W_LAT_MENU))
+        self.menu.setStyleSheet(default_menu_lat_style)
+        self.menu.setFocusPolicy(Qt.NoFocus)
+        main_layout.addWidget(self.menu)
+        self.menu.currentRowChanged.connect(self.menu_navigation)
 
         container = QWidget()
         container.setLayout(main_layout)
@@ -72,85 +69,111 @@ class DashboardWindow(QMainWindow):
             if item.widget():
                 item.widget().deleteLater()
 
-        center_layout = QVBoxLayout()
-        top_layout = QHBoxLayout()
+        # --- Layout principale del contenuto (verticale) ---
+        main_content = QVBoxLayout()
+        main_content.setContentsMargins(30, 30, 30, 30)
+        main_content.setSpacing(25)
+
+        # ========== HEADER ========== #
+        header_layout = QVBoxLayout()
+        header_layout.setSpacing(15)
 
         # Selettore proprietà
         self.property_selector = QComboBox()
         self.property_selector.addItems([p["name"] for p in self.proprieta])
         self.property_selector.setStyleSheet(default_combo_box_style)
 
+        # imposta la proprietà selezionata corrente
+        if self.selected_property:
+            self.property_selector.setCurrentText(self.selected_property["name"])
+
+        # Pulsante aggiungi proprietà
         add_button = QPushButton("+")
-        add_button.setFixedSize(30, self.property_selector.sizeHint().height())
-        add_button.setStyleSheet("background-color: #007BFF; color: white; font-weight: bold; font-size: 16px; border-radius: 5px;")
-        add_button.setToolTip("Aggiungi nuova proprietà")
+        add_button.setFixedSize(36, 36)
+        add_button.setStyleSheet("""
+            QPushButton {
+                background-color: #007BFF;
+                color: white;
+                font-weight: bold;
+                font-size: 18px;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #0056b3;
+            }
+        """)
 
-        # Info box
-        self.info_layout = QVBoxLayout()
-        info_frame = QFrame()
-        info_frame.setStyleSheet(f"background: {COLORE_WIDGET_2}; border-radius: 10px; padding: 5px; color:black;")
-        if self.proprieta:
-            primo = self.proprieta[0]
-            self.info_layout.addWidget(QLabel(f"🏡 Proprietà: {primo['name']}"))
-            self.info_layout.addWidget(QLabel(f"📍 Indirizzo: {primo['address']}"))
-            self.info_layout.addWidget(QLabel(f"👤 Proprietario: {primo['owner']}"))
-        else:
-            self.info_layout.addWidget(QLabel("🏡 Nessuna proprietà"))
-            self.info_layout.addWidget(QLabel(""))
-            self.info_layout.addWidget(QLabel(""))
-        info_frame.setLayout(self.info_layout)
-
-        wrapper_layout = QVBoxLayout()
-        selector_layout = QHBoxLayout()
-        selector_layout.addWidget(self.property_selector, stretch=3)
-        selector_layout.addWidget(add_button, stretch=1)
-        wrapper_layout.addLayout(selector_layout)
-        wrapper_layout.addWidget(info_frame, stretch=5)
-
-        info_container = QFrame()
-        info_container.setLayout(wrapper_layout)
-        top_layout.addWidget(info_container, alignment=Qt.AlignTop)
-
-        # --- Creazione frame grafico ---
-        chart_frame = QFrame()
-        chart_frame.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
-        chart_layout = QVBoxLayout()
-        # --- ComboBox per intervallo ---
+        # Selettore periodo
         self.period_selector = QComboBox()
         self.period_selector.setStyleSheet(default_combo_box_style)
-        # todo: si potrebbe pensare di farlo dinamico
         self.period_selector.addItems(["1 mese", "6 mesi", "1 anno", "3 anni"])
-        self.period_selector.currentIndexChanged.connect(self.update_chart)  # ridisegna al cambio
-        chart_layout.addWidget(self.period_selector)
+        self.period_selector.currentIndexChanged.connect(self.update_chart)
 
-        # --- Canvas Matplotlib ---
+        header_layout.addWidget(QLabel("Seleziona proprietà:"))
+        header_layout.addWidget(self.property_selector)
+        header_layout.addWidget(add_button)
+        header_layout.addStretch()
+        header_layout.addWidget(QLabel("Periodo:"))
+        header_layout.addWidget(self.period_selector)
+
+        main_content.addLayout(header_layout)
+
+        # ========== SEZIONE CENTRALE ========== #
+        middle_layout = QHBoxLayout()
+        middle_layout.setSpacing(25)
+
+        # --- Info proprietà ---
+        info_frame = QFrame()
+        info_frame.setStyleSheet(f"background: {COLORE_WIDGET_2}; border-radius: 12px; padding: 20px;")
+        self.info_layout = QVBoxLayout(info_frame)
+        self.info_layout.setSpacing(5)
+        self.info_name = QLabel()
+        self.info_address = QLabel()
+        self.info_owner = QLabel()
+
+        if self.proprieta:
+            p = self.proprieta[0]
+            self.info_name.setText(f"🏡 {p['name']}")
+            self.info_address.setText(f"📍 {p['address']}")
+            self.info_owner.setText(f"👤 {p['owner']}")
+        else:
+            self.info_name.setText("Nessuna proprietà registrata.")
+            self.info_address.setText("")
+            self.info_owner.setText("")
+
+        self.info_layout.addWidget(self.info_name)
+        self.info_layout.addWidget(self.info_address)
+        self.info_layout.addWidget(self.info_owner)
+        # --- Grafico Donut ---
+        chart_frame = QFrame()
+        chart_frame.setStyleSheet(f"background: {COLORE_WIDGET_2}; border-radius: 12px; padding: 20px;")
+        chart_layout = QVBoxLayout(chart_frame)
+        chart_layout.setSpacing(10)
+
         self.fig = Figure(figsize=(4, 4), facecolor=COLORE_WIDGET_2)
         self.chart_canvas = FigureCanvas(self.fig)
         self.ax = self.fig.add_subplot(111, facecolor=COLORE_WIDGET_2)
         chart_layout.addWidget(self.chart_canvas)
-
-        chart_frame.setLayout(chart_layout)
-        top_layout.addWidget(chart_frame)
-
-        # --- Richiamo iniziale per caricare subito il grafico ---
         self.update_chart()
 
-        center_layout.addLayout(top_layout)
+        middle_layout.addWidget(info_frame, 2)
+        middle_layout.addWidget(chart_frame, 3)
 
-        # Placeholder inferiore
+        main_content.addLayout(middle_layout)
+
+        # ========== SEZIONE INFERIORE ========== #
         bottom_frame = QFrame()
-        bottom_frame.setStyleSheet(f"background: {COLORE_WIDGET_2}; border-radius: 10px;")
-        bottom_layout = QVBoxLayout()
-        bottom_layout.addWidget(QLabel("📄 Documenti recenti o report trimestrali (placeholder)"))
-        bottom_frame.setLayout(bottom_layout)
-        bottom_frame.setFixedHeight(150)
-        center_layout.addWidget(bottom_frame)
+        bottom_frame.setStyleSheet(f"background: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
+        bottom_layout = QVBoxLayout(bottom_frame)
+        bottom_layout.addWidget(QLabel("📄 Documenti recenti o report trimestrali"))
+        main_content.addWidget(bottom_frame)
 
+        # ========== AGGIUNTA AL LAYOUT PRINCIPALE ========== #
         container = QFrame()
-        container.setLayout(center_layout)
+        container.setLayout(main_content)
         central_layout.addWidget(container)
 
-        # Segnali
+        # Collega segnali
         self.property_selector.currentIndexChanged.connect(self.update_info_box)
         add_button.clicked.connect(self.add_property)
 
@@ -188,9 +211,9 @@ class DashboardWindow(QMainWindow):
             return
         prop = self.proprieta[index]
         self.selected_property = prop
-        self.info_layout.itemAt(0).widget().setText(f"🏡 Proprietà: {prop['name']}")
-        self.info_layout.itemAt(1).widget().setText(f"📍 Indirizzo: {prop['address']}")
-        self.info_layout.itemAt(2).widget().setText(f"👤 Proprietario: {prop['owner']}")
+        self.info_name.setText(f"🏡 Proprietà: {prop['name']}")
+        self.info_address.setText(f"📍 Indirizzo: {prop['address']}")
+        self.info_owner.setText(f"👤 Proprietario: {prop['owner']}")
         self.update_chart()
 
     def add_property(self):
@@ -250,16 +273,16 @@ class DashboardWindow(QMainWindow):
 
         # Lista documenti
         self.docs_list = QListWidget()
-        self.docs_list.setStyleSheet("""
-             QListWidget::item:hover {
-            background: #539fec;   
+        self.docs_list.setStyleSheet(f"""
+             QListWidget::item:hover {{
+            background: {COLORE_ITEM_HOVER};   
             border-radius: 8px;
-        }
-             QListWidget::item:selected {
+        }}
+             QListWidget::item:selected {{
             background: #007BFF;
             color: white;
             border-radius: 8px;
-        }
+        }}
         """)
         docs_layout.addWidget(self.docs_list)
         self.load_documents()
@@ -358,3 +381,8 @@ class DashboardWindow(QMainWindow):
             # self.conn.commit()
 
         self.load_documents()
+
+    def resizeEvent(self, event):
+        self.menu.setFixedWidth(int(self.width() * W_LAT_MENU))
+        super().resizeEvent(event)
+
