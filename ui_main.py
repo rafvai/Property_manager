@@ -47,8 +47,19 @@ class DashboardWindow(QMainWindow):
 
         main_layout = QHBoxLayout()
         self.menu = QListWidget()
-        self.menu.addItems(["🏠 Dashboard", "Le mie proprietà", "📄 Documenti", "💶 Contabilità", "📊 Report", "⚙️ Impostazioni"])
+        menu_items = [
+            ("icons/homepage.png", "Dashboard"),
+            ("icons/property.png", "Le mie proprietà"),
+            ("icons/document.png", "Documenti"),
+            ("icons/bar-chart.png", "Contabilità"),
+            ("icons/pie-chart.png", "Report"),
+            ("icons/settings.png", "Impostazioni"),
+        ]
+        for icon_path, text in menu_items:
+            item = QListWidgetItem(QIcon(icon_path), text)
+            self.menu.addItem(item)
         self.menu.setFixedWidth(int(self.width() * W_LAT_MENU))
+        self.menu.setMinimumWidth(100)
         self.menu.setStyleSheet(default_menu_lat_style)
         self.menu.setFocusPolicy(Qt.NoFocus)
         main_layout.addWidget(self.menu)
@@ -75,48 +86,59 @@ class DashboardWindow(QMainWindow):
         main_content.setSpacing(25)
 
         # ========== HEADER ========== #
-        header_layout = QVBoxLayout()
-        header_layout.setSpacing(15)
+        header_main_layout = QVBoxLayout()
+        header_main_layout.setSpacing(6)
 
-        # Selettore proprietà
+        # --- Riga 1: Selezione proprietà + bottone aggiungi ---
+        top_row = QHBoxLayout()
+        top_row.setSpacing(10)
+
+        # --- Selettore proprietà ---
+        top_widget_seleziona_proprietà = QWidget()
+        layout_prop = QVBoxLayout()
+        layout_prop.setContentsMargins(0, 0, 0, 0)
+        layout_prop.addWidget(QLabel("Seleziona proprietà:"))
+
         self.property_selector = QComboBox()
         self.property_selector.addItems([p["name"] for p in self.proprieta])
         self.property_selector.setStyleSheet(default_combo_box_style)
+        self.property_selector.setMinimumWidth(200)
 
         # imposta la proprietà selezionata corrente
         if self.selected_property:
             self.property_selector.setCurrentText(self.selected_property["name"])
 
-        # Pulsante aggiungi proprietà
-        add_button = QPushButton("+")
-        add_button.setFixedSize(36, 36)
-        add_button.setStyleSheet("""
-            QPushButton {
-                background-color: #007BFF;
-                color: white;
-                font-weight: bold;
-                font-size: 18px;
-                border-radius: 8px;
-            }
-            QPushButton:hover {
-                background-color: #0056b3;
-            }
-        """)
+        layout_prop.addWidget(self.property_selector)
+        top_widget_seleziona_proprietà.setLayout(layout_prop)
 
-        # Selettore periodo
+        top_row.addWidget(top_widget_seleziona_proprietà, stretch=3)
+        top_row.addSpacing(200)
+
+        # --- Pulsante aggiungi proprietà ---
+        add_button = QPushButton("+ Aggiungi")
+        add_button.setFixedHeight(36)
+        add_button.setStyleSheet(default_aggiungi_button)
+
+        top_row.addStretch()
+        top_row.addWidget(add_button, stretch=0)
+
+        # --- Riga 2: Selettore periodo ---
+        bottom_row = QHBoxLayout()
+        bottom_row.addStretch()  # spinge il periodo a destra
+        bottom_row.addWidget(QLabel("Periodo:"))
+
         self.period_selector = QComboBox()
         self.period_selector.setStyleSheet(default_combo_box_style)
         self.period_selector.addItems(["1 mese", "6 mesi", "1 anno", "3 anni"])
         self.period_selector.currentIndexChanged.connect(self.update_chart)
+        bottom_row.addWidget(self.period_selector)
 
-        header_layout.addWidget(QLabel("Seleziona proprietà:"))
-        header_layout.addWidget(self.property_selector)
-        header_layout.addWidget(add_button)
-        header_layout.addStretch()
-        header_layout.addWidget(QLabel("Periodo:"))
-        header_layout.addWidget(self.period_selector)
+        # --- Assembla ---
+        header_main_layout.addLayout(top_row)
+        header_main_layout.addLayout(bottom_row)
 
-        main_content.addLayout(header_layout)
+        # Aggiungi tutto al layout principale
+        main_content.addLayout(header_main_layout)
 
         # ========== SEZIONE CENTRALE ========== #
         middle_layout = QHBoxLayout()
@@ -198,12 +220,21 @@ class DashboardWindow(QMainWindow):
         # pulisco e ridisegno grafico
         self.ax.clear()
         sizes, colors = [entrate, uscite], ["green", "red"]
-        self.ax.pie(sizes, colors=colors, autopct='%1.1f%%', pctdistance=1.25, startangle=90, wedgeprops=dict(width=0.4))
+        if sum(sizes) == 0:
+            # Mostra un donut grigio neutro con testo centrale
+            self.ax.pie([1], colors=["#d3d3d3"], startangle=90, wedgeprops=dict(width=0.4))
+            self.ax.text(
+                0, 0, "Nessun dato",
+                ha="center", va="center",
+                fontsize=14, color="gray"
+            )
+        else:
+            self.ax.pie(sizes, colors=colors, autopct='%1.1f%%', pctdistance=1.25, startangle=90, wedgeprops=dict(width=0.4), textprops={'color': 'white'})
+            self.ax.text(0, 0, f"€ {entrate - uscite}", horizontalalignment='center', verticalalignment='center',
+                         fontsize=16, fontweight='bold', color='white')
         centre_circle = Circle((0, 0), 0.70, fc=COLORE_WIDGET_2)
         self.ax.add_artist(centre_circle)
-        self.ax.text(0, 0, f"€ {entrate - uscite}", horizontalalignment='center', verticalalignment='center',
-                     fontsize=16, fontweight='bold', color='black')
-        self.ax.set_title("Entrate vs Uscite", color="black", y=1.1)
+        self.ax.set_title("Entrate vs Uscite", color="white", y=1.1, loc="left")
         self.chart_canvas.draw()
 
     def update_info_box(self, index):
@@ -249,7 +280,7 @@ class DashboardWindow(QMainWindow):
         voce = self.sender().item(index).text()
         if "Documenti" in voce:
             self.show_documents_ui()
-        elif "🏠 Dashboard" in voce:
+        elif "Dashboard" in voce:
             self.show_dashboard_ui()
 
     # ===================== DOCUMENTS UI =====================
