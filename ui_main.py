@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QSize
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-from matplotlib.patches import Circle
+import matplotlib.patches as mpatches
 from dialogs import *
 from datetime import datetime, timedelta
 
@@ -219,7 +219,7 @@ class DashboardWindow(QMainWindow):
 
         # pulisco e ridisegno grafico
         self.ax.clear()
-        sizes, colors = [entrate, uscite], ["green", "red"]
+        sizes, colors = [entrate, uscite], ["#1e7be7", "gray"]
         if sum(sizes) == 0:
             # Mostra un donut grigio neutro con testo centrale
             self.ax.pie([1], colors=["#d3d3d3"], startangle=90, wedgeprops=dict(width=0.4))
@@ -229,12 +229,33 @@ class DashboardWindow(QMainWindow):
                 fontsize=14, color="gray"
             )
         else:
-            self.ax.pie(sizes, colors=colors, autopct='%1.1f%%', pctdistance=1.25, startangle=90, wedgeprops=dict(width=0.4), textprops={'color': 'white'})
-            self.ax.text(0, 0, f"€ {entrate - uscite}", horizontalalignment='center', verticalalignment='center',
-                         fontsize=16, fontweight='bold', color='white')
-        centre_circle = Circle((0, 0), 0.70, fc=COLORE_WIDGET_2)
+            self.ax.pie(sizes, colors=colors, startangle=90, wedgeprops=dict(width=0.4))
+            self.ax.text(
+                0, 0,
+                f"€ {entrate - uscite}",
+                ha='center', va='center',
+                fontsize=16, fontweight='bold', color='white'
+            )
+
+            labels = ['Entrate', 'Uscite']
+            perc = [f"{sizes[0] / sum(sizes) * 100:.0f}%", f"{sizes[1] / sum(sizes) * 100:.0f}%"]
+            x_positions = [-1.8, 1]  # centrati rispetto al grafico
+            y_text = -1.35
+            dot_offset = -0.25  # distanza orizzontale del pallino rispetto al testo
+            dot_size = 0.1  # raggio pallino
+
+            for label, p, x, c in zip(labels, perc, x_positions, colors):
+                # Pallino colorato
+                self.ax.add_patch(mpatches.Circle(
+                    (x + dot_offset, y_text), dot_size, color=c, transform=self.ax.transData, clip_on=False)
+                )
+                # Testo accanto
+                self.ax.text(x, y_text,f"{label} {p}", ha='left', va='center', color='white', fontsize=10)
+
+            self.ax.set_aspect('equal')
+        centre_circle = mpatches.Circle((0, 0), 0.70, fc=COLORE_WIDGET_2)
         self.ax.add_artist(centre_circle)
-        self.ax.set_title("Entrate vs Uscite", color="white", y=1.1, loc="left")
+        self.ax.set_title("Movimenti", color="white", y=1)
         self.chart_canvas.draw()
 
     def update_info_box(self, index):
