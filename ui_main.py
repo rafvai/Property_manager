@@ -87,6 +87,7 @@ class DashboardWindow(QMainWindow):
 
         # ========== HEADER ========== #
         header_main_layout = QVBoxLayout()
+        header_main_layout.setContentsMargins(0, 0, 0, 0)
         header_main_layout.setSpacing(6)
 
         # --- Riga 1: Selezione proprietà + bottone aggiungi ---
@@ -122,20 +123,30 @@ class DashboardWindow(QMainWindow):
         top_row.addStretch()
         top_row.addWidget(add_button, stretch=0)
 
-        # --- Riga 2: Selettore periodo ---
-        bottom_row = QHBoxLayout()
-        bottom_row.addStretch()  # spinge il periodo a destra
-        bottom_row.addWidget(QLabel("Periodo:"))
+        # --- Riga 2: "Proprietà" (sx) e "Periodo" (dx) ---
+        mid_row = QHBoxLayout()
+        mid_row.setSpacing(10)
+
+        # Testo "Proprietà"
+        label_proprieta = QLabel("Proprietà")
+        label_proprieta.setStyleSheet("font-weight: 650; font-size: 20px; color: white;")
+        mid_row.addWidget(label_proprieta)
+        mid_row.addStretch()
+
+        # Lato destro: "Periodo" + combobox
+        label_periodo = QLabel("Periodo:")
+        label_periodo.setStyleSheet("color: white;")
+        mid_row.addWidget(label_periodo)
 
         self.period_selector = QComboBox()
         self.period_selector.setStyleSheet(default_combo_box_style)
         self.period_selector.addItems(["1 mese", "6 mesi", "1 anno", "3 anni"])
         self.period_selector.currentIndexChanged.connect(self.update_chart)
-        bottom_row.addWidget(self.period_selector)
+        mid_row.addWidget(self.period_selector)
 
         # --- Assembla ---
         header_main_layout.addLayout(top_row)
-        header_main_layout.addLayout(bottom_row)
+        header_main_layout.addLayout(mid_row)  # nuova riga allineata
 
         # Aggiungi tutto al layout principale
         main_content.addLayout(header_main_layout)
@@ -239,8 +250,8 @@ class DashboardWindow(QMainWindow):
 
             labels = ['Entrate', 'Uscite']
             perc = [f"{sizes[0] / sum(sizes) * 100:.0f}%", f"{sizes[1] / sum(sizes) * 100:.0f}%"]
-            x_positions = [-1.8, 1]  # centrati rispetto al grafico
-            y_text = -1.35
+            x_positions = [-1.8, 1.1]  # centrati rispetto al grafico
+            y_text = -1.5
             dot_offset = -0.25  # distanza orizzontale del pallino rispetto al testo
             dot_size = 0.1  # raggio pallino
 
