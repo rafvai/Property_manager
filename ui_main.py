@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QFrame, QListWidget, QComboBox, QPushButton,
     QDialog, QFormLayout, QLineEdit, QDialogButtonBox,
-    QFileDialog, QListWidgetItem
+    QFileDialog, QListWidgetItem, QSizePolicy
 )
 from PySide6.QtCore import Qt, QSize
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
@@ -27,14 +27,13 @@ class DashboardWindow(QMainWindow):
         self.conn = conn
         self.cursor = conn.cursor()
         self.cursor_read_only = conn.cursor()
-        # inizializza icona cartella (dopo QApplication)
+
+        # icona cartella
         icon_path = os.path.join(os.path.dirname(__file__), "icons", "folder.png")
         if os.path.exists(icon_path):
             self.folder_icon = QIcon(icon_path)
         else:
-            self.folder_icon = QIcon.fromTheme("folder")
-            if self.folder_icon.isNull():
-                self.folder_icon = QIcon()  # fallback vuoto
+            self.folder_icon = QIcon.fromTheme("folder") or QIcon()
 
         self.proprieta = Functions.get_dati_proprieta()
         self.selected_property = self.proprieta[0] if self.proprieta else None
@@ -42,10 +41,31 @@ class DashboardWindow(QMainWindow):
         if not os.path.exists(DOCS_DIR):
             os.makedirs(DOCS_DIR)
 
+        # finestra principale
         self.setWindowTitle("Property Manager MVP")
         self.setGeometry(200, 200, 1000, 600)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
 
-        main_layout = QHBoxLayout()
+        # --- WIDGET CONTAINER PRINCIPALE ---
+        container = QWidget()
+        self.setCentralWidget(container)
+
+        # layout verticale principale
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(0)
+
+        # --- CUSTOM TITLE BAR ---
+        self.title_bar = CustomTitleBar(self)
+        container_layout.addWidget(self.title_bar)
+
+        # --- BODY: menu + contenuti ---
+        body_widget = QWidget()
+        body_layout = QHBoxLayout(body_widget)
+        body_layout.setContentsMargins(0, 0, 0, 0)
+        body_layout.setSpacing(0)
+
+        # Menu laterale
         self.menu = QListWidget()
         menu_items = [
             ("icons/homepage.png", "Dashboard"),
@@ -58,25 +78,37 @@ class DashboardWindow(QMainWindow):
         for icon_path, text in menu_items:
             item = QListWidgetItem(QIcon(icon_path), text)
             self.menu.addItem(item)
+
         self.menu.setFixedWidth(int(self.width() * W_LAT_MENU))
         self.menu.setMinimumWidth(100)
         self.menu.setStyleSheet(default_menu_lat_style)
         self.menu.setFocusPolicy(Qt.NoFocus)
-        main_layout.addWidget(self.menu)
         self.menu.currentRowChanged.connect(self.menu_navigation)
+        self.menu.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
 
-        container = QWidget()
-        container.setLayout(main_layout)
+        # Area contenuti
+        self.content_area = QWidget()
+        self.content_area.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.content_area.setLayout(QVBoxLayout())  # layout iniziale
+
+        # aggiungi al layout orizzontale
+        body_layout.addWidget(self.menu)
+        body_layout.addWidget(self.content_area)
+
+        # aggiungi body sotto la title bar
+        container_layout.addWidget(body_widget)
+
+        # stile generale
         container.setStyleSheet(f"background-color: {COLORE_BACKGROUND};")
-        self.setCentralWidget(container)
 
+        # mostra la dashboard di default
         self.show_dashboard_ui()
-
     # ===================== DASHBOARD UI =====================
     def show_dashboard_ui(self):
-        central_layout = self.centralWidget().layout()
-        while central_layout.count() > 1:
-            item = central_layout.takeAt(1)
+        # pulisci solo l'area contenuti
+        layout = self.content_area.layout()
+        while layout.count():
+            item = layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
@@ -94,7 +126,6 @@ class DashboardWindow(QMainWindow):
         top_row = QHBoxLayout()
         top_row.setSpacing(10)
 
-        # --- Selettore proprietà ---
         top_widget_seleziona_proprietà = QWidget()
         layout_prop = QVBoxLayout()
         layout_prop.setContentsMargins(0, 0, 0, 0)
@@ -104,18 +135,14 @@ class DashboardWindow(QMainWindow):
         self.property_selector.addItems([p["name"] for p in self.proprieta])
         self.property_selector.setStyleSheet(default_combo_box_style)
         self.property_selector.setMinimumWidth(200)
-
-        # imposta la proprietà selezionata corrente
         if self.selected_property:
             self.property_selector.setCurrentText(self.selected_property["name"])
-
         layout_prop.addWidget(self.property_selector)
         top_widget_seleziona_proprietà.setLayout(layout_prop)
 
         top_row.addWidget(top_widget_seleziona_proprietà, stretch=3)
         top_row.addSpacing(200)
 
-        # --- Pulsante aggiungi proprietà ---
         add_button = QPushButton("+ Aggiungi")
         add_button.setFixedHeight(36)
         add_button.setStyleSheet(default_aggiungi_button)
@@ -123,17 +150,15 @@ class DashboardWindow(QMainWindow):
         top_row.addStretch()
         top_row.addWidget(add_button, stretch=0)
 
-        # --- Riga 2: "Proprietà" (sx) e "Periodo" (dx) ---
+        # --- Riga 2: "Proprietà" e "Periodo" ---
         mid_row = QHBoxLayout()
         mid_row.setSpacing(10)
 
-        # Testo "Proprietà"
         label_proprieta = QLabel("Proprietà")
         label_proprieta.setStyleSheet("font-weight: 650; font-size: 20px; color: white;")
         mid_row.addWidget(label_proprieta)
         mid_row.addStretch()
 
-        # Lato destro: "Periodo" + combobox
         label_periodo = QLabel("Periodo:")
         label_periodo.setStyleSheet("color: white;")
         mid_row.addWidget(label_periodo)
@@ -144,11 +169,9 @@ class DashboardWindow(QMainWindow):
         self.period_selector.currentIndexChanged.connect(self.update_chart)
         mid_row.addWidget(self.period_selector)
 
-        # --- Assembla ---
         header_main_layout.addLayout(top_row)
-        header_main_layout.addLayout(mid_row)  # nuova riga allineata
+        header_main_layout.addLayout(mid_row)
 
-        # Aggiungi tutto al layout principale
         main_content.addLayout(header_main_layout)
 
         # ========== SEZIONE CENTRALE ========== #
@@ -177,6 +200,7 @@ class DashboardWindow(QMainWindow):
         self.info_layout.addWidget(self.info_name)
         self.info_layout.addWidget(self.info_address)
         self.info_layout.addWidget(self.info_owner)
+
         # --- Grafico Donut ---
         chart_frame = QFrame()
         chart_frame.setStyleSheet(f"background: {COLORE_WIDGET_2}; border-radius: 12px; padding: 20px;")
@@ -201,12 +225,14 @@ class DashboardWindow(QMainWindow):
         bottom_layout.addWidget(QLabel("📄 Documenti recenti o report trimestrali"))
         main_content.addWidget(bottom_frame)
 
-        # ========== AGGIUNTA AL LAYOUT PRINCIPALE ========== #
-        container = QFrame()
-        container.setLayout(main_content)
-        central_layout.addWidget(container)
+        # aggiungi al layout della content_area
+        for i in reversed(range(layout.count())):
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        layout.addLayout(main_content)
 
-        # Collega segnali
+        # segnali
         self.property_selector.currentIndexChanged.connect(self.update_info_box)
         add_button.clicked.connect(self.add_property)
 
@@ -317,12 +343,14 @@ class DashboardWindow(QMainWindow):
 
     # ===================== DOCUMENTS UI =====================
     def show_documents_ui(self):
-        central_layout = self.centralWidget().layout()
-        while central_layout.count() > 1:
-            item = central_layout.takeAt(1)
+        # Pulisci solo l'area contenuti
+        layout = self.content_area.layout()
+        while layout.count():
+            item = layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
+        # Crea il layout dei documenti
         docs_layout = QVBoxLayout()
         docs_layout.addWidget(QLabel("📄 Documenti"))
 
@@ -337,15 +365,15 @@ class DashboardWindow(QMainWindow):
         # Lista documenti
         self.docs_list = QListWidget()
         self.docs_list.setStyleSheet(f"""
-             QListWidget::item:hover {{
-            background: {COLORE_ITEM_HOVER};   
-            border-radius: 8px;
-        }}
-             QListWidget::item:selected {{
-            background: #007BFF;
-            color: white;
-            border-radius: 8px;
-        }}
+            QListWidget::item:hover {{
+                background: {COLORE_ITEM_HOVER};   
+                border-radius: 8px;
+            }}
+            QListWidget::item:selected {{
+                background: #007BFF;
+                color: white;
+                border-radius: 8px;
+            }}
         """)
         docs_layout.addWidget(self.docs_list)
         self.load_documents()
@@ -353,13 +381,16 @@ class DashboardWindow(QMainWindow):
         # Bottone aggiungi
         add_doc_btn = QPushButton("+")
         add_doc_btn.setFixedSize(40, 40)
-        add_doc_btn.setStyleSheet("background-color: #007BFF; color: white; font-size: 18px; font-weight: bold; border-radius: 20px;")
+        add_doc_btn.setStyleSheet(
+            "background-color: #007BFF; color: white; font-size: 18px; font-weight: bold; border-radius: 20px;"
+        )
         docs_layout.addWidget(add_doc_btn, alignment=Qt.AlignRight)
         add_doc_btn.clicked.connect(self.add_document)
 
-        container = QFrame()
-        container.setLayout(docs_layout)
-        central_layout.addWidget(container)
+        # Aggiungi tutto al layout di self.content_area
+        content_widget = QFrame()
+        content_widget.setLayout(docs_layout)
+        layout.addWidget(content_widget)
 
     def change_property_docs(self, index):
         prop = self.proprieta[index]
