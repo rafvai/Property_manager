@@ -6,8 +6,8 @@ COLORE_ITEM_SELEZIONATO = "#1e7be7"
 COLORE_ITEM_HOVER = "#539fec"
 COLORE_WIDGET_1 = "#FFFDF8"
 COLORE_WIDGET_2 = "#1a2530"
-COLORE_RIGA_1 = "#D0D0D0"
-COLORE_RIGA_2 = "#F0F0F0"
+COLORE_RIGA_1 = "#dc8317"
+COLORE_RIGA_2 = "#bd7014"
 
 ########### DIMENSIONS ##################
 W_LAT_MENU = 0.25
@@ -37,4 +37,9 @@ default_aggiungi_button = """
             QPushButton:hover {
                 background-color: #0056b3;
             }
+        """
+custom_title_style = f"""
+            background-color: {COLORE_SECONDARIO}; 
+            color: white;
+            padding: 10px 15px;
         """

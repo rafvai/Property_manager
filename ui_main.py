@@ -1,14 +1,14 @@
 import sys
 import os
 
-from PySide6.QtGui import QColor, QIcon
+from PySide6.QtGui import QColor, QIcon, QDesktopServices
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QFrame, QListWidget, QComboBox, QPushButton,
     QDialog, QFormLayout, QLineEdit, QDialogButtonBox,
     QFileDialog, QListWidgetItem, QSizePolicy
 )
-from PySide6.QtCore import Qt, QSize
+from PySide6.QtCore import Qt, QSize, QUrl
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.patches as mpatches
@@ -34,6 +34,10 @@ class DashboardWindow(QMainWindow):
             self.folder_icon = QIcon(icon_path)
         else:
             self.folder_icon = QIcon.fromTheme("folder") or QIcon()
+        # icona file
+        self.file_icon = QIcon("icons/file.png")
+        # icona open folder
+        self.open_folder_icon = QIcon("icons/open-folder-with-document.png")
 
         self.proprieta = Functions.get_dati_proprieta()
         self.selected_property = self.proprieta[0] if self.proprieta else None
@@ -340,6 +344,8 @@ class DashboardWindow(QMainWindow):
             self.show_documents_ui()
         elif "Dashboard" in voce:
             self.show_dashboard_ui()
+        elif "Contabilità" in voce:
+            pass
 
     # ===================== DOCUMENTS UI =====================
     def show_documents_ui(self):
@@ -407,22 +413,73 @@ class DashboardWindow(QMainWindow):
         files = os.listdir(prop_folder)
         files.sort()
 
-        # separa cartelle e file
         folders = [f for f in files if os.path.isdir(os.path.join(prop_folder, f))]
         regular_files = [f for f in files if not os.path.isdir(os.path.join(prop_folder, f))]
         ordered_files = folders + regular_files
 
         for idx_f, f in enumerate(ordered_files):
             file_path = os.path.join(prop_folder, f)
-            item = QListWidgetItem(f)
-            item.setSizeHint(QSize(100, 35))
-            item.setForeground(QColor("black"))
-            item.setBackground(QColor(COLORE_RIGA_2 if idx_f % 2 == 0 else COLORE_RIGA_1))
+            bg_color = QColor(COLORE_RIGA_2 if idx_f % 2 == 0 else COLORE_RIGA_1)
+
+            # crea widget personalizzato per la riga
+            row_widget = QWidget()
+            layout = QHBoxLayout(row_widget)
+            layout.setContentsMargins(10, 0, 10, 0)
+            layout.setSpacing(10)
+
+            label = QLabel(f)
+            label.setStyleSheet("color: white; font-size: 14px;")
+            layout.addWidget(label, stretch=1)
 
             if os.path.isdir(file_path):
-                item.setIcon(self.folder_icon)  # icona cartella
+                icon_label = QLabel()
+                icon_label.setPixmap(self.folder_icon.pixmap(20, 20))
+                layout.insertWidget(0, icon_label)
+                # pulsante entra nella cartella
+                open_btn = QPushButton()
+                open_btn.setIcon(self.open_folder_icon)  # stessa icona di prima o una diversa
+                open_btn.setIconSize(QSize(18, 18))
+                open_btn.setFixedSize(28, 28)
+                open_btn.setStyleSheet("border: none;")
+                open_btn.clicked.connect(lambda _, path=file_path: self.enter_folder(path))
+                layout.addWidget(open_btn)
+            else:
+                # pulsante preview
+                preview_btn = QPushButton()
+                preview_btn.setIcon(self.file_icon)  # definisci self.preview_icon altrove
+                preview_btn.setIconSize(QSize(18, 18))
+                preview_btn.setFixedSize(28, 28)
+                preview_btn.setStyleSheet("border: none;")
+                preview_btn.clicked.connect(lambda _, path=file_path: self.preview_file(path))
+                layout.addWidget(preview_btn)
 
+                # pulsante apri cartella
+                open_btn = QPushButton()
+                open_btn.setIcon(self.open_folder_icon)  # definisci self.open_folder_icon altrove
+                open_btn.setIconSize(QSize(18, 18))
+                open_btn.setFixedSize(28, 28)
+                open_btn.setStyleSheet("border: none;")
+                open_btn.clicked.connect(lambda _, path=file_path: self.open_file_location(path))
+                layout.addWidget(open_btn)
+
+            item = QListWidgetItem()
+            item.setSizeHint(QSize(100, 35))
             self.docs_list.addItem(item)
+            self.docs_list.setItemWidget(item, row_widget)
+
+            # colore di sfondo
+            row_widget.setStyleSheet(f"background-color: {bg_color.name()};")
+
+    def enter_folder(self, folder_path):
+        # aggiorna selected_property per navigare dentro
+        self.selected_property = {"name": os.path.relpath(folder_path, DOCS_DIR)}
+        self.load_documents()
+
+    def preview_file(self, path):
+        print("Preview:", path)
+
+    def open_file_location(self, path):
+        QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.dirname(path)))
 
     def add_document(self):
         dialog = QFileDialog(self)
@@ -479,4 +536,11 @@ class DashboardWindow(QMainWindow):
     def resizeEvent(self, event):
         self.menu.setFixedWidth(int(self.width() * W_LAT_MENU))
         super().resizeEvent(event)
+
+    def toggle_max_restore(self):
+        if self.isMaximized():
+            self.showNormal()
+        else:
+            self.showMaximized()
+
 

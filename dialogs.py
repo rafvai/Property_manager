@@ -1,11 +1,15 @@
 # dialogs.py
 import os
 import shutil
+
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QMessageBox,
-    QFileDialog, QListWidget, QFormLayout, QLineEdit, QComboBox, QDialogButtonBox, QDateEdit, QWidget, QHBoxLayout
+    QFileDialog, QListWidget, QFormLayout, QLineEdit, QComboBox, QDialogButtonBox, QDateEdit, QWidget, QHBoxLayout,
+    QSizePolicy
 )
-from PySide6.QtCore import Qt, QDate
+from PySide6.QtCore import Qt, QDate, QPoint
+from styles import custom_title_style, COLORE_SECONDARIO
 
 DOCS_DIR = "docs"
 
@@ -135,41 +139,101 @@ class AddDocumentDialog(QDialog):
 class CustomTitleBar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setStyleSheet("""
-            background-color: #0A192F;        /* Blu scuro elegante */
-            color: white;
-            padding: 10px 15px;
-            border-top-left-radius: 8px;
-            border-top-right-radius: 8px;
-        """)
 
-        layout = QHBoxLayout()
-        layout.setContentsMargins(10, 0, 10, 0)
-        layout.setSpacing(10)
+        self.parent = parent  # salva riferimento alla finestra principale
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setFixedHeight(50)
 
-        # Titolo principale
+        # --- UI ---
+        title_container = QWidget()
+        title_container.setStyleSheet(f"background-color: {COLORE_SECONDARIO};")
+        title_layout = QHBoxLayout(title_container)
+        title_layout.setContentsMargins(10, 0, 10, 0)
+        title_layout.setSpacing(0)
+
         title_label = QLabel("🏠 Property Manager")
-        title_label.setStyleSheet("font-size: 16px; font-weight: bold;")
-        layout.addWidget(title_label)
+        title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
+        title_label.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        title_layout.addWidget(title_label)
 
-        layout.addStretch()
+        minimize_btn = QPushButton("-")
+        minimize_btn.setFixedSize(25, 25)
+        minimize_btn.setStyleSheet("""
+        QPushButton {
+            background-color: transparent;
+            border: none;
+            border-radius: 4px;
+            color: white !important;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        QPushButton:hover {
+            background-color: #e74c3c;
+        }
+        """)
+        minimize_btn.clicked.connect(parent.showMinimized)
+        title_layout.addWidget(minimize_btn)
 
-        # Pulsanti finestra
+        # Pulsante per massimizzare/ripristinare
+        maximize_btn = QPushButton("□")
+        maximize_btn.setFixedSize(25, 25)
+        maximize_btn.setStyleSheet("""
+        QPushButton {
+            background-color: transparent;
+            border: none;
+            border-radius: 4px;
+            color: white !important;
+            font-weight: bold;
+            font-size: 26px;
+        }
+        QPushButton:hover {
+            background-color: #e74c3c;
+        }
+        """)
+        maximize_btn.clicked.connect(parent.toggle_max_restore)
+        title_layout.addWidget(maximize_btn)
+
         close_btn = QPushButton("✕")
         close_btn.setFixedSize(25, 25)
         close_btn.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                color: white;
-                border: none;
-                font-size: 16px;
-            }
-            QPushButton:hover {
-                background-color: #e74c3c;
-                border-radius: 4px;
-            }
+        QPushButton {
+            background-color: red;
+            border: none;
+            border-radius: 4px;
+            color: white !important;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        QPushButton:hover {
+            background-color: #e74c3c;
+        }
         """)
         close_btn.clicked.connect(parent.close)
+        title_layout.addWidget(close_btn)
 
-        layout.addWidget(close_btn)
-        self.setLayout(layout)
+        main_layout = QHBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        main_layout.addWidget(title_container)
+
+        # --- Drag logic ---
+        self._is_dragging = False
+        self._drag_pos = QPoint()
+
+    # Evento: premuto tasto sinistro
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._is_dragging = True
+            self._drag_pos = event.globalPosition().toPoint() - self.parent.frameGeometry().topLeft()
+            event.accept()
+
+    # Evento: rilascio tasto
+    def mouseReleaseEvent(self, event):
+        self._is_dragging = False
+        event.accept()
+
+    # Evento: movimento del mouse
+    def mouseMoveEvent(self, event):
+        if self._is_dragging and event.buttons() == Qt.MouseButton.LeftButton:
+            self.parent.move(event.globalPosition().toPoint() - self._drag_pos)
+            event.accept()
