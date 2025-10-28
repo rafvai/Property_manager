@@ -6,10 +6,10 @@ from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QMessageBox,
     QFileDialog, QListWidget, QFormLayout, QLineEdit, QComboBox, QDialogButtonBox, QDateEdit, QWidget, QHBoxLayout,
-    QSizePolicy
+    QSizePolicy, QCalendarWidget, QListWidgetItem, QInputDialog, QGridLayout, QFrame, QTextEdit
 )
 from PySide6.QtCore import Qt, QDate, QPoint
-from styles import custom_title_style, COLORE_SECONDARIO
+from styles import custom_title_style, COLORE_SECONDARIO, COLORE_WIDGET_2
 
 DOCS_DIR = "docs"
 
@@ -237,3 +237,101 @@ class CustomTitleBar(QWidget):
         if self._is_dragging and event.buttons() == Qt.MouseButton.LeftButton:
             self.parent.move(event.globalPosition().toPoint() - self._drag_pos)
             event.accept()
+
+class PlannerCalendarWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; color: white;")
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
+
+        # intestazione mese + pulsanti
+        header = QHBoxLayout()
+        self.month_label = QLabel()
+        header.addWidget(self.month_label)
+        header.addStretch()
+        prev_btn = QPushButton("←")
+        next_btn = QPushButton("→")
+        header.addWidget(prev_btn)
+        header.addWidget(next_btn)
+        main_layout.addLayout(header)
+
+        # griglia giorni
+        self.grid = QGridLayout()
+        self.grid.setSpacing(6)
+        main_layout.addLayout(self.grid)
+
+        self.current_date = QDate.currentDate()
+        self.tasks = {}  # dict: "YYYY-MM-DD" → [testi]
+
+        prev_btn.clicked.connect(self.prev_month)
+        next_btn.clicked.connect(self.next_month)
+
+        self.populate_month()
+
+    def populate_month(self):
+        # pulisci celle precedenti
+        while self.grid.count():
+            item = self.grid.takeAt(0)
+            w = item.widget()
+            if w:
+                w.deleteLater()
+
+        month = self.current_date.month()
+        year = self.current_date.year()
+        self.month_label.setText(f"{self.current_date.toString('MMMM yyyy')}")
+        first_day = QDate(year, month, 1)
+        start_col = first_day.dayOfWeek() - 1
+        days_in_month = first_day.daysInMonth()
+
+        row, col = 0, start_col
+        for day in range(1, days_in_month + 1):
+            date_str = f"{year:04d}-{month:02d}-{day:02d}"
+            cell = self.create_day_cell(day, date_str)
+            self.grid.addWidget(cell, row, col)
+            col += 1
+            if col > 6:
+                col = 0
+                row += 1
+
+    def create_day_cell(self, day, date_str):
+        frame = QFrame()
+        frame.setStyleSheet("background-color: #2e2e2e; border-radius: 6px;")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(6, 4, 6, 4)
+
+        label = QLabel(str(day))
+        label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        layout.addWidget(label)
+
+        text_area = QTextEdit()
+        text_area.setPlaceholderText("Aggiungi nota...")
+        text_area.setFixedHeight(40)
+        text_area.setStyleSheet("background-color: white; color: black; border-radius: 4px; font-size: 11px;")
+        layout.addWidget(text_area)
+
+        # se esistono scadenze precedenti
+        if date_str in self.tasks:
+            text_area.setText("\n".join(self.tasks[date_str]))
+
+        # salva su cambio testo
+        text_area.textChanged.connect(lambda ds=date_str, t=text_area: self.save_task(ds, t.toPlainText()))
+
+        return frame
+
+    def save_task(self, date_str, text):
+        lines = [l.strip() for l in text.splitlines() if l.strip()]
+        if lines:
+            self.tasks[date_str] = lines
+        elif date_str in self.tasks:
+            del self.tasks[date_str]
+
+    def next_month(self):
+        self.current_date = self.current_date.addMonths(1)
+        self.populate_month()
+
+    def prev_month(self):
+        self.current_date = self.current_date.addMonths(-1)
+        self.populate_month()

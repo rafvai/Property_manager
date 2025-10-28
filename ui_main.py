@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QFrame, QListWidget, QComboBox, QPushButton,
     QDialog, QFormLayout, QLineEdit, QDialogButtonBox,
-    QFileDialog, QListWidgetItem, QSizePolicy
+    QFileDialog, QListWidgetItem, QSizePolicy, QTableWidget, QTableWidgetItem
 )
 from PySide6.QtCore import Qt, QSize, QUrl
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
@@ -14,7 +14,8 @@ from matplotlib.figure import Figure
 import matplotlib.patches as mpatches
 from dialogs import *
 from datetime import datetime, timedelta
-
+import pyqtgraph as pg
+import numpy as np
 import Functions
 from styles import *
 
@@ -77,6 +78,7 @@ class DashboardWindow(QMainWindow):
             ("icons/document.png", "Documenti"),
             ("icons/bar-chart.png", "Contabilità"),
             ("icons/pie-chart.png", "Report"),
+            ("icons/calendar.png", "Calendario"),
             ("icons/settings.png", "Impostazioni"),
         ]
         for icon_path, text in menu_items:
@@ -184,9 +186,9 @@ class DashboardWindow(QMainWindow):
 
         # --- Info proprietà ---
         info_frame = QFrame()
-        info_frame.setStyleSheet(f"background: {COLORE_WIDGET_2}; border-radius: 12px; padding: 20px;")
+        info_frame.setStyleSheet(f"background: {COLORE_WIDGET_2}; border-radius: 12px; padding: 5px;")
         self.info_layout = QVBoxLayout(info_frame)
-        self.info_layout.setSpacing(5)
+        self.info_layout.setSpacing(0)
         self.info_name = QLabel()
         self.info_address = QLabel()
         self.info_owner = QLabel()
@@ -217,7 +219,7 @@ class DashboardWindow(QMainWindow):
         chart_layout.addWidget(self.chart_canvas)
         self.update_chart()
 
-        middle_layout.addWidget(info_frame, 2)
+        middle_layout.addWidget(info_frame, 2, alignment=Qt.AlignTop)
         middle_layout.addWidget(chart_frame, 3)
 
         main_content.addLayout(middle_layout)
@@ -247,12 +249,17 @@ class DashboardWindow(QMainWindow):
         end_date = datetime.today()
         start_date = end_date - timedelta(days=30 * mesi)
 
+        if self.selected_property:
+            property_id = self.selected_property["id"]
+        else:
+            property_id = None
+
         # recupero dati dal DB
         rows = Functions.get_transactions(
             self.cursor_read_only,
             start_date.strftime("%Y-%m-%d"),
             end_date.strftime("%Y-%m-%d"),
-            self.selected_property["id"]
+            property_id,
         )
 
         entrate = sum(row[2] for row in rows if row[1] == "Entrata")
@@ -345,7 +352,24 @@ class DashboardWindow(QMainWindow):
         elif "Dashboard" in voce:
             self.show_dashboard_ui()
         elif "Contabilità" in voce:
-            pass
+            self.show_contabilita_ui()
+        elif "Calendario" in voce:
+            self.show_scadenziario_ui()
+
+    # ===================== SCADENZIARIO UI =================
+    def show_scadenziario_ui(self):
+        layout = self.content_area.layout()
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        frame = QFrame()
+        frame.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; border-radius: 12px;")
+        inner_layout = QVBoxLayout(frame)
+        inner_layout.addWidget(PlannerCalendarWidget())
+
+        layout.addWidget(frame)
 
     # ===================== DOCUMENTS UI =====================
     def show_documents_ui(self):
@@ -468,7 +492,7 @@ class DashboardWindow(QMainWindow):
             self.docs_list.setItemWidget(item, row_widget)
 
             # colore di sfondo
-            row_widget.setStyleSheet(f"background-color: {bg_color.name()};")
+            row_widget.setStyleSheet(f"background-color: {bg_color.name()};border-radius: 5px;")
 
     def enter_folder(self, folder_path):
         # aggiorna selected_property per navigare dentro
@@ -542,5 +566,100 @@ class DashboardWindow(QMainWindow):
             self.showNormal()
         else:
             self.showMaximized()
+
+    def show_contabilita_ui(self):
+        # --- PULISCI AREA CONTENUTI ---
+        layout = self.content_area.layout()
+        while layout.count():
+            item = layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        # --- CONTAINER PRINCIPALE ---
+        container = QWidget()
+        container_layout = QVBoxLayout(container)
+        container_layout.setContentsMargins(20, 20, 20, 20)
+        container_layout.setSpacing(20)
+
+        # --- TITOLO ---
+        title = QLabel("📊 Contabilità - Andamento annuale")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        title.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        container_layout.addWidget(title)
+
+        # --- GRAFICO ---
+        plot_widget = pg.PlotWidget()
+        plot_widget.setBackground(COLORE_BACKGROUND)  # sfondo coerente con tema scuro
+        plot_widget.showGrid(x=True, y=True, alpha=0.3)
+        plot_widget.addLegend(offset=(10, 10), verSpacing=-5, labelTextColor='white')
+        plot_widget.setLabel("left", "Quantità in €", color="white")
+        plot_widget.setLabel("bottom", "Mese", color="white")
+
+        # Dati demo (poi li sostituirai con i reali)
+        mesi = np.arange(1, 13)
+        entrate = np.array([2780, 3648, 3639, 2989, 3217, 3051, 3507, 7273, 3431, 2604, 0, 0])
+        spese = np.array([1626, 7718, 2407, 3320, 3471, 3692, 2689, 2306, 2573, 2877, 877, 877])
+        saldo = np.cumsum(entrate - spese) + 12000
+
+        # --- ASSI PERSONALIZZATI ---
+        class EuroAxis(pg.AxisItem):
+            def tickStrings(self, values, scale, spacing):
+                return [f"{int(v):,} €".replace(",", ".") for v in values]
+
+        # Mesi come etichette leggibili
+        mesi_labels = {
+            i + 1: nome for i, nome in enumerate(["Gen", "Feb", "Mar", "Apr", "Mag", "Giu",
+                                                  "Lug", "Ago", "Set", "Ott", "Nov", "Dic"])
+        }
+
+        # Crea un PlotWidget con assi personalizzati
+        axis_x = pg.AxisItem(orientation='bottom')
+        axis_x.setTicks([list(mesi_labels.items())])
+        axis_y = EuroAxis(orientation='left')
+
+        plot_widget = pg.PlotWidget(axisItems={'bottom': axis_x, 'left': axis_y})
+        plot_widget.setBackground(COLORE_BACKGROUND)
+        plot_widget.showGrid(x=True, y=True, alpha=0.3)
+        plot_widget.addLegend()
+
+        # --- LABEL ASSI ---
+        plot_widget.setLabel("left", "Quantità", color="white")
+        plot_widget.setLabel("bottom", "Mese", color="white")
+
+        # --- LINEE STATICHE ---
+        plot_widget.plot(mesi, entrate, pen=pg.mkPen(color="#2ecc71", width=2), name="Entrate", symbol="o")
+        plot_widget.plot(mesi, spese, pen=pg.mkPen(color="#e74c3c", width=2), name="Spese", symbol="o")
+        plot_widget.plot(mesi, saldo, pen=pg.mkPen(color="#bdc3c7", width=2, style=Qt.PenStyle.DashLine),
+                         name="Saldo finale")
+
+        # --- RANGE FISSO (blocca movimento) ---
+        plot_widget.setXRange(0.5, 12.5, padding=0)
+        plot_widget.setYRange(0, max(saldo) * 1.1, padding=0)
+        plot_widget.setMouseEnabled(x=False, y=False)  # disattiva pan/zoom
+
+        container_layout.addWidget(plot_widget, stretch=2)
+        # --- TABELLA RIEPILOGATIVA ---
+        table = QTableWidget()
+        table.setColumnCount(4)
+        table.setHorizontalHeaderLabels(["Mese", "Entrate (€)", "Spese (€)", "Saldo finale (€)"])
+        table.verticalHeader().setVisible(False)
+        table.setStyleSheet("""
+            QHeaderView::section { background-color: #34495e; color: white; font-weight: bold; }
+            QTableWidget { color: white; background-color: #2c3e50; font-size: 13px; gridline-color: #7f8c8d; }
+        """)
+
+        table.setRowCount(len(mesi))
+        for i, mese in enumerate(
+                ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"]
+        ):
+            table.setItem(i, 0, QTableWidgetItem(mese))
+            table.setItem(i, 1, QTableWidgetItem(f"{entrate[i]:,.0f} €"))
+            table.setItem(i, 2, QTableWidgetItem(f"{spese[i]:,.0f} €"))
+            table.setItem(i, 3, QTableWidgetItem(f"{saldo[i]:,.0f} €"))
+
+        container_layout.addWidget(table, stretch=1)
+
+        # --- AGGIUNGI TUTTO ALL'AREA PRINCIPALE ---
+        layout.addWidget(container)
 
 
