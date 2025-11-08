@@ -427,17 +427,20 @@ class DashboardWindow(QMainWindow):
         self.selected_property = prop
         self.load_documents()
 
-    def load_documents(self):
+    def load_documents(self, sub_directory=None):
         self.docs_list.clear()
         if not self.selected_property:
             return
-        prop_folder = os.path.join(DOCS_DIR, self.selected_property["name"])
+        prop_folder = os.path.join(DOCS_DIR, self.selected_property["name"], sub_directory if sub_directory else "")
         if not os.path.exists(prop_folder):
             os.makedirs(prop_folder)
         files = os.listdir(prop_folder)
         files.sort()
 
         folders = [f for f in files if os.path.isdir(os.path.join(prop_folder, f))]
+        # aggiungi la prima linea per navigare indietro se siamo dentro una cartella
+        if sub_directory:
+            folders.insert(0, "")
         regular_files = [f for f in files if not os.path.isdir(os.path.join(prop_folder, f))]
         ordered_files = folders + regular_files
 
@@ -451,7 +454,7 @@ class DashboardWindow(QMainWindow):
             layout.setContentsMargins(10, 0, 10, 0)
             layout.setSpacing(10)
 
-            label = QLabel(f)
+            label = QLabel(f if f != "" else "...")
             label.setStyleSheet("color: white; font-size: 14px;")
             layout.addWidget(label, stretch=1)
 
@@ -461,11 +464,21 @@ class DashboardWindow(QMainWindow):
                 layout.insertWidget(0, icon_label)
                 # pulsante entra nella cartella
                 open_btn = QPushButton()
-                open_btn.setIcon(self.open_folder_icon)  # stessa icona di prima o una diversa
+                open_btn.setIcon(self.open_folder_icon)
                 open_btn.setIconSize(QSize(18, 18))
                 open_btn.setFixedSize(28, 28)
                 open_btn.setStyleSheet("border: none;")
-                open_btn.clicked.connect(lambda _, path=file_path: self.enter_folder(path))
+                if f:  # vai avanti
+                    new_path = f"{sub_directory}\\{f}" if sub_directory else f
+                else:  # vai indietro
+                    if sub_directory:
+                        parts = sub_directory.split("\\")
+                        parts.pop()  # rimuove l'ultimo elemento
+                        new_path = "\\".join(parts)
+                    else:
+                        new_path = ""
+
+                open_btn.clicked.connect(lambda _, sub_dir=new_path: self.load_documents(sub_dir))
                 layout.addWidget(open_btn)
             else:
                 # pulsante preview
@@ -494,10 +507,6 @@ class DashboardWindow(QMainWindow):
             # colore di sfondo
             row_widget.setStyleSheet(f"background-color: {bg_color.name()};border-radius: 5px;")
 
-    def enter_folder(self, folder_path):
-        # aggiorna selected_property per navigare dentro
-        self.selected_property = {"name": os.path.relpath(folder_path, DOCS_DIR)}
-        self.load_documents()
 
     def preview_file(self, path):
         print("Preview:", path)
