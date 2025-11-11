@@ -18,9 +18,9 @@ DOCS_DIR = "docs"
 class DocumentsView(BaseView):
     """View per la gestione documenti"""
 
-    def __init__(self, conn, proprieta, parent=None):
-        self.proprieta = proprieta
-        self.selected_property = proprieta[0] if proprieta else None
+    def __init__(self, property_service, transaction_service, document_service, parent=None):
+        self.proprieta = property_service.get_all()
+        self.selected_property = self.proprieta[0] if self.proprieta else None
 
         # Icone
         icon_path = os.path.join(os.path.dirname(__file__), "..", "icons", "folder.png")
@@ -28,7 +28,7 @@ class DocumentsView(BaseView):
         self.file_icon = QIcon("icons/file.png")
         self.open_folder_icon = QIcon("icons/open-folder-with-document.png")
 
-        super().__init__(conn, parent)
+        super().__init__(property_service, transaction_service, document_service, parent)
 
     def setup_ui(self):
         """Costruisce l'interfaccia documenti"""
@@ -84,33 +84,29 @@ class DocumentsView(BaseView):
         if not self.selected_property:
             return
 
-        prop_folder = os.path.join(DOCS_DIR, self.selected_property["name"], sub_directory if sub_directory else "")
-        if not os.path.exists(prop_folder):
-            os.makedirs(prop_folder)
+        # ⭐ USA IL SERVICE
+        documents = self.document_service.list_documents(
+            self.selected_property["name"],
+            sub_directory
+        )
 
-        files = os.listdir(prop_folder)
-        files.sort()
-
-        folders = [f for f in files if os.path.isdir(os.path.join(prop_folder, f))]
+        # Aggiungi navigazione indietro se in sottocartella
         if sub_directory:
-            folders.insert(0, "")
-        regular_files = [f for f in files if not os.path.isdir(os.path.join(prop_folder, f))]
-        ordered_files = folders + regular_files
+            documents.insert(0, {"name": "...", "path": "", "is_folder": True})
 
-        for idx_f, f in enumerate(ordered_files):
-            file_path = os.path.join(prop_folder, f)
-            bg_color = QColor(COLORE_RIGA_2 if idx_f % 2 == 0 else COLORE_RIGA_1)
+        for idx, doc in enumerate(documents):
+            bg_color = QColor(COLORE_RIGA_2 if idx % 2 == 0 else COLORE_RIGA_1)
 
             row_widget = QWidget()
             layout = QHBoxLayout(row_widget)
             layout.setContentsMargins(10, 0, 10, 0)
             layout.setSpacing(10)
 
-            label = QLabel(f if f != "" else "...")
+            label = QLabel(doc["name"])
             label.setStyleSheet("color: white; font-size: 14px;")
             layout.addWidget(label, stretch=1)
 
-            if os.path.isdir(file_path):
+            if doc["is_folder"]:
                 icon_label = QLabel()
                 icon_label.setPixmap(self.folder_icon.pixmap(20, 20))
                 layout.insertWidget(0, icon_label)
@@ -121,25 +117,28 @@ class DocumentsView(BaseView):
                 open_btn.setFixedSize(28, 28)
                 open_btn.setStyleSheet("border: none;")
 
-                if f:
-                    new_path = f"{sub_directory}\\{f}" if sub_directory else f
-                else:
+                if doc["name"] == "...":
+                    # Torna indietro
                     if sub_directory:
                         parts = sub_directory.split("\\")
                         parts.pop()
-                        new_path = "\\".join(parts)
+                        new_path = "\\".join(parts) if parts else None
                     else:
-                        new_path = ""
+                        new_path = None
+                else:
+                    # Vai avanti
+                    new_path = f"{sub_directory}\\{doc['name']}" if sub_directory else doc["name"]
 
                 open_btn.clicked.connect(lambda _, sub_dir=new_path: self.load_documents(sub_dir))
                 layout.addWidget(open_btn)
             else:
+                # File buttons (preview e open location)
                 preview_btn = QPushButton()
                 preview_btn.setIcon(self.file_icon)
                 preview_btn.setIconSize(QSize(18, 18))
                 preview_btn.setFixedSize(28, 28)
                 preview_btn.setStyleSheet("border: none;")
-                preview_btn.clicked.connect(lambda _, path=file_path: self.preview_file(path))
+                preview_btn.clicked.connect(lambda _, path=doc["path"]: self.preview_file(path))
                 layout.addWidget(preview_btn)
 
                 open_btn = QPushButton()
@@ -147,7 +146,7 @@ class DocumentsView(BaseView):
                 open_btn.setIconSize(QSize(18, 18))
                 open_btn.setFixedSize(28, 28)
                 open_btn.setStyleSheet("border: none;")
-                open_btn.clicked.connect(lambda _, path=file_path: self.open_file_location(path))
+                open_btn.clicked.connect(lambda _, path=doc["path"]: self.open_file_location(path))
                 layout.addWidget(open_btn)
 
             item = QListWidgetItem()
@@ -155,6 +154,46 @@ class DocumentsView(BaseView):
             self.docs_list.addItem(item)
             self.docs_list.setItemWidget(item, row_widget)
             row_widget.setStyleSheet(f"background-color: {bg_color.name()};border-radius: 5px;")
+
+    def add_document(self):
+        """Aggiunge nuovi documenti"""
+        dialog = QFileDialog(self)
+        dialog.setFileMode(QFileDialog.ExistingFiles)
+        if dialog.exec() != QDialog.Accepted:
+            return
+
+        selected_files = dialog.selectedFiles()
+
+        for path in selected_files:
+            filename = os.path.basename(path)
+            meta_dialog = DocumentMetadataDialog(filename, self)
+            if meta_dialog.exec() != QDialog.Accepted:
+                continue
+
+            metadata = meta_dialog.get_data()
+
+            # ⭐ USA IL SERVICE per salvare transazione
+            trans_id = self.transaction_service.create(
+                property_id=self.selected_property["id"],
+                date=metadata["data_fattura"],
+                trans_type=metadata["tipo"],
+                amount=float(metadata["importo"]),
+                provider=metadata['provider'],
+                service=metadata['service']
+            )
+
+            if trans_id:
+                # USA IL SERVICE per salvare documento
+                dest_path = self.document_service.save_document(
+                    path,
+                    self.selected_property["name"]
+                )
+
+                if dest_path:
+                    print(f"✅ Documento salvato: {dest_path}")
+
+        self.load_documents()
+
 
     def preview_file(self, path):
         """Preview file (da implementare)"""

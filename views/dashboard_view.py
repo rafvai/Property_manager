@@ -18,10 +18,11 @@ from styles import *
 class DashboardView(BaseView):
     """View per la Dashboard principale"""
 
-    def __init__(self, conn, proprieta, parent=None):
-        self.proprieta = proprieta
-        self.selected_property = proprieta[0] if proprieta else None
-        super().__init__(conn, parent)
+    def __init__(self, property_service, transaction_service, parent=None):
+        # Carica proprietà dal service
+        self.proprieta = property_service.get_all()
+        self.selected_property = self.proprieta[0] if self.proprieta else None
+        super().__init__(property_service, transaction_service, None, parent)
 
     def setup_ui(self):
         """Costruisce l'interfaccia della dashboard"""
@@ -148,15 +149,15 @@ class DashboardView(BaseView):
 
         property_id = self.selected_property["id"] if self.selected_property else None
 
-        rows = Functions.get_transactions(
-            self.cursor_read_only,
-            start_date.strftime("%Y-%m-%d"),
-            end_date.strftime("%Y-%m-%d"),
-            property_id,
+        # USA IL SERVICE invece di query diretta
+        rows = self.transaction_service.get_all(
+            property_id=property_id,
+            start_date=start_date.strftime("%Y-%m-%d"),
+            end_date=end_date.strftime("%Y-%m-%d")
         )
 
-        entrate = sum(row[2] for row in rows if row[1] == "Entrata")
-        uscite = sum(row[2] for row in rows if row[1] == "Uscita")
+        entrate = sum(t["amount"] for t in rows if t["type"] == "Entrata")
+        uscite = sum(t["amount"] for t in rows if t["type"] == "Uscita")
 
         self.ax.clear()
         sizes, colors = [entrate, uscite], ["#1e7be7", "gray"]
@@ -225,19 +226,12 @@ class DashboardView(BaseView):
             proprietario = owner_input.text().strip()
 
             if nome and indirizzo and proprietario:
-                try:
-                    self.cursor.execute(
-                        "INSERT INTO properties (name, address, owner) VALUES (?, ?, ?)",
-                        (nome, indirizzo, proprietario)
-                    )
-                    self.conn.commit()
+                # ⭐ USA IL SERVICE
+                property_id = self.property_service.create(nome, indirizzo, proprietario)
 
-                    # Ricarica proprietà
-                    self.proprieta = Functions.get_dati_proprieta()
+                if property_id:
+                    self.proprieta = self.property_service.get_all()
                     self.property_selector.clear()
                     self.property_selector.addItems([p["name"] for p in self.proprieta])
                     self.property_selector.setCurrentIndex(len(self.proprieta) - 1)
                     self.update_chart()
-
-                except Exception as e:
-                    print("Errore nell'inserimento:", e)

@@ -4,11 +4,14 @@ from PySide6.QtWidgets import QWidget
 class BaseView(QWidget):
     """Classe base per tutte le view"""
 
-    def __init__(self, conn, parent=None):
+    def __init__(self, property_service, transaction_service, document_service=None, parent=None):
         super().__init__(parent)
-        self.conn = conn
-        self.cursor = conn.cursor()
-        self.cursor_read_only = conn.cursor()
+
+        # Inietta i services
+        self.property_service = property_service
+        self.transaction_service = transaction_service
+        self.document_service = document_service
+
         self.setup_ui()
 
     def setup_ui(self):

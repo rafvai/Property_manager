@@ -15,6 +15,9 @@ from styles import *
 class AccountingView(BaseView):
     """View per la sezione Contabilità"""
 
+    def __init__(self, property_service, transaction_service, parent=None):
+        super().__init__(property_service, transaction_service, None, parent)
+
     def setup_ui(self):
         """Costruisce l'interfaccia contabilità"""
         main_layout = QVBoxLayout(self)
@@ -73,25 +76,9 @@ class AccountingView(BaseView):
     def update_data(self):
         """Recupera dati dal DB e aggiorna grafico + tabella"""
         year = int(self.year_selector.currentText())
-        start_date = f"{year}-01-01"
-        end_date = f"{year}-12-31"
 
-        # Query
-        query = """
-            SELECT 
-                CAST(substr(date, 4, 2) AS INTEGER) as month,
-                type,
-                SUM(amount) as total
-            FROM transactions
-            WHERE 
-                date(substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2))
-                BETWEEN date(?) AND date(?)
-            GROUP BY month, type
-            ORDER BY month ASC
-        """
-
-        self.cursor_read_only.execute(query, [start_date, end_date])
-        results = self.cursor_read_only.fetchall()
+        # ⭐ USA IL SERVICE
+        results = self.transaction_service.get_monthly_summary(year)
 
         # Array per 12 mesi
         entrate = np.zeros(12)
@@ -109,11 +96,10 @@ class AccountingView(BaseView):
 
         saldo = np.cumsum(entrate - spese)
 
-        # Aggiorna grafico
+        # Aggiorna grafico e tabella
         self.update_chart(entrate, spese, saldo)
-
-        # Aggiorna tabella
         self.update_table(entrate, spese, saldo)
+
 
     def update_chart(self, entrate, spese, saldo):
         """Aggiorna il grafico"""

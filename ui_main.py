@@ -11,7 +11,11 @@ from dialogs import CustomTitleBar
 import Functions
 from styles import *
 
-# Import delle views
+from services.database_service import DatabaseService
+from services.property_service import PropertyService
+from services.transaction_service import TransactionService
+from services.document_service import DocumentService
+
 from views.dashboard_view import DashboardView
 from views.documents_view import DocumentsView
 from views.accounting_view import AccountingView
@@ -19,10 +23,14 @@ from views.calendar_view import CalendarView
 
 
 class DashboardWindow(QMainWindow):
-    def __init__(self, conn):
+    def __init__(self, db_service):
         super().__init__()
-        self.conn = conn
-        self.proprieta = Functions.get_dati_proprieta()
+
+        # ⭐ Inizializza i services
+        conn = db_service.conn
+        self.property_service = PropertyService(conn)
+        self.transaction_service = TransactionService(conn)
+        self.document_service = DocumentService(conn)
 
         # Finestra principale
         self.setWindowTitle("Property Manager MVP")
@@ -68,7 +76,7 @@ class DashboardWindow(QMainWindow):
         self.menu.currentRowChanged.connect(self.menu_navigation)
         self.menu.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
 
-        # Area contenuti (qui caricheremo le views)
+        # Area contenuti
         self.content_area = QWidget()
         self.content_area.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.content_area.setLayout(QVBoxLayout())
@@ -82,18 +90,20 @@ class DashboardWindow(QMainWindow):
         container.setStyleSheet(f"background-color: {COLORE_BACKGROUND};")
 
         # Mostra dashboard di default
-        self.show_view(DashboardView(self.conn, self.proprieta, self))
+        self.show_view(DashboardView(
+            self.property_service,
+            self.transaction_service,
+            self
+        ))
 
     def show_view(self, view):
         """Mostra una view nell'area contenuti"""
-        # Pulisci area contenuti
         layout = self.content_area.layout()
         while layout.count():
             item = layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
-        # Aggiungi la nuova view
         layout.addWidget(view)
 
     def menu_navigation(self, index):
@@ -101,14 +111,30 @@ class DashboardWindow(QMainWindow):
         voce = self.sender().item(index).text()
 
         if "Dashboard" in voce:
-            self.show_view(DashboardView(self.conn, self.proprieta, self))
+            self.show_view(DashboardView(
+                self.property_service,
+                self.transaction_service,
+                self
+            ))
         elif "Documenti" in voce:
-            self.show_view(DocumentsView(self.conn, self.proprieta, self))
+            self.show_view(DocumentsView(
+                self.property_service,
+                self.transaction_service,
+                self.document_service,
+                self
+            ))
         elif "Contabilità" in voce:
-            self.show_view(AccountingView(self.conn, self))
+            self.show_view(AccountingView(
+                self.property_service,
+                self.transaction_service,
+                self
+            ))
         elif "Calendario" in voce:
-            self.show_view(CalendarView(self.conn, self))
-        # Aggiungi altri casi per Report, Impostazioni, etc.
+            self.show_view(CalendarView(
+                self.property_service,
+                self.transaction_service,
+                self
+            ))
 
     def resizeEvent(self, event):
         """Ridimensiona il menu laterale"""

@@ -7,6 +7,9 @@ from styles import *
 class CalendarView(BaseView):
     """View per il calendario/scadenziario"""
 
+    def __init__(self, property_service, transaction_service, parent=None):
+        super().__init__(property_service, transaction_service, None, parent)
+
     def setup_ui(self):
         """Costruisce l'interfaccia calendario"""
         main_layout = QVBoxLayout(self)
