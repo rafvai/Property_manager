@@ -8,6 +8,7 @@ COLORE_WIDGET_1 = "#FFFDF8"
 COLORE_WIDGET_2 = "#1a2530"
 COLORE_RIGA_1 = "#dc8317"
 COLORE_RIGA_2 = "#bd7014"
+COLORE_BIANCO = "#d4d4d4"
 
 ########### DIMENSIONS ##################
 W_LAT_MENU = 0.25

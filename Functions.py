@@ -72,6 +72,7 @@ def init_db():
         type TEXT CHECK(type IN ('Entrata','Uscita')) NOT NULL,
         amount REAL NOT NULL,
         provider TEXT NOT NULL,
+        service TEXT NOT NULL,
         FOREIGN KEY (property_id) REFERENCES properties(id)
     )
     """)
@@ -104,7 +105,9 @@ def get_transactions(cursor, start_date, end_date, property_id=None):
         SELECT 
             substr(date, 7, 4) || '-' || substr(date, 4, 2) AS year_month,
             type,
-            SUM(amount) AS total
+            SUM(amount) AS total,
+            provider,
+            service
         FROM transactions
         WHERE 
             date(substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2))

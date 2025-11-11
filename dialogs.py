@@ -2,14 +2,14 @@
 import os
 import shutil
 
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QMessageBox,
     QFileDialog, QListWidget, QFormLayout, QLineEdit, QComboBox, QDialogButtonBox, QDateEdit, QWidget, QHBoxLayout,
     QSizePolicy, QCalendarWidget, QListWidgetItem, QInputDialog, QGridLayout, QFrame, QTextEdit
 )
-from PySide6.QtCore import Qt, QDate, QPoint
-from styles import custom_title_style, COLORE_SECONDARIO, COLORE_WIDGET_2
+from PySide6.QtCore import Qt, QDate, QPoint, QSize
+from styles import custom_title_style, COLORE_SECONDARIO, COLORE_WIDGET_2, COLORE_BIANCO, COLORE_RIGA_1
 
 DOCS_DIR = "docs"
 
@@ -31,6 +31,10 @@ class DocumentMetadataDialog(QDialog):
         # Emittente
         self.emittente_input = QLineEdit()
         layout.addRow("Fornitore/Emittente:", self.emittente_input)
+
+        # servizio
+        self.service_input = QLineEdit()
+        layout.addRow("Servizio:", self.service_input)
 
         # Importo
         self.importo_input = QLineEdit()
@@ -56,6 +60,9 @@ class DocumentMetadataDialog(QDialog):
         if not self.emittente_input.text().strip():
             QMessageBox.warning(self, "Campo obbligatorio", "Inserisci l'emittente.")
             return
+        if not self.service_input.text().strip():
+            QMessageBox.warning(self,"Campo obbligatorio", "Inserisci il servizio.")
+            return
         if not self.importo_input.text().strip():
             QMessageBox.warning(self, "Campo obbligatorio", "Inserisci l'importo.")
             return
@@ -65,11 +72,11 @@ class DocumentMetadataDialog(QDialog):
 
         super().accept()
 
-        super().accept()
     def get_data(self):
         return {
             "tipo": self.type_box.currentText(),
             "provider": self.emittente_input.text().strip(),
+            "service": self.service_input.text().strip(),
             "importo": self.importo_input.text().strip(),
             "data_fattura": self.data_fattura.date().toString("dd/MM/yyyy"),
         }
@@ -250,10 +257,13 @@ class PlannerCalendarWidget(QWidget):
         # intestazione mese + pulsanti
         header = QHBoxLayout()
         self.month_label = QLabel()
+        self.month_label.setStyleSheet("font-size:16px;font-weight: bold;color:white")
         header.addWidget(self.month_label)
         header.addStretch()
-        prev_btn = QPushButton("←")
-        next_btn = QPushButton("→")
+        prev_btn = QPushButton()
+        prev_btn.setIcon(QIcon("./icons/left-arrow.png"))
+        next_btn = QPushButton()
+        next_btn.setIcon(QIcon("./icons/right-arrow.png"))
         header.addWidget(prev_btn)
         header.addWidget(next_btn)
         main_layout.addLayout(header)
@@ -298,11 +308,12 @@ class PlannerCalendarWidget(QWidget):
 
     def create_day_cell(self, day, date_str):
         frame = QFrame()
-        frame.setStyleSheet("background-color: #2e2e2e; border-radius: 6px;")
+        frame.setStyleSheet(f"background-color: {COLORE_RIGA_1}; border-radius: 6px;")
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(6, 4, 6, 4)
 
         label = QLabel(str(day))
+        label.setStyleSheet("font-size: 14px; color: white;")
         label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(label)
 
