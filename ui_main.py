@@ -15,6 +15,7 @@ from services.database_service import DatabaseService
 from services.property_service import PropertyService
 from services.transaction_service import TransactionService
 from services.document_service import DocumentService
+from services.deadline_service import DeadlineService  # 🆕
 
 from views.dashboard_view import DashboardView
 from views.documents_view import DocumentsView
@@ -31,6 +32,7 @@ class DashboardWindow(QMainWindow):
         self.property_service = PropertyService(conn)
         self.transaction_service = TransactionService(conn)
         self.document_service = DocumentService(conn)
+        self.deadline_service = DeadlineService(conn)  # 🆕
 
         # Finestra principale
         self.setWindowTitle("Property Manager MVP")
@@ -93,6 +95,7 @@ class DashboardWindow(QMainWindow):
         self.show_view(DashboardView(
             self.property_service,
             self.transaction_service,
+            self.deadline_service,  # 🆕
             self
         ))
 
@@ -114,6 +117,7 @@ class DashboardWindow(QMainWindow):
             self.show_view(DashboardView(
                 self.property_service,
                 self.transaction_service,
+                self.deadline_service,  # 🆕
                 self
             ))
         elif "Documenti" in voce:
@@ -133,6 +137,7 @@ class DashboardWindow(QMainWindow):
             self.show_view(CalendarView(
                 self.property_service,
                 self.transaction_service,
+                self.deadline_service,  # 🆕
                 self
             ))
 

@@ -7,7 +7,8 @@ from styles import *
 class CalendarView(BaseView):
     """View per il calendario/scadenziario"""
 
-    def __init__(self, property_service, transaction_service, parent=None):
+    def __init__(self, property_service, transaction_service, deadline_service, parent=None):
+        self.deadline_service = deadline_service
         super().__init__(property_service, transaction_service, None, parent)
 
     def setup_ui(self):
@@ -18,6 +19,9 @@ class CalendarView(BaseView):
         frame = QFrame()
         frame.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; border-radius: 12px;")
         frame_layout = QVBoxLayout(frame)
-        frame_layout.addWidget(PlannerCalendarWidget())
+
+        # 🆕 Passa i services al calendario
+        calendar_widget = PlannerCalendarWidget(self.deadline_service, self.property_service)
+        frame_layout.addWidget(calendar_widget)
 
         main_layout.addWidget(frame)

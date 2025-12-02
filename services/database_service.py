@@ -46,6 +46,20 @@ class DatabaseService:
         )
         """)
 
+        # 🆕 Tabella scadenze
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS deadlines (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            property_id INTEGER,
+            title TEXT NOT NULL,
+            description TEXT,
+            due_date TEXT NOT NULL,
+            completed INTEGER DEFAULT 0,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (property_id) REFERENCES properties(id)
+        )
+        """)
+
         self.conn.commit()
         return self.conn
 

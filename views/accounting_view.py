@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-    QTableWidget, QTableWidgetItem, QWidget
+    QTableWidget, QTableWidgetItem, QWidget, QHeaderView
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
@@ -52,23 +52,56 @@ class AccountingView(BaseView):
         self.accounting_plot = pg.PlotWidget()
         self.accounting_plot.setBackground(COLORE_BACKGROUND)
         self.accounting_plot.showGrid(x=True, y=True, alpha=0.3)
-        self.accounting_plot.setLabel("left", "Quantità in €", color="white")
-        self.accounting_plot.setLabel("bottom", "Mese", color="white")
+
+        # 🆕 Etichette invertite
+        self.accounting_plot.setLabel("bottom", "Mese", color="white", size="12pt")
+        self.accounting_plot.setLabel("left", "Quantità in €", color="white", size="12pt")
+
         self.accounting_plot.hideButtons()
 
-        main_layout.addWidget(self.accounting_plot, stretch=2)
+        # 🆕 Etichette mesi sull'asse X
+        month_labels = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu',
+                        'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
+        x_axis = self.accounting_plot.getAxis('bottom')
+        x_dict = {i + 1: month_labels[i] for i in range(12)}
+        x_axis.setTicks([list(x_dict.items())])
+        x_axis.setStyle(tickTextOffset=10)
+
+        # Stile assi
+        for axis in ['left', 'bottom']:
+            self.accounting_plot.getAxis(axis).setTextPen('w')
+            self.accounting_plot.getAxis(axis).setPen(pg.mkPen(color='w', width=2))
+
+        main_layout.addWidget(self.accounting_plot, stretch=3)
 
         # --- TABELLA ---
         self.accounting_table = QTableWidget()
-        self.accounting_table.setColumnCount(4)
-        self.accounting_table.setHorizontalHeaderLabels(["Mese", "Entrate (€)", "Spese (€)", "Saldo finale (€)"])
-        self.accounting_table.verticalHeader().setVisible(False)
+        # 🆕 Tabella orizzontale: 12 colonne (mesi) + 3 righe (Entrate, Uscite, Saldo)
+        self.accounting_table.setColumnCount(12)
+        self.accounting_table.setRowCount(3)
+
+        month_labels = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu',
+                        'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
+        self.accounting_table.setHorizontalHeaderLabels(month_labels)
+        self.accounting_table.setVerticalHeaderLabels(["Entrate (€)", "Uscite (€)", "Saldo (€)"])
+
+        # 🆕 Distribuisci le colonne uniformemente su tutta la larghezza
+        self.accounting_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
+        # 🆕 Ridimensiona righe per contenuto
+        self.accounting_table.resizeRowsToContents()
+
+        # 🆕 Altezza fissa basata sul contenuto (3 righe + header)
+        header_height = self.accounting_table.horizontalHeader().height()
+        row_height = self.accounting_table.rowHeight(0) * 3
+        self.accounting_table.setMaximumHeight(header_height + row_height + 10)
+
         self.accounting_table.setStyleSheet("""
-            QHeaderView::section { background-color: #34495e; color: white; font-weight: bold; }
+            QHeaderView::section { background-color: #34495e; color: white; font-weight: bold; padding: 8px; }
             QTableWidget { color: white; background-color: #2c3e50; font-size: 13px; gridline-color: #7f8c8d; }
         """)
 
-        main_layout.addWidget(self.accounting_table, stretch=1)
+        main_layout.addWidget(self.accounting_table, stretch=0)
 
         # Carica dati iniziali
         self.update_data()
@@ -100,39 +133,45 @@ class AccountingView(BaseView):
         self.update_chart(entrate, spese, saldo)
         self.update_table(entrate, spese, saldo)
 
-
     def update_chart(self, entrate, spese, saldo):
-        """Aggiorna il grafico"""
+        """Aggiorna il grafico con mesi sull'asse X"""
         mesi = np.arange(1, 13)
 
         self.accounting_plot.clear()
 
+        # 🆕 Aggiungi legenda PRIMA di plottare
+        legend = self.accounting_plot.addLegend(offset=(10, 10))
+        legend.setLabelTextColor('w')
+
+        # 🆕 Linea Entrate (verde)
         self.accounting_plot.plot(
             mesi, entrate,
             pen=pg.mkPen(color="#2ecc71", width=3),
             name="Entrate",
             symbol="o",
-            symbolSize=15,
+            symbolSize=12,
             symbolBrush="#2ecc71",
             symbolPen=pg.mkPen(color="w", width=2)
         )
 
+        # 🆕 Linea Uscite (rosso)
         self.accounting_plot.plot(
             mesi, spese,
             pen=pg.mkPen(color="#e74c3c", width=3),
-            name="Uscita",
+            name="Uscite",
             symbol="o",
-            symbolSize=15,
+            symbolSize=12,
             symbolBrush="#e74c3c",
             symbolPen=pg.mkPen(color="w", width=2)
         )
 
+        # 🆕 Linea Saldo (grigio tratteggiato)
         self.accounting_plot.plot(
             mesi, saldo,
             pen=pg.mkPen(color="#bdc3c7", width=3, style=Qt.PenStyle.DashLine),
-            name="Saldo finale",
+            name="Saldo",
             symbol="s",
-            symbolSize=12,
+            symbolSize=10,
             symbolBrush="#bdc3c7",
             symbolPen=pg.mkPen(color="w", width=2)
         )
@@ -141,28 +180,44 @@ class AccountingView(BaseView):
         self.accounting_plot.setMouseEnabled(x=False, y=False)
         self.accounting_plot.setXRange(0.5, 12.5, padding=0)
 
-        # Asse Y dinamico
-        max_value = max(np.max(entrate), np.max(spese), np.max(np.abs(saldo)))
-        if max_value > 0:
-            self.accounting_plot.setYRange(-max_value * 0.1, max_value * 1.2, padding=0)
+        # 🆕 Asse Y dinamico - FIX per visualizzare anche valori piccoli
+        all_values = np.concatenate([entrate, spese, saldo])
+        all_values = all_values[all_values != 0]  # Rimuovi zeri
+
+        if len(all_values) > 0:
+            min_value = np.min(all_values)
+            max_value = np.max(all_values)
+            padding = (max_value - min_value) * 0.1 if max_value > min_value else max_value * 0.1
+
+            if min_value < 0:
+                self.accounting_plot.setYRange(min_value - padding, max_value + padding, padding=0)
+            else:
+                self.accounting_plot.setYRange(0, max_value + padding, padding=0)
         else:
-            self.accounting_plot.setYRange(0, 100, padding=0)
+            # Nessun dato - range di default
+            self.accounting_plot.setYRange(0, 1000, padding=0)
 
     def update_table(self, entrate, spese, saldo):
-        """Aggiorna la tabella"""
-        mesi_nomi = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"]
-
-        self.accounting_table.setRowCount(12)
-
+        """Aggiorna la tabella in formato orizzontale"""
+        # Popola le 12 colonne (mesi)
         for i in range(12):
-            self.accounting_table.setItem(i, 0, QTableWidgetItem(mesi_nomi[i]))
-            self.accounting_table.setItem(i, 1, QTableWidgetItem(f"{entrate[i]:,.2f} €"))
-            self.accounting_table.setItem(i, 2, QTableWidgetItem(f"{spese[i]:,.2f} €"))
-            self.accounting_table.setItem(i, 3, QTableWidgetItem(f"{saldo[i]:,.2f} €"))
+            # Riga 0: Entrate
+            entrate_item = QTableWidgetItem(f"{entrate[i]:,.2f}")
+            entrate_item.setForeground(QColor("#2ecc71"))
+            entrate_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.accounting_table.setItem(0, i, entrate_item)
 
-            # Colora saldo
-            saldo_item = self.accounting_table.item(i, 3)
+            # Riga 1: Uscite
+            uscite_item = QTableWidgetItem(f"{spese[i]:,.2f}")
+            uscite_item.setForeground(QColor("#e74c3c"))
+            uscite_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.accounting_table.setItem(1, i, uscite_item)
+
+            # Riga 2: Saldo
+            saldo_item = QTableWidgetItem(f"{saldo[i]:,.2f}")
             if saldo[i] < 0:
                 saldo_item.setForeground(QColor("#e74c3c"))
             else:
                 saldo_item.setForeground(QColor("#2ecc71"))
+            saldo_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.accounting_table.setItem(2, i, saldo_item)

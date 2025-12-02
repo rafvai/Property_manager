@@ -18,8 +18,8 @@ from styles import *
 class DashboardView(BaseView):
     """View per la Dashboard principale"""
 
-    def __init__(self, property_service, transaction_service, parent=None):
-        # Carica proprietà dal service
+    def __init__(self, property_service, transaction_service, deadline_service, parent=None):
+        self.deadline_service = deadline_service
         self.proprieta = property_service.get_all()
         self.selected_property = self.proprieta[0] if self.proprieta else None
         super().__init__(property_service, transaction_service, None, parent)
@@ -91,15 +91,27 @@ class DashboardView(BaseView):
         middle_layout = QHBoxLayout()
         middle_layout.setSpacing(25)
 
-        # --- Info proprietà ---
+        # --- Colonna sinistra: Info proprietà + Prossima scadenza ---
+        left_column = QVBoxLayout()
+        left_column.setSpacing(15)
+
+        # Info proprietà
         info_frame = QFrame()
-        info_frame.setStyleSheet(f"background: {COLORE_WIDGET_2}; border-radius: 12px; padding: 5px;")
+        info_frame.setStyleSheet(f"background: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
         info_layout = QVBoxLayout(info_frame)
-        info_layout.setSpacing(0)
+        info_layout.setSpacing(8)
+
+        info_title = QLabel("📋 Informazioni")
+        info_title.setStyleSheet("font-size: 14px; font-weight: bold; color: white;")
+        info_layout.addWidget(info_title)
 
         self.info_name = QLabel()
         self.info_address = QLabel()
         self.info_owner = QLabel()
+
+        self.info_name.setStyleSheet("color: white; font-size: 13px;")
+        self.info_address.setStyleSheet("color: white; font-size: 13px;")
+        self.info_owner.setStyleSheet("color: white; font-size: 13px;")
 
         if self.proprieta:
             p = self.proprieta[0]
@@ -112,6 +124,35 @@ class DashboardView(BaseView):
         info_layout.addWidget(self.info_name)
         info_layout.addWidget(self.info_address)
         info_layout.addWidget(self.info_owner)
+        info_layout.addStretch()
+
+        # 🆕 Widget Prossima Scadenza
+        deadline_frame = QFrame()
+        deadline_frame.setStyleSheet(f"background: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
+        deadline_layout = QVBoxLayout(deadline_frame)
+        deadline_layout.setSpacing(8)
+
+        deadline_title = QLabel("⏰ Prossima Scadenza")
+        deadline_title.setStyleSheet("font-size: 14px; font-weight: bold; color: white;")
+        deadline_layout.addWidget(deadline_title)
+
+        self.deadline_title_label = QLabel()
+        self.deadline_date_label = QLabel()
+        self.deadline_desc_label = QLabel()
+
+        self.deadline_title_label.setStyleSheet("color: white; font-size: 13px; font-weight: bold;")
+        self.deadline_date_label.setStyleSheet("color: #e74c3c; font-size: 12px;")
+        self.deadline_desc_label.setStyleSheet("color: #bdc3c7; font-size: 11px;")
+        self.deadline_desc_label.setWordWrap(True)
+
+        deadline_layout.addWidget(self.deadline_title_label)
+        deadline_layout.addWidget(self.deadline_date_label)
+        deadline_layout.addWidget(self.deadline_desc_label)
+        deadline_layout.addStretch()
+
+        # Aggiungi i frame alla colonna sinistra
+        left_column.addWidget(info_frame, stretch=1)
+        left_column.addWidget(deadline_frame, stretch=1)
 
         # --- Grafico Donut ---
         chart_frame = QFrame()
@@ -123,9 +164,8 @@ class DashboardView(BaseView):
         self.chart_canvas = FigureCanvas(self.fig)
         self.ax = self.fig.add_subplot(111, facecolor=COLORE_WIDGET_2)
         chart_layout.addWidget(self.chart_canvas)
-        self.update_chart()
 
-        middle_layout.addWidget(info_frame, 2, alignment=Qt.AlignTop)
+        middle_layout.addLayout(left_column, 2)
         middle_layout.addWidget(chart_frame, 3)
 
         main_layout.addLayout(middle_layout)
@@ -140,6 +180,51 @@ class DashboardView(BaseView):
         # Connetti segnali
         self.property_selector.currentIndexChanged.connect(self.update_info_box)
 
+        # Carica dati iniziali
+        self.update_chart()
+        self.update_next_deadline()
+
+    def update_next_deadline(self):
+        """Aggiorna il widget della prossima scadenza"""
+        property_id = self.selected_property["id"] if self.selected_property else None
+        next_deadline = self.deadline_service.get_next_deadline(property_id)
+
+        if next_deadline:
+            self.deadline_title_label.setText(f"📌 {next_deadline['title']}")
+
+            # Formatta la data
+            due_date = datetime.strptime(next_deadline['due_date'], "%Y-%m-%d")
+            days_left = (due_date - datetime.now()).days
+
+            if days_left < 0:
+                date_text = f"⚠️ Scaduta {abs(days_left)} giorni fa"
+                self.deadline_date_label.setStyleSheet("color: #e74c3c; font-size: 12px; font-weight: bold;")
+            elif days_left == 0:
+                date_text = "🔴 OGGI"
+                self.deadline_date_label.setStyleSheet("color: #e74c3c; font-size: 12px; font-weight: bold;")
+            elif days_left == 1:
+                date_text = "🟡 Domani"
+                self.deadline_date_label.setStyleSheet("color: #f39c12; font-size: 12px; font-weight: bold;")
+            elif days_left <= 7:
+                date_text = f"🟡 Tra {days_left} giorni"
+                self.deadline_date_label.setStyleSheet("color: #f39c12; font-size: 12px; font-weight: bold;")
+            else:
+                date_text = f"🟢 Tra {days_left} giorni"
+                self.deadline_date_label.setStyleSheet("color: #2ecc71; font-size: 12px;")
+
+            self.deadline_date_label.setText(f"{date_text} - {due_date.strftime('%d/%m/%Y')}")
+
+            # Descrizione
+            if next_deadline.get('description'):
+                self.deadline_desc_label.setText(next_deadline['description'])
+            else:
+                self.deadline_desc_label.setText("Nessuna descrizione")
+        else:
+            self.deadline_title_label.setText("Nessuna scadenza imminente")
+            self.deadline_date_label.setText("✅ Tutto in regola!")
+            self.deadline_date_label.setStyleSheet("color: #2ecc71; font-size: 12px;")
+            self.deadline_desc_label.setText("")
+
     def update_chart(self):
         """Aggiorna il grafico donut"""
         text = self.period_selector.currentText()
@@ -149,7 +234,6 @@ class DashboardView(BaseView):
 
         property_id = self.selected_property["id"] if self.selected_property else None
 
-        # USA IL SERVICE invece di query diretta
         rows = self.transaction_service.get_all(
             property_id=property_id,
             start_date=start_date.strftime("%Y-%m-%d"),
@@ -200,6 +284,7 @@ class DashboardView(BaseView):
         self.info_address.setText(f"📍 Indirizzo: {prop['address']}")
         self.info_owner.setText(f"👤 Proprietario: {prop['owner']}")
         self.update_chart()
+        self.update_next_deadline()  # 🆕 Aggiorna anche la scadenza
 
     def add_property(self):
         """Dialog per aggiungere una nuova proprietà"""
@@ -226,7 +311,6 @@ class DashboardView(BaseView):
             proprietario = owner_input.text().strip()
 
             if nome and indirizzo and proprietario:
-                # ⭐ USA IL SERVICE
                 property_id = self.property_service.create(nome, indirizzo, proprietario)
 
                 if property_id:
@@ -235,3 +319,4 @@ class DashboardView(BaseView):
                     self.property_selector.addItems([p["name"] for p in self.proprieta])
                     self.property_selector.setCurrentIndex(len(self.proprieta) - 1)
                     self.update_chart()
+                    self.update_next_deadline()
