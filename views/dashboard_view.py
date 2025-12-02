@@ -256,7 +256,7 @@ class DashboardView(BaseView):
 
             labels = ['Entrate', 'Uscite']
             perc = [f"{sizes[0] / sum(sizes) * 100:.0f}%", f"{sizes[1] / sum(sizes) * 100:.0f}%"]
-            x_positions = [-1.8, 1.1]
+            x_positions = [-1.2, 1.1]
             y_text = -1.5
             dot_offset = -0.25
             dot_size = 0.1
