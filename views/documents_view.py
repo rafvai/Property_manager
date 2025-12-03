@@ -186,7 +186,8 @@ class DocumentsView(BaseView):
                 # USA IL SERVICE per salvare documento
                 dest_path = self.document_service.save_document(
                     path,
-                    self.selected_property["name"]
+                    self.selected_property["name"],
+                    metadata=metadata
                 )
 
                 if dest_path:

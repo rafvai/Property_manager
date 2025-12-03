@@ -44,8 +44,12 @@ class DocumentService:
 
         return documents
 
-    def save_document(self, source_path, property_name, sub_directory=None):
+    def save_document(self, source_path, property_name, metadata):
         """Salva un documento nella cartella della proprietà"""
+
+        anno = metadata['data_fattura'].split("/")[-1]
+        trimestre =  str(int(metadata['data_fattura'].split("/")[-2]) // 3)
+        sub_directory = metadata['service'] + '\\' + anno + '\\' + trimestre + ' T'
         folder = self.get_property_folder(property_name, sub_directory)
         os.makedirs(folder, exist_ok=True)
 
