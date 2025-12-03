@@ -26,7 +26,7 @@ class DocumentsView(BaseView):
         icon_path = os.path.join(os.path.dirname(__file__), "..", "icons", "folder.png")
         self.folder_icon = QIcon(icon_path) if os.path.exists(icon_path) else QIcon()
         self.file_icon = QIcon("icons/file.png")
-        self.open_folder_icon = QIcon("icons/open-folder-with-document.png")
+        self.open_folder_icon = QIcon("icons/folder.png")
 
         super().__init__(property_service, transaction_service, document_service, parent)
 
@@ -107,10 +107,6 @@ class DocumentsView(BaseView):
             layout.addWidget(label, stretch=1)
 
             if doc["is_folder"]:
-                icon_label = QLabel()
-                icon_label.setPixmap(self.folder_icon.pixmap(20, 20))
-                layout.insertWidget(0, icon_label)
-
                 open_btn = QPushButton()
                 open_btn.setIcon(self.open_folder_icon)
                 open_btn.setIconSize(QSize(18, 18))
