@@ -18,6 +18,7 @@ from services.document_service import DocumentService
 from services.deadline_service import DeadlineService  # 🆕
 
 from views.dashboard_view import DashboardView
+from views.properties_view import PropertiesView  # 🆕
 from views.documents_view import DocumentsView
 from views.accounting_view import AccountingView
 from views.calendar_view import CalendarView
@@ -117,7 +118,15 @@ class DashboardWindow(QMainWindow):
             self.show_view(DashboardView(
                 self.property_service,
                 self.transaction_service,
-                self.deadline_service,  # 🆕
+                self.deadline_service,
+                self
+            ))
+        elif "proprietà" in voce:  # 🆕 "Le mie proprietà"
+            self.show_view(PropertiesView(
+                self.property_service,
+                self.transaction_service,
+                self.document_service,
+                self.deadline_service,
                 self
             ))
         elif "Documenti" in voce:
@@ -137,7 +146,7 @@ class DashboardWindow(QMainWindow):
             self.show_view(CalendarView(
                 self.property_service,
                 self.transaction_service,
-                self.deadline_service,  # 🆕
+                self.deadline_service,
                 self
             ))
 

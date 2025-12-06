@@ -4,7 +4,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
-import pyqtgraph as pg
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 import numpy as np
 from datetime import datetime
 
@@ -48,35 +49,30 @@ class AccountingView(BaseView):
 
         main_layout.addLayout(header_layout)
 
-        # --- GRAFICO ---
-        self.accounting_plot = pg.PlotWidget()
-        self.accounting_plot.setBackground(COLORE_BACKGROUND)
-        self.accounting_plot.showGrid(x=True, y=True, alpha=0.3)
+        # --- GRAFICO CON MATPLOTLIB ---
+        self.fig = Figure(figsize=(10, 4), facecolor=COLORE_WIDGET_2)
+        self.canvas = FigureCanvas(self.fig)
+        self.ax = self.fig.add_subplot(111, facecolor=COLORE_WIDGET_2)
 
-        # 🆕 Etichette invertite
-        self.accounting_plot.setLabel("bottom", "Mese", color="white", size="12pt")
-        self.accounting_plot.setLabel("left", "Quantità in €", color="white", size="12pt")
+        # Stile grafico
+        self.ax.set_xlabel('Mese', color='white', fontsize=12)
+        self.ax.set_ylabel('Quantità in €', color='white', fontsize=12)
+        self.ax.tick_params(colors='white')
+        self.ax.spines['bottom'].set_color('white')
+        self.ax.spines['top'].set_color('white')
+        self.ax.spines['left'].set_color('white')
+        self.ax.spines['right'].set_color('white')
+        self.ax.grid(True, alpha=0.3, color='white')
 
-        self.accounting_plot.hideButtons()
+        # Altezza fissa
+        self.canvas.setMinimumHeight(300)
+        self.canvas.setMaximumHeight(400)
 
-        # 🆕 Etichette mesi sull'asse X
-        month_labels = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu',
-                        'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
-        x_axis = self.accounting_plot.getAxis('bottom')
-        x_dict = {i + 1: month_labels[i] for i in range(12)}
-        x_axis.setTicks([list(x_dict.items())])
-        x_axis.setStyle(tickTextOffset=10)
-
-        # Stile assi
-        for axis in ['left', 'bottom']:
-            self.accounting_plot.getAxis(axis).setTextPen('w')
-            self.accounting_plot.getAxis(axis).setPen(pg.mkPen(color='w', width=2))
-
-        main_layout.addWidget(self.accounting_plot, stretch=3)
+        main_layout.addWidget(self.canvas, stretch=0)
 
         # --- TABELLA ---
         self.accounting_table = QTableWidget()
-        # 🆕 Tabella orizzontale: 12 colonne (mesi) + 3 righe (Entrate, Uscite, Saldo)
+        # Tabella orizzontale: 12 colonne (mesi) + 3 righe (Entrate, Uscite, Saldo)
         self.accounting_table.setColumnCount(12)
         self.accounting_table.setRowCount(3)
 
@@ -85,16 +81,17 @@ class AccountingView(BaseView):
         self.accounting_table.setHorizontalHeaderLabels(month_labels)
         self.accounting_table.setVerticalHeaderLabels(["Entrate (€)", "Uscite (€)", "Saldo (€)"])
 
-        # 🆕 Distribuisci le colonne uniformemente su tutta la larghezza
+        # Distribuisci le colonne uniformemente su tutta la larghezza
         self.accounting_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
-        # 🆕 Ridimensiona righe per contenuto
-        self.accounting_table.resizeRowsToContents()
+        # 🆕 Imposta altezza righe fissa più alta
+        for i in range(3):
+            self.accounting_table.setRowHeight(i, 45)  # 45px per riga
 
-        # 🆕 Altezza fissa basata sul contenuto (3 righe + header)
+        # Altezza fissa basata sul contenuto (3 righe + header)
         header_height = self.accounting_table.horizontalHeader().height()
-        row_height = self.accounting_table.rowHeight(0) * 3
-        self.accounting_table.setMaximumHeight(header_height + row_height + 10)
+        row_height = 45 * 3  # 3 righe da 45px ciascuna
+        self.accounting_table.setMaximumHeight(header_height + row_height + 15)
 
         self.accounting_table.setStyleSheet("""
             QHeaderView::section { background-color: #34495e; color: white; font-weight: bold; padding: 8px; }
@@ -110,7 +107,7 @@ class AccountingView(BaseView):
         """Recupera dati dal DB e aggiorna grafico + tabella"""
         year = int(self.year_selector.currentText())
 
-        # ⭐ USA IL SERVICE
+        # USA IL SERVICE
         results = self.transaction_service.get_monthly_summary(year)
 
         # Array per 12 mesi
@@ -134,68 +131,87 @@ class AccountingView(BaseView):
         self.update_table(entrate, spese, saldo)
 
     def update_chart(self, entrate, spese, saldo):
-        """Aggiorna il grafico con mesi sull'asse X"""
+        """Aggiorna il grafico con matplotlib"""
         mesi = np.arange(1, 13)
+        month_labels = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu',
+                        'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic']
 
-        self.accounting_plot.clear()
+        # Clear
+        self.ax.clear()
 
-        # 🆕 Aggiungi legenda PRIMA di plottare
-        legend = self.accounting_plot.addLegend(offset=(10, 10))
-        legend.setLabelTextColor('w')
+        # Verifica dati
+        has_data = np.any(entrate > 0) or np.any(spese > 0)
 
-        # 🆕 Linea Entrate (verde)
-        self.accounting_plot.plot(
-            mesi, entrate,
-            pen=pg.mkPen(color="#2ecc71", width=3),
-            name="Entrate",
-            symbol="o",
-            symbolSize=12,
-            symbolBrush="#2ecc71",
-            symbolPen=pg.mkPen(color="w", width=2)
-        )
+        if not has_data:
+            self.ax.text(6.5, 500, 'Nessun dato per l\'anno selezionato',
+                         ha='center', va='center', color='white', fontsize=14)
+            self.canvas.draw()
+            return
 
-        # 🆕 Linea Uscite (rosso)
-        self.accounting_plot.plot(
-            mesi, spese,
-            pen=pg.mkPen(color="#e74c3c", width=3),
-            name="Uscite",
-            symbol="o",
-            symbolSize=12,
-            symbolBrush="#e74c3c",
-            symbolPen=pg.mkPen(color="w", width=2)
-        )
+        # Plot linee
+        self.ax.plot(mesi, entrate,
+                     color='#2ecc71',
+                     linewidth=1,
+                     marker='o',
+                     markersize=10,
+                     label='Entrate',
+                     markerfacecolor='#2ecc71',
+                     markeredgecolor='white',
+                     markeredgewidth=2)
 
-        # 🆕 Linea Saldo (grigio tratteggiato)
-        self.accounting_plot.plot(
-            mesi, saldo,
-            pen=pg.mkPen(color="#bdc3c7", width=3, style=Qt.PenStyle.DashLine),
-            name="Saldo",
-            symbol="s",
-            symbolSize=10,
-            symbolBrush="#bdc3c7",
-            symbolPen=pg.mkPen(color="w", width=2)
-        )
+        self.ax.plot(mesi, spese,
+                     color='#e74c3c',
+                     linewidth=1,
+                     marker='o',
+                     markersize=10,
+                     label='Uscite',
+                     markerfacecolor='#e74c3c',
+                     markeredgecolor='white',
+                     markeredgewidth=2)
 
-        # Blocca movimento
-        self.accounting_plot.setMouseEnabled(x=False, y=False)
-        self.accounting_plot.setXRange(0.5, 12.5, padding=0)
+        self.ax.plot(mesi, saldo,
+                     color='#bdc3c7',
+                     linewidth=1,
+                     marker='s',
+                     markersize=8,
+                     label='Saldo',
+                     linestyle='--',
+                     markerfacecolor='#bdc3c7',
+                     markeredgecolor='white',
+                     markeredgewidth=2)
 
-        # 🆕 Asse Y dinamico - FIX per visualizzare anche valori piccoli
-        all_values = np.concatenate([entrate, spese, saldo])
-        all_values = all_values[all_values != 0]  # Rimuovi zeri
+        # Stile
+        self.ax.set_xlabel('Mese', color='white', fontsize=12)
+        self.ax.set_ylabel('Quantità in €', color='white', fontsize=12)
+        self.ax.set_xticks(mesi)
+        self.ax.set_xticklabels(month_labels)
+        self.ax.tick_params(colors='white')
+        self.ax.spines['bottom'].set_color('white')
+        self.ax.spines['top'].set_color('white')
+        self.ax.spines['left'].set_color('white')
+        self.ax.spines['right'].set_color('white')
+        self.ax.grid(True, alpha=0.3, color='white')
+
+        # Legenda
+        legend = self.ax.legend(loc='upper left', facecolor=COLORE_WIDGET_2,
+                                edgecolor='white', fontsize=10)
+        for text in legend.get_texts():
+            text.set_color('white')
+
+        # Range
+        self.ax.set_xlim(0.5, 12.5)
+
+        all_values = np.concatenate([entrate, spese, np.abs(saldo)])
+        all_values = all_values[all_values != 0]
 
         if len(all_values) > 0:
-            min_value = np.min(all_values)
+            min_value = min(0, np.min(saldo))
             max_value = np.max(all_values)
-            padding = (max_value - min_value) * 0.1 if max_value > min_value else max_value * 0.1
+            padding_val = max(max_value * 0.15, 100)
+            self.ax.set_ylim(min_value - padding_val * 0.1, max_value + padding_val)
 
-            if min_value < 0:
-                self.accounting_plot.setYRange(min_value - padding, max_value + padding, padding=0)
-            else:
-                self.accounting_plot.setYRange(0, max_value + padding, padding=0)
-        else:
-            # Nessun dato - range di default
-            self.accounting_plot.setYRange(0, 1000, padding=0)
+        self.fig.tight_layout()
+        self.canvas.draw()
 
     def update_table(self, entrate, spese, saldo):
         """Aggiorna la tabella in formato orizzontale"""

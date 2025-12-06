@@ -55,13 +55,13 @@ class DashboardView(BaseView):
         top_row.addWidget(prop_widget, stretch=3)
         top_row.addSpacing(200)
 
-        add_button = QPushButton("+ Aggiungi")
-        add_button.setFixedHeight(36)
-        add_button.setStyleSheet(default_aggiungi_button)
-        add_button.clicked.connect(self.add_property)
+        #add_button = QPushButton("+ Aggiungi")
+       # add_button.setFixedHeight(36)
+       # add_button.setStyleSheet(default_aggiungi_button)
+        #add_button.clicked.connect(self.add_property) se si vuole ripristinare add property sta in properties view
 
         top_row.addStretch()
-        top_row.addWidget(add_button, stretch=0)
+        #top_row.addWidget(add_button, stretch=0)
 
         # --- Riga 2: "Proprietà" e "Periodo" ---
         mid_row = QHBoxLayout()
@@ -285,38 +285,3 @@ class DashboardView(BaseView):
         self.info_owner.setText(f"👤 Proprietario: {prop['owner']}")
         self.update_chart()
         self.update_next_deadline()  # 🆕 Aggiorna anche la scadenza
-
-    def add_property(self):
-        """Dialog per aggiungere una nuova proprietà"""
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Nuova proprietà")
-        layout = QFormLayout(dialog)
-
-        name_input = QLineEdit()
-        address_input = QLineEdit()
-        owner_input = QLineEdit()
-
-        layout.addRow("Nome:", name_input)
-        layout.addRow("Indirizzo:", address_input)
-        layout.addRow("Proprietario:", owner_input)
-
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        layout.addWidget(buttons)
-        buttons.accepted.connect(dialog.accept)
-        buttons.rejected.connect(dialog.reject)
-
-        if dialog.exec():
-            nome = name_input.text().strip()
-            indirizzo = address_input.text().strip()
-            proprietario = owner_input.text().strip()
-
-            if nome and indirizzo and proprietario:
-                property_id = self.property_service.create(nome, indirizzo, proprietario)
-
-                if property_id:
-                    self.proprieta = self.property_service.get_all()
-                    self.property_selector.clear()
-                    self.property_selector.addItems([p["name"] for p in self.proprieta])
-                    self.property_selector.setCurrentIndex(len(self.proprieta) - 1)
-                    self.update_chart()
-                    self.update_next_deadline()
