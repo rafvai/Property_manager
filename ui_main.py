@@ -18,9 +18,10 @@ from services.document_service import DocumentService
 from services.deadline_service import DeadlineService  # 🆕
 
 from views.dashboard_view import DashboardView
-from views.properties_view import PropertiesView  # 🆕
+from views.properties_view import PropertiesView
 from views.documents_view import DocumentsView
 from views.accounting_view import AccountingView
+from views.report_view import ReportView  # 🆕
 from views.calendar_view import CalendarView
 
 
@@ -138,6 +139,12 @@ class DashboardWindow(QMainWindow):
             ))
         elif "Contabilità" in voce:
             self.show_view(AccountingView(
+                self.property_service,
+                self.transaction_service,
+                self
+            ))
+        elif "Report" in voce:  # 🆕
+            self.show_view(ReportView(
                 self.property_service,
                 self.transaction_service,
                 self
