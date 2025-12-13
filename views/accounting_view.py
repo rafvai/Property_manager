@@ -124,8 +124,11 @@ class AccountingView(BaseView):
         """Recupera dati dal DB e aggiorna grafico + tabella"""
         year = int(self.year_selector.currentText())
 
-        # USA IL SERVICE
-        results = self.transaction_service.get_monthly_summary(year)
+        # 🔧 FIX: Recupera l'ID della proprietà selezionata
+        property_id = self.property_selector.currentData()
+
+        # 🔧 FIX: Passa property_id al service
+        results = self.transaction_service.get_monthly_summary(year, property_id)
 
         # Array per 12 mesi
         entrate = np.zeros(12)
