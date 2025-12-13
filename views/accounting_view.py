@@ -33,6 +33,23 @@ class AccountingView(BaseView):
         header_layout.addWidget(title)
         header_layout.addStretch()
 
+        # 🆕 Selettore proprietà
+        property_label = QLabel("Proprietà:")
+        property_label.setStyleSheet("color: white;")
+        header_layout.addWidget(property_label)
+
+        self.property_selector = QComboBox()
+        self.property_selector.addItem("Tutte le proprietà", None)  # Opzione "Tutte"
+
+        # Carica proprietà dal service
+        properties = self.property_service.get_all()
+        for prop in properties:
+            self.property_selector.addItem(prop['name'], prop['id'])
+
+        self.property_selector.setStyleSheet(default_combo_box_style)
+        self.property_selector.currentIndexChanged.connect(self.update_data)
+        header_layout.addWidget(self.property_selector)
+
         # Selettore anno
         year_label = QLabel("Anno:")
         year_label.setStyleSheet("color: white;")
@@ -151,7 +168,7 @@ class AccountingView(BaseView):
         # Plot linee
         self.ax.plot(mesi, entrate,
                      color='#2ecc71',
-                     linewidth=1,
+                     linewidth=3,
                      marker='o',
                      markersize=10,
                      label='Entrate',
@@ -161,7 +178,7 @@ class AccountingView(BaseView):
 
         self.ax.plot(mesi, spese,
                      color='#e74c3c',
-                     linewidth=1,
+                     linewidth=3,
                      marker='o',
                      markersize=10,
                      label='Uscite',
@@ -171,7 +188,7 @@ class AccountingView(BaseView):
 
         self.ax.plot(mesi, saldo,
                      color='#bdc3c7',
-                     linewidth=1,
+                     linewidth=3,
                      marker='s',
                      markersize=8,
                      label='Saldo',
