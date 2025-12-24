@@ -14,6 +14,8 @@ from collections import defaultdict
 from calendar import monthrange
 
 from views.base_view import BaseView
+from dialogs import ExportDialog
+from services.export_service import ExportService
 from styles import *
 
 
@@ -95,41 +97,35 @@ class TransactionsDialog(QDialog):
 
         filtered.sort(key=lambda x: x['date'], reverse=True)
 
-        # 🔧 FIX: Assicurati che la tabella sia pulita prima di popolarla
+        # 🔧 FIX: Pulisce completamente la tabella
         self.transactions_table.clearContents()
         self.transactions_table.setRowCount(len(filtered))
 
         for i, trans in enumerate(filtered):
-            # Data
             date_item = QTableWidgetItem(trans['date'])
             date_item.setForeground(QColor("white"))
             self.transactions_table.setItem(i, 0, date_item)
 
-            # Importo
             amount_color = "#e74c3c" if trans['type'] == 'Uscita' else "#2ecc71"
             amount_item = QTableWidgetItem(f"{trans['amount']:,.2f} €")
             amount_item.setForeground(QColor(amount_color))
             amount_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.transactions_table.setItem(i, 1, amount_item)
 
-            # Descrizione
             desc = trans.get('provider') or trans['service']
             desc_item = QTableWidgetItem(desc)
             desc_item.setForeground(QColor("white"))
             self.transactions_table.setItem(i, 2, desc_item)
 
-            # Categoria
             category = trans.get('service') or 'Otros'
             cat_item = QTableWidgetItem(category)
             cat_item.setForeground(QColor("#bdc3c7"))
             self.transactions_table.setItem(i, 3, cat_item)
 
-            # Tipo
             tipo_item = QTableWidgetItem(trans['type'])
             tipo_item.setForeground(QColor(amount_color))
             self.transactions_table.setItem(i, 4, tipo_item)
 
-            # 🔧 FIX: Bottone delete - crea un nuovo widget per ogni riga
             delete_btn = QPushButton("🗑️")
             delete_btn.setStyleSheet("""
                 QPushButton {
@@ -143,9 +139,8 @@ class TransactionsDialog(QDialog):
                     background-color: #c0392b;
                 }
             """)
+            # 🔧 FIX: Lambda corretta con checked=False
             delete_btn.clicked.connect(lambda checked=False, t=trans: self.delete_transaction(t))
-
-            # 🔧 IMPORTANTE: Usa setCellWidget per aggiungere il bottone
             self.transactions_table.setCellWidget(i, 5, delete_btn)
 
     def delete_transaction(self, trans):
@@ -173,6 +168,10 @@ class ReportView(BaseView):
         # Cache per le categorie dinamiche
         self.categories_gastos = set()
         self.categories_ganancias = set()
+
+        # 🆕 Export service
+        self.export_service = ExportService()
+
         super().__init__(property_service, transaction_service, None, parent)
 
     def setup_ui(self):
@@ -189,7 +188,7 @@ class ReportView(BaseView):
         header_layout.addWidget(title)
         header_layout.addStretch()
 
-        # 🆕 Selettore proprietà
+        # Selettore proprietà
         property_label = QLabel("Proprietà:")
         property_label.setStyleSheet("color: white;")
         header_layout.addWidget(property_label)
@@ -222,7 +221,7 @@ class ReportView(BaseView):
         add_btn.clicked.connect(self.add_transaction)
         header_layout.addWidget(add_btn)
 
-        # 🆕 Bottone visualizza transazioni
+        # Bottone visualizza transazioni
         view_trans_btn = QPushButton("📋 Ver transacciones")
         view_trans_btn.setStyleSheet("""
             QPushButton {
@@ -238,6 +237,23 @@ class ReportView(BaseView):
         """)
         view_trans_btn.clicked.connect(self.show_transactions_dialog)
         header_layout.addWidget(view_trans_btn)
+
+        # 🆕 Bottone Export
+        export_btn = QPushButton("📥 Esporta")
+        export_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #28a745;
+                color: white;
+                font-weight: bold;
+                padding: 6px 14px;
+                border-radius: 8px;
+            }
+            QPushButton:hover {
+                background-color: #218838;
+            }
+        """)
+        export_btn.clicked.connect(self.open_export_dialog)
+        header_layout.addWidget(export_btn)
 
         main_layout.addLayout(header_layout)
 
@@ -342,10 +358,8 @@ class ReportView(BaseView):
         start_date = f"{year}-{month}-01"
         end_date = f"{year}-{month}-{last_day}"
 
-        # 🔧 FIX: Recupera property_id selezionata
         property_id = self.property_selector.currentData()
 
-        # 🔧 FIX: Passa property_id al service
         transactions = self.transaction_service.get_all(
             property_id=property_id,
             start_date=start_date,
@@ -389,6 +403,16 @@ class ReportView(BaseView):
 
         # Ricarica il report dopo la chiusura del dialog
         self.update_report()
+
+    def open_export_dialog(self):
+        """🆕 Apre il dialog per esportare transazioni"""
+        dialog = ExportDialog(
+            self.transaction_service,
+            self.property_service,
+            self.export_service,
+            self
+        )
+        dialog.exec()
 
     def update_chart(self, ax, canvas, data, title, color):
         """Aggiorna grafico a barre"""

@@ -2,14 +2,14 @@
 import os
 import shutil
 
-from PySide6.QtGui import QFont, QIcon
+from PySide6.QtGui import QFont, QIcon, QDesktopServices
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QLabel, QPushButton, QMessageBox,
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QMessageBox,
     QFileDialog, QListWidget, QFormLayout, QLineEdit, QComboBox, QDialogButtonBox,
     QDateEdit, QWidget, QHBoxLayout, QSizePolicy, QCalendarWidget, QListWidgetItem,
-    QInputDialog, QGridLayout, QFrame, QTextEdit
+    QInputDialog, QGridLayout, QFrame, QTextEdit, QRadioButton, QButtonGroup, QGroupBox
 )
-from PySide6.QtCore import Qt, QDate, QPoint, QSize
+from PySide6.QtCore import Qt, QDate, QPoint, QSize, QUrl
 from styles import custom_title_style, COLORE_SECONDARIO, COLORE_WIDGET_2, COLORE_BIANCO, COLORE_RIGA_1
 
 DOCS_DIR = "docs"
@@ -446,3 +446,306 @@ class PlannerCalendarWidget(QWidget):
     def prev_month(self):
         self.current_date = self.current_date.addMonths(-1)
         self.populate_month()
+
+
+class ExportDialog(QDialog):
+    """Dialog per esportare transazioni in PDF/Excel"""
+
+    def __init__(self, transaction_service, property_service, export_service, parent=None):
+        super().__init__(parent)
+        self.transaction_service = transaction_service
+        self.property_service = property_service
+        self.export_service = export_service
+
+        self.setWindowTitle("📥 Esporta Transazioni")
+        self.setMinimumSize(500, 400)
+        self.setStyleSheet(f"QDialog {{ background-color: #131b23; }}")
+
+        main_layout = QVBoxLayout(self)
+        main_layout.setSpacing(20)
+        main_layout.setContentsMargins(25, 25, 25, 25)
+
+        # Titolo
+        title = QLabel("📥 Esporta Report Transazioni")
+        title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        main_layout.addWidget(title)
+
+        # === SELEZIONE PROPRIETÀ ===
+        property_group = QGroupBox("Proprietà")
+        property_group.setStyleSheet("""
+            QGroupBox {
+                color: white;
+                font-weight: bold;
+                border: 2px solid #2c3e50;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 15px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
+        """)
+        property_layout = QVBoxLayout(property_group)
+
+        self.property_combo = QComboBox()
+        self.property_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #1a2530;
+                color: white;
+                padding: 8px;
+                border-radius: 6px;
+                font-size: 13px;
+            }
+            QComboBox::drop-down { border: 0px; }
+            QComboBox QAbstractItemView {
+                background-color: #1a2530;
+                color: white;
+                selection-background-color: #007BFF;
+            }
+        """)
+
+        self.property_combo.addItem("🏠 Tutte le proprietà", None)
+        properties = self.property_service.get_all()
+        for prop in properties:
+            self.property_combo.addItem(f"🏡 {prop['name']}", prop['id'])
+
+        property_layout.addWidget(self.property_combo)
+        main_layout.addWidget(property_group)
+
+        # === SELEZIONE PERIODO ===
+        period_group = QGroupBox("Periodo")
+        period_group.setStyleSheet("""
+            QGroupBox {
+                color: white;
+                font-weight: bold;
+                border: 2px solid #2c3e50;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 15px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
+        """)
+        period_layout = QVBoxLayout(period_group)
+
+        # Date pickers
+        dates_layout = QHBoxLayout()
+
+        start_label = QLabel("Da:")
+        start_label.setStyleSheet("color: white;")
+        dates_layout.addWidget(start_label)
+
+        self.start_date = QDateEdit()
+        self.start_date.setDisplayFormat("dd/MM/yyyy")
+        self.start_date.setCalendarPopup(True)
+        self.start_date.setDate(QDate.currentDate().addMonths(-1))
+        self.start_date.setStyleSheet("""
+            QDateEdit {
+                background-color: #1a2530;
+                color: white;
+                padding: 8px;
+                border-radius: 6px;
+            }
+        """)
+        dates_layout.addWidget(self.start_date)
+
+        end_label = QLabel("A:")
+        end_label.setStyleSheet("color: white;")
+        dates_layout.addWidget(end_label)
+
+        self.end_date = QDateEdit()
+        self.end_date.setDisplayFormat("dd/MM/yyyy")
+        self.end_date.setCalendarPopup(True)
+        self.end_date.setDate(QDate.currentDate())
+        self.end_date.setStyleSheet("""
+            QDateEdit {
+                background-color: #1a2530;
+                color: white;
+                padding: 8px;
+                border-radius: 6px;
+            }
+        """)
+        dates_layout.addWidget(self.end_date)
+
+        period_layout.addLayout(dates_layout)
+
+        # Quick selects
+        quick_layout = QHBoxLayout()
+
+        btn_month = QPushButton("Ultimo mese")
+        btn_month.clicked.connect(lambda: self.set_quick_period(1))
+
+        btn_3months = QPushButton("Ultimi 3 mesi")
+        btn_3months.clicked.connect(lambda: self.set_quick_period(3))
+
+        btn_year = QPushButton("Ultimo anno")
+        btn_year.clicked.connect(lambda: self.set_quick_period(12))
+
+        for btn in [btn_month, btn_3months, btn_year]:
+            btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #34495e;
+                    color: white;
+                    padding: 6px 12px;
+                    border-radius: 6px;
+                    font-size: 11px;
+                }
+                QPushButton:hover {
+                    background-color: #4a5f7f;
+                }
+            """)
+            quick_layout.addWidget(btn)
+
+        period_layout.addLayout(quick_layout)
+        main_layout.addWidget(period_group)
+
+        # === FORMATO EXPORT ===
+        format_group = QGroupBox("Formato Export")
+        format_group.setStyleSheet("""
+            QGroupBox {
+                color: white;
+                font-weight: bold;
+                border: 2px solid #2c3e50;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 15px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
+        """)
+        format_layout = QHBoxLayout(format_group)
+
+        self.format_group = QButtonGroup()
+
+        self.pdf_radio = QRadioButton("📄 PDF")
+        self.pdf_radio.setChecked(True)
+        self.pdf_radio.setStyleSheet("QRadioButton { color: white; font-size: 13px; }")
+
+        self.excel_radio = QRadioButton("📊 Excel")
+        self.excel_radio.setStyleSheet("QRadioButton { color: white; font-size: 13px; }")
+
+        self.format_group.addButton(self.pdf_radio)
+        self.format_group.addButton(self.excel_radio)
+
+        format_layout.addWidget(self.pdf_radio)
+        format_layout.addWidget(self.excel_radio)
+        format_layout.addStretch()
+
+        main_layout.addWidget(format_group)
+
+        # === BOTTONI ===
+        buttons_layout = QHBoxLayout()
+        buttons_layout.addStretch()
+
+        cancel_btn = QPushButton("❌ Annulla")
+        cancel_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                font-weight: bold;
+                padding: 10px 20px;
+                border-radius: 8px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
+            }
+        """)
+        cancel_btn.clicked.connect(self.reject)
+        buttons_layout.addWidget(cancel_btn)
+
+        export_btn = QPushButton("📥 Esporta")
+        export_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #007BFF;
+                color: white;
+                font-weight: bold;
+                padding: 10px 20px;
+                border-radius: 8px;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                background-color: #0056b3;
+            }
+        """)
+        export_btn.clicked.connect(self.do_export)
+        buttons_layout.addWidget(export_btn)
+
+        main_layout.addLayout(buttons_layout)
+
+    def set_quick_period(self, months):
+        """Imposta periodo rapido"""
+        end = QDate.currentDate()
+        start = end.addMonths(-months)
+        self.start_date.setDate(start)
+        self.end_date.setDate(end)
+
+    def do_export(self):
+        """Esegue l'export"""
+        # Valida date
+        if self.start_date.date() > self.end_date.date():
+            QMessageBox.warning(self, "Errore", "La data di inizio deve essere precedente alla data di fine!")
+            return
+
+        # Recupera transazioni
+        property_id = self.property_combo.currentData()
+        property_name = self.property_combo.currentText().replace("🏠 ", "").replace("🏡 ", "")
+
+        start_str = self.start_date.date().toString("yyyy-MM-dd")
+        end_str = self.end_date.date().toString("yyyy-MM-dd")
+
+        transactions = self.transaction_service.get_all(
+            property_id=property_id,
+            start_date=start_str,
+            end_date=end_str
+        )
+
+        if not transactions:
+            QMessageBox.warning(self, "Nessun dato", "Nessuna transazione trovata per il periodo selezionato!")
+            return
+
+        try:
+            # Esporta
+            if self.pdf_radio.isChecked():
+                filepath = self.export_service.export_to_pdf(
+                    transactions,
+                    property_name=property_name if property_id else None,
+                    start_date=self.start_date.date().toString("dd/MM/yyyy"),
+                    end_date=self.end_date.date().toString("dd/MM/yyyy")
+                )
+                format_name = "PDF"
+            else:
+                filepath = self.export_service.export_to_excel(
+                    transactions,
+                    property_name=property_name if property_id else None,
+                    start_date=self.start_date.date().toString("dd/MM/yyyy"),
+                    end_date=self.end_date.date().toString("dd/MM/yyyy")
+                )
+                format_name = "Excel"
+
+            # Messaggio successo
+            reply = QMessageBox.question(
+                self,
+                "✅ Export Completato",
+                f"Report {format_name} generato con successo!\n\n"
+                f"📁 {filepath}\n\n"
+                f"Vuoi aprire la cartella?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+
+            if reply == QMessageBox.Yes:
+                # Apri cartella exports
+                QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.dirname(filepath)))
+
+            self.accept()
+
+        except Exception as e:
+            QMessageBox.critical(self, "Errore", f"Errore durante l'export:\n{str(e)}")
