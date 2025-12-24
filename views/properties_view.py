@@ -187,7 +187,7 @@ class PropertiesView(BaseView):
         saldo = self.transaction_service.get_balance(property_id=prop['id'])
 
         # Conta documenti
-        docs = self.document_service.list_documents(prop['name'])
+        docs = self.document_service.list_documents(prop['id'])  # 🔧 Usa ID
         num_docs = len(docs)
 
         # Conta scadenze attive

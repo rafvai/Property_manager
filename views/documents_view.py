@@ -79,14 +79,14 @@ class DocumentsView(BaseView):
             self.load_documents()
 
     def load_documents(self, sub_directory=None):
-        """Carica i documenti della proprietà"""
+        """Carica i documenti della proprietà usando l'ID"""
         self.docs_list.clear()
         if not self.selected_property:
             return
 
-        # ⭐ USA IL SERVICE
+        # 🔧 FIX: Passa l'ID invece del nome
         documents = self.document_service.list_documents(
-            self.selected_property["name"],
+            self.selected_property["id"],  # ← Cambiato da ["name"]
             sub_directory
         )
 
@@ -168,7 +168,7 @@ class DocumentsView(BaseView):
 
             metadata = meta_dialog.get_data()
 
-            # ⭐ USA IL SERVICE per salvare transazione
+            # Salva transazione
             trans_id = self.transaction_service.create(
                 property_id=self.selected_property["id"],
                 date=metadata["data_fattura"],
@@ -179,10 +179,10 @@ class DocumentsView(BaseView):
             )
 
             if trans_id:
-                # USA IL SERVICE per salvare documento
+                # 🔧 FIX: Passa l'ID invece del nome
                 dest_path = self.document_service.save_document(
                     path,
-                    self.selected_property["name"],
+                    self.selected_property["id"],  # ← Cambiato da ["name"]
                     metadata=metadata
                 )
 

@@ -15,16 +15,17 @@ class DocumentService:
         if not os.path.exists(DOCS_DIR):
             os.makedirs(DOCS_DIR)
 
-    def get_property_folder(self, property_name, sub_directory=None):
-        """Ottiene il percorso della cartella di una proprietà"""
-        base_path = os.path.join(DOCS_DIR, property_name)
+    def get_property_folder(self, property_id, sub_directory=None):
+        """Ottiene il percorso della cartella di una proprietà usando l'ID"""
+        # 🔧 FIX: Usa property_id invece del nome
+        base_path = os.path.join(DOCS_DIR, f"property_{property_id}")
         if sub_directory:
             return os.path.join(base_path, sub_directory)
         return base_path
 
-    def list_documents(self, property_name, sub_directory=None):
-        """Lista i documenti di una proprietà"""
-        folder = self.get_property_folder(property_name, sub_directory)
+    def list_documents(self, property_id, sub_directory=None):
+        """Lista i documenti di una proprietà usando l'ID"""
+        folder = self.get_property_folder(property_id, sub_directory)
 
         if not os.path.exists(folder):
             os.makedirs(folder)
@@ -44,13 +45,13 @@ class DocumentService:
 
         return documents
 
-    def save_document(self, source_path, property_name, metadata):
-        """Salva un documento nella cartella della proprietà"""
-
+    def save_document(self, source_path, property_id, metadata):
+        """Salva un documento nella cartella della proprietà usando l'ID"""
         anno = metadata['data_fattura'].split("/")[-1]
         trimestre =  str(int(metadata['data_fattura'].split("/")[-2]) // 3)
         sub_directory = metadata['service'] + '\\' + anno + '\\' + trimestre + ' T'
-        folder = self.get_property_folder(property_name, sub_directory)
+
+        folder = self.get_property_folder(property_id, sub_directory)
         os.makedirs(folder, exist_ok=True)
 
         filename = os.path.basename(source_path)
@@ -75,9 +76,9 @@ class DocumentService:
             print(f"Errore eliminazione documento: {e}")
             return False
 
-    def create_folder(self, property_name, folder_name, sub_directory=None):
-        """Crea una nuova cartella"""
-        folder = self.get_property_folder(property_name, sub_directory)
+    def create_folder(self, property_id, folder_name, sub_directory=None):
+        """Crea una nuova cartella usando l'ID proprietà"""
+        folder = self.get_property_folder(property_id, sub_directory)
         new_folder = os.path.join(folder, folder_name)
 
         try:
@@ -86,3 +87,22 @@ class DocumentService:
         except Exception as e:
             print(f"Errore creazione cartella: {e}")
             return None
+
+    def rename_property_folder(self, old_name, property_id):
+        """
+        🆕 METODO DI MIGRAZIONE
+        Rinomina una cartella esistente con nome testuale al nuovo formato con ID.
+        Usalo UNA VOLTA per migrare le cartelle esistenti.
+        """
+        old_path = os.path.join(DOCS_DIR, old_name)
+        new_path = os.path.join(DOCS_DIR, f"property_{property_id}")
+
+        if os.path.exists(old_path) and not os.path.exists(new_path):
+            try:
+                shutil.move(old_path, new_path)
+                print(f"✅ Migrata cartella: {old_name} → property_{property_id}")
+                return True
+            except Exception as e:
+                print(f"❌ Errore migrazione cartella {old_name}: {e}")
+                return False
+        return False

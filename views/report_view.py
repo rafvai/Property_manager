@@ -95,33 +95,41 @@ class TransactionsDialog(QDialog):
 
         filtered.sort(key=lambda x: x['date'], reverse=True)
 
+        # 🔧 FIX: Assicurati che la tabella sia pulita prima di popolarla
+        self.transactions_table.clearContents()
         self.transactions_table.setRowCount(len(filtered))
 
         for i, trans in enumerate(filtered):
+            # Data
             date_item = QTableWidgetItem(trans['date'])
             date_item.setForeground(QColor("white"))
             self.transactions_table.setItem(i, 0, date_item)
 
+            # Importo
             amount_color = "#e74c3c" if trans['type'] == 'Uscita' else "#2ecc71"
             amount_item = QTableWidgetItem(f"{trans['amount']:,.2f} €")
             amount_item.setForeground(QColor(amount_color))
             amount_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             self.transactions_table.setItem(i, 1, amount_item)
 
+            # Descrizione
             desc = trans.get('provider') or trans['service']
             desc_item = QTableWidgetItem(desc)
             desc_item.setForeground(QColor("white"))
             self.transactions_table.setItem(i, 2, desc_item)
 
+            # Categoria
             category = trans.get('service') or 'Otros'
             cat_item = QTableWidgetItem(category)
             cat_item.setForeground(QColor("#bdc3c7"))
             self.transactions_table.setItem(i, 3, cat_item)
 
+            # Tipo
             tipo_item = QTableWidgetItem(trans['type'])
             tipo_item.setForeground(QColor(amount_color))
             self.transactions_table.setItem(i, 4, tipo_item)
 
+            # 🔧 FIX: Bottone delete - crea un nuovo widget per ogni riga
             delete_btn = QPushButton("🗑️")
             delete_btn.setStyleSheet("""
                 QPushButton {
@@ -135,7 +143,9 @@ class TransactionsDialog(QDialog):
                     background-color: #c0392b;
                 }
             """)
-            delete_btn.clicked.connect(lambda _, t=trans: self.delete_transaction(t))
+            delete_btn.clicked.connect(lambda checked=False, t=trans: self.delete_transaction(t))
+
+            # 🔧 IMPORTANTE: Usa setCellWidget per aggiungere il bottone
             self.transactions_table.setCellWidget(i, 5, delete_btn)
 
     def delete_transaction(self, trans):

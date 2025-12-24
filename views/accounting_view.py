@@ -134,7 +134,7 @@ class TransactionsDialog(QDialog):
                     background-color: #c0392b;
                 }
             """)
-            delete_btn.clicked.connect(lambda _, t=trans: self.delete_transaction(t))
+            delete_btn.clicked.connect(lambda checked=False, t=trans: self.delete_transaction(t))
             self.transactions_table.setCellWidget(i, 5, delete_btn)
 
     def delete_transaction(self, trans):
