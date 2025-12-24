@@ -1,13 +1,12 @@
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QWidget, QLineEdit, QDialog,
     QFormLayout, QDialogButtonBox, QMessageBox
 )
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont
 
-from views.base_view import BaseView
 from styles import *
+from views.base_view import BaseView
 
 
 class PropertiesView(BaseView):

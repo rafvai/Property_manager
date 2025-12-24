@@ -1,16 +1,17 @@
 import os
+
+from PySide6.QtCore import Qt, QSize, QUrl
+from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QIcon, QColor
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
     QPushButton, QListWidget, QListWidgetItem, QWidget,
-    QFileDialog, QDialog, QFrame
+    QFileDialog, QDialog
 )
-from PySide6.QtCore import Qt, QSize, QUrl
-from PySide6.QtGui import QIcon, QColor
-from PySide6.QtGui import QDesktopServices
 
-from views.base_view import BaseView
 from dialogs import DocumentMetadataDialog
 from styles import *
+from views.base_view import BaseView
 
 DOCS_DIR = "docs"
 

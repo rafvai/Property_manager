@@ -1,4 +1,3 @@
-
 ########### COLORS ####################
 COLORE_BACKGROUND = "#131b23"
 COLORE_SECONDARIO = "#1a2530"

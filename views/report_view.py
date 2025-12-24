@@ -1,22 +1,22 @@
-from PySide6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton,
-    QTableWidget, QTableWidgetItem, QWidget, QFrame, QDialog,
-    QFormLayout, QLineEdit, QDateEdit, QDialogButtonBox, QMessageBox,
-    QHeaderView, QTextEdit
-)
+from calendar import monthrange
+from collections import defaultdict
+from datetime import datetime
+
 from PySide6.QtCore import Qt, QDate
 from PySide6.QtGui import QColor, QFont
+from PySide6.QtWidgets import (
+    QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton,
+    QTableWidget, QTableWidgetItem, QFrame, QDialog,
+    QFormLayout, QLineEdit, QDateEdit, QDialogButtonBox, QMessageBox,
+    QHeaderView
+)
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-import numpy as np
-from datetime import datetime
-from collections import defaultdict
-from calendar import monthrange
 
-from views.base_view import BaseView
 from dialogs import ExportDialog
 from services.export_service import ExportService
 from styles import *
+from views.base_view import BaseView
 
 
 class TransactionsDialog(QDialog):
