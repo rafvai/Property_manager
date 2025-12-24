@@ -98,10 +98,10 @@ class DashboardWindow(QMainWindow):
             self.property_service,
             self.transaction_service,
             self.deadline_service,
-            self  # 🔧 Passa riferimento alla finestra principale
+            self  # Passa riferimento alla finestra principale
         ))
 
-        # 🔧 1. SCHERMO INTERO DI DEFAULT - Spostato qui dopo l'inizializzazione completa
+        # SCHERMO INTERO DI DEFAULT
         self.showMaximized()
 
     def show_view(self, view):
@@ -160,7 +160,7 @@ class DashboardWindow(QMainWindow):
                 self
             ))
 
-    # 🔧 2. METODO PER NAVIGARE ALLE SEZIONI
+    # NAVIGA ALLE SEZIONI
     def navigate_to_section(self, section_name):
         """Naviga a una sezione specifica tramite nome"""
         section_map = {

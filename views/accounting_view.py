@@ -243,7 +243,7 @@ class AccountingView(BaseView):
         # Distribuisci le colonne uniformemente su tutta la larghezza
         self.accounting_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
-        # 🆕 Imposta altezza righe fissa più alta
+        # Imposta altezza righe fissa più alta
         for i in range(3):
             self.accounting_table.setRowHeight(i, 45)  # 45px per riga
 

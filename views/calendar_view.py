@@ -20,7 +20,7 @@ class CalendarView(BaseView):
         frame.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; border-radius: 12px;")
         frame_layout = QVBoxLayout(frame)
 
-        # 🆕 Passa i services al calendario
+        # Passa i services al calendario
         calendar_widget = PlannerCalendarWidget(self.deadline_service, self.property_service)
         frame_layout.addWidget(calendar_widget)
 

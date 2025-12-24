@@ -2,15 +2,15 @@
 import os
 import shutil
 
-from PySide6.QtGui import QFont, QIcon, QDesktopServices
+from PySide6.QtCore import Qt, QDate, QPoint, QUrl
+from PySide6.QtGui import QIcon, QDesktopServices
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QMessageBox,
+    QDialog, QVBoxLayout, QLabel, QPushButton, QMessageBox,
     QFileDialog, QListWidget, QFormLayout, QLineEdit, QComboBox, QDialogButtonBox,
-    QDateEdit, QWidget, QHBoxLayout, QSizePolicy, QCalendarWidget, QListWidgetItem,
-    QInputDialog, QGridLayout, QFrame, QTextEdit, QRadioButton, QButtonGroup, QGroupBox
+    QDateEdit, QWidget, QHBoxLayout, QSizePolicy, QGridLayout, QFrame, QTextEdit, QRadioButton, QButtonGroup, QGroupBox
 )
-from PySide6.QtCore import Qt, QDate, QPoint, QSize, QUrl
-from styles import custom_title_style, COLORE_SECONDARIO, COLORE_WIDGET_2, COLORE_BIANCO, COLORE_RIGA_1
+
+from styles import COLORE_SECONDARIO, COLORE_WIDGET_2, COLORE_RIGA_1
 
 DOCS_DIR = "docs"
 
@@ -84,7 +84,7 @@ class DocumentMetadataDialog(QDialog):
         }
 
 
-# 🆕 Dialog per aggiungere scadenze
+# Dialog per aggiungere scadenze
 class AddDeadlineDialog(QDialog):
     """Dialog per inserire una nuova scadenza"""
 
@@ -415,7 +415,7 @@ class PlannerCalendarWidget(QWidget):
         label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(label)
 
-        # 🆕 Mostra scadenze per questa data
+        # Mostra scadenze per questa data
         deadlines = self.deadline_service.get_by_date(date_str)
 
         if deadlines:

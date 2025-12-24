@@ -169,7 +169,7 @@ class ReportView(BaseView):
         self.categories_gastos = set()
         self.categories_ganancias = set()
 
-        # 🆕 Export service
+        # Export service
         self.export_service = ExportService()
 
         super().__init__(property_service, transaction_service, None, parent)

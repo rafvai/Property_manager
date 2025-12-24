@@ -46,7 +46,7 @@ class DatabaseService:
         )
         """)
 
-        # 🆕 Tabella scadenze
+        # Tabella scadenze
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS deadlines (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
