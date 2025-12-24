@@ -15,13 +15,13 @@ from services.database_service import DatabaseService
 from services.property_service import PropertyService
 from services.transaction_service import TransactionService
 from services.document_service import DocumentService
-from services.deadline_service import DeadlineService  # 🆕
+from services.deadline_service import DeadlineService
 
 from views.dashboard_view import DashboardView
 from views.properties_view import PropertiesView
 from views.documents_view import DocumentsView
 from views.accounting_view import AccountingView
-from views.report_view import ReportView  # 🆕
+from views.report_view import ReportView
 from views.calendar_view import CalendarView
 
 
@@ -34,7 +34,7 @@ class DashboardWindow(QMainWindow):
         self.property_service = PropertyService(conn)
         self.transaction_service = TransactionService(conn)
         self.document_service = DocumentService(conn)
-        self.deadline_service = DeadlineService(conn)  # 🆕
+        self.deadline_service = DeadlineService(conn)
 
         # Finestra principale
         self.setWindowTitle("Property Manager MVP")
@@ -97,9 +97,12 @@ class DashboardWindow(QMainWindow):
         self.show_view(DashboardView(
             self.property_service,
             self.transaction_service,
-            self.deadline_service,  # 🆕
-            self
+            self.deadline_service,
+            self  # 🔧 Passa riferimento alla finestra principale
         ))
+
+        # 🔧 1. SCHERMO INTERO DI DEFAULT - Spostato qui dopo l'inizializzazione completa
+        self.showMaximized()
 
     def show_view(self, view):
         """Mostra una view nell'area contenuti"""
@@ -122,7 +125,7 @@ class DashboardWindow(QMainWindow):
                 self.deadline_service,
                 self
             ))
-        elif "proprietà" in voce:  # 🆕 "Le mie proprietà"
+        elif "proprietà" in voce:
             self.show_view(PropertiesView(
                 self.property_service,
                 self.transaction_service,
@@ -143,7 +146,7 @@ class DashboardWindow(QMainWindow):
                 self.transaction_service,
                 self
             ))
-        elif "Report" in voce:  # 🆕
+        elif "Report" in voce:
             self.show_view(ReportView(
                 self.property_service,
                 self.transaction_service,
@@ -157,9 +160,28 @@ class DashboardWindow(QMainWindow):
                 self
             ))
 
+    # 🔧 2. METODO PER NAVIGARE ALLE SEZIONI
+    def navigate_to_section(self, section_name):
+        """Naviga a una sezione specifica tramite nome"""
+        section_map = {
+            "Dashboard": 0,
+            "Le mie proprietà": 1,
+            "Documenti": 2,
+            "Contabilità": 3,
+            "Report": 4,
+            "Calendario": 5,
+            "Impostazioni": 6
+        }
+
+        if section_name in section_map:
+            index = section_map[section_name]
+            self.menu.setCurrentRow(index)
+            self.menu_navigation(index)
+
     def resizeEvent(self, event):
         """Ridimensiona il menu laterale"""
-        self.menu.setFixedWidth(int(self.width() * W_LAT_MENU))
+        if hasattr(self, 'menu'):  # 🔧 Verifica che il menu esista
+            self.menu.setFixedWidth(int(self.width() * W_LAT_MENU))
         super().resizeEvent(event)
 
     def toggle_max_restore(self):

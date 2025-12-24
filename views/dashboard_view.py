@@ -15,13 +15,28 @@ import Functions
 from styles import *
 
 
+class ClickableFrame(QFrame):
+    """Frame cliccabile per navigazione"""
+
+    def __init__(self, parent=None, on_click=None):
+        super().__init__(parent)
+        self.on_click = on_click
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def mousePressEvent(self, event):
+        if self.on_click:
+            self.on_click()
+        super().mousePressEvent(event)
+
+
 class DashboardView(BaseView):
     """View per la Dashboard principale"""
 
-    def __init__(self, property_service, transaction_service, deadline_service, parent=None):
+    def __init__(self, property_service, transaction_service, deadline_service, main_window, parent=None):
         self.deadline_service = deadline_service
+        self.main_window = main_window  # 🔧 Riferimento alla finestra principale
         self.proprieta = property_service.get_all()
-        self.selected_property = self.proprieta[0] if self.proprieta else None
+        self.selected_property = None  # 🔧 Inizia con None (tutte le proprietà)
         super().__init__(property_service, transaction_service, None, parent)
 
     def setup_ui(self):
@@ -44,30 +59,26 @@ class DashboardView(BaseView):
         prop_layout.setContentsMargins(0, 0, 0, 0)
         prop_layout.addWidget(QLabel("Seleziona proprietà:"))
 
+        # 🔧 3. AGGIUNTA "TUTTE LE PROPRIETÀ"
         self.property_selector = QComboBox()
-        self.property_selector.addItems([p["name"] for p in self.proprieta])
+        self.property_selector.addItem("Tutte le proprietà", None)  # 🔧 Opzione default
+        for p in self.proprieta:
+            self.property_selector.addItem(p["name"], p["id"])
+
         self.property_selector.setStyleSheet(default_combo_box_style)
         self.property_selector.setMinimumWidth(200)
-        if self.selected_property:
-            self.property_selector.setCurrentText(self.selected_property["name"])
+        self.property_selector.setCurrentIndex(0)  # 🔧 Seleziona "Tutte" di default
         prop_layout.addWidget(self.property_selector)
 
         top_row.addWidget(prop_widget, stretch=3)
         top_row.addSpacing(200)
-
-        #add_button = QPushButton("+ Aggiungi")
-       # add_button.setFixedHeight(36)
-       # add_button.setStyleSheet(default_aggiungi_button)
-        #add_button.clicked.connect(self.add_property) se si vuole ripristinare add property sta in properties view
-
         top_row.addStretch()
-        #top_row.addWidget(add_button, stretch=0)
 
         # --- Riga 2: "Proprietà" e "Periodo" ---
         mid_row = QHBoxLayout()
         mid_row.setSpacing(10)
 
-        label_proprieta = QLabel("Proprietà")
+        label_proprieta = QLabel("Dashboard")
         label_proprieta.setStyleSheet("font-weight: 650; font-size: 20px; color: white;")
         mid_row.addWidget(label_proprieta)
         mid_row.addStretch()
@@ -95,13 +106,19 @@ class DashboardView(BaseView):
         left_column = QVBoxLayout()
         left_column.setSpacing(15)
 
-        # Info proprietà
-        info_frame = QFrame()
-        info_frame.setStyleSheet(f"background: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
+        # 🔧 Info proprietà - CLICCABILE
+        info_frame = ClickableFrame(on_click=lambda: self.main_window.navigate_to_section("Le mie proprietà"))
+        info_frame.setStyleSheet(f"""
+            QFrame {{
+                background: {COLORE_WIDGET_2}; 
+                border-radius: 12px; 
+                padding: 15px;
+            }}
+        """)
         info_layout = QVBoxLayout(info_frame)
         info_layout.setSpacing(8)
 
-        info_title = QLabel("📋 Informazioni")
+        info_title = QLabel("📋 Informazioni Proprietà")
         info_title.setStyleSheet("font-size: 14px; font-weight: bold; color: white;")
         info_layout.addWidget(info_title)
 
@@ -113,22 +130,22 @@ class DashboardView(BaseView):
         self.info_address.setStyleSheet("color: white; font-size: 13px;")
         self.info_owner.setStyleSheet("color: white; font-size: 13px;")
 
-        if self.proprieta:
-            p = self.proprieta[0]
-            self.info_name.setText(f"🏡 {p['name']}")
-            self.info_address.setText(f"📍 {p['address']}")
-            self.info_owner.setText(f"👤 {p['owner']}")
-        else:
-            self.info_name.setText("Nessuna proprietà registrata.")
+        self.update_info_display()
 
         info_layout.addWidget(self.info_name)
         info_layout.addWidget(self.info_address)
         info_layout.addWidget(self.info_owner)
         info_layout.addStretch()
 
-        # 🆕 Widget Prossima Scadenza
-        deadline_frame = QFrame()
-        deadline_frame.setStyleSheet(f"background: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
+        # 🔧 Widget Prossima Scadenza - CLICCABILE
+        deadline_frame = ClickableFrame(on_click=lambda: self.main_window.navigate_to_section("Calendario"))
+        deadline_frame.setStyleSheet(f"""
+            QFrame {{
+                background: {COLORE_WIDGET_2}; 
+                border-radius: 12px; 
+                padding: 15px;
+            }}
+        """)
         deadline_layout = QVBoxLayout(deadline_frame)
         deadline_layout.setSpacing(8)
 
@@ -154,14 +171,21 @@ class DashboardView(BaseView):
         left_column.addWidget(info_frame, stretch=1)
         left_column.addWidget(deadline_frame, stretch=1)
 
-        # --- Grafico Donut ---
-        chart_frame = QFrame()
-        chart_frame.setStyleSheet(f"background: {COLORE_WIDGET_2}; border-radius: 12px; padding: 20px;")
+        # --- Grafico Donut - CLICCABILE ---
+        chart_frame = ClickableFrame(on_click=lambda: self.main_window.navigate_to_section("Contabilità"))
+        chart_frame.setStyleSheet(f"""
+            QFrame {{
+                background: {COLORE_WIDGET_2}; 
+                border-radius: 12px; 
+                padding: 20px;
+            }}
+        """)
         chart_layout = QVBoxLayout(chart_frame)
         chart_layout.setSpacing(10)
 
         self.fig = Figure(figsize=(4, 4), facecolor=COLORE_WIDGET_2)
         self.chart_canvas = FigureCanvas(self.fig)
+        self.chart_canvas.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         self.ax = self.fig.add_subplot(111, facecolor=COLORE_WIDGET_2)
         chart_layout.addWidget(self.chart_canvas)
 
@@ -170,11 +194,17 @@ class DashboardView(BaseView):
 
         main_layout.addLayout(middle_layout)
 
-        # ========== SEZIONE INFERIORE ========== #
-        bottom_frame = QFrame()
-        bottom_frame.setStyleSheet(f"background: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
+        # ========== SEZIONE INFERIORE - CLICCABILE ========== #
+        bottom_frame = ClickableFrame(on_click=lambda: self.main_window.navigate_to_section("Documenti"))
+        bottom_frame.setStyleSheet(f"""
+            QFrame {{
+                background: {COLORE_WIDGET_2}; 
+                border-radius: 12px; 
+                padding: 15px;
+            }}
+        """)
         bottom_layout = QVBoxLayout(bottom_frame)
-        bottom_layout.addWidget(QLabel("📄 Documenti recenti o report trimestrali"))
+        bottom_layout.addWidget(QLabel("📄 Documenti - Clicca per gestire"))
         main_layout.addWidget(bottom_frame)
 
         # Connetti segnali
@@ -183,6 +213,25 @@ class DashboardView(BaseView):
         # Carica dati iniziali
         self.update_chart()
         self.update_next_deadline()
+
+    def update_info_display(self):
+        """Aggiorna la visualizzazione delle informazioni"""
+        if not self.proprieta:
+            self.info_name.setText("Nessuna proprietà registrata.")
+            self.info_address.setText("")
+            self.info_owner.setText("")
+        elif self.selected_property is None:
+            # Mostra info aggregate
+            num_prop = len(self.proprieta)
+            self.info_name.setText(f"🏡 {num_prop} proprietà totali")
+            self.info_address.setText(f"📊 Vista aggregata di tutte le proprietà")
+            self.info_owner.setText(f"👥 Clicca per gestire le proprietà")
+        else:
+            # Mostra singola proprietà
+            p = self.selected_property
+            self.info_name.setText(f"🏡 {p['name']}")
+            self.info_address.setText(f"📍 {p['address']}")
+            self.info_owner.setText(f"👤 {p['owner']}")
 
     def update_next_deadline(self):
         """Aggiorna il widget della prossima scadenza"""
@@ -251,7 +300,7 @@ class DashboardView(BaseView):
             self.ax.text(0, 0, "Nessun dato", ha="center", va="center", fontsize=14, color="gray")
         else:
             self.ax.pie(sizes, colors=colors, startangle=90, wedgeprops=dict(width=0.4))
-            self.ax.text(0, 0, f"€ {entrate - uscite}", ha='center', va='center',
+            self.ax.text(0, 0, f"€ {entrate - uscite:.0f}", ha='center', va='center',
                          fontsize=16, fontweight='bold', color='white')
 
             labels = ['Entrate', 'Uscite']
@@ -276,12 +325,13 @@ class DashboardView(BaseView):
 
     def update_info_box(self, index):
         """Aggiorna le info della proprietà selezionata"""
-        if index < 0 or index >= len(self.proprieta):
-            return
-        prop = self.proprieta[index]
-        self.selected_property = prop
-        self.info_name.setText(f"🏡 Proprietà: {prop['name']}")
-        self.info_address.setText(f"📍 Indirizzo: {prop['address']}")
-        self.info_owner.setText(f"👤 Proprietario: {prop['owner']}")
+        if index == 0:
+            # "Tutte le proprietà" selezionato
+            self.selected_property = None
+        elif index > 0 and index <= len(self.proprieta):
+            # Proprietà specifica selezionata
+            self.selected_property = self.proprieta[index - 1]
+
+        self.update_info_display()
         self.update_chart()
-        self.update_next_deadline()  # 🆕 Aggiorna anche la scadenza
+        self.update_next_deadline()

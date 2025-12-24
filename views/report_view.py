@@ -174,7 +174,7 @@ class ReportView(BaseView):
         # --- HEADER ---
         header_layout = QHBoxLayout()
 
-        title = QLabel("📊 Report - Tracking mensile")
+        title = QLabel("📊 Tracking mensile")
         title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
         header_layout.addWidget(title)
         header_layout.addStretch()
