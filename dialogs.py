@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QDateEdit, QWidget, QHBoxLayout, QSizePolicy, QGridLayout, QFrame, QTextEdit, QRadioButton, QButtonGroup, QGroupBox
 )
 
-from styles import COLORE_SECONDARIO, COLORE_WIDGET_2, COLORE_RIGA_1
+from styles import COLORE_SECONDARIO, COLORE_WIDGET_2, COLORE_RIGA_1, COLORE_ITEM_HOVER
 
 DOCS_DIR = "docs"
 
@@ -304,6 +304,71 @@ class CustomTitleBar(QWidget):
             event.accept()
 
 
+class ClickableDayCell(QFrame):
+    """Cella giorno cliccabile per aggiungere scadenze"""
+
+    def __init__(self, day, date_str, deadlines, parent_calendar):
+        super().__init__()
+        self.day = day
+        self.date_str = date_str
+        self.deadlines = deadlines
+        self.parent_calendar = parent_calendar
+
+        self.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLORE_RIGA_1}; 
+                border-radius: 6px;
+            }}
+            QFrame:hover {{
+                background-color: {COLORE_ITEM_HOVER};
+                border: 2px solid #007BFF;
+            }}
+        """)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(6, 4, 6, 4)
+        layout.setSpacing(2)
+
+        # Numero del giorno
+        label = QLabel(str(day))
+        label.setStyleSheet("font-size: 14px; color: white; font-weight: bold;")
+        label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        layout.addWidget(label)
+
+        # Mostra scadenze
+        if deadlines:
+            for deadline in deadlines:
+                deadline_label = QLabel(f"📌 {deadline['title']}")
+                deadline_label.setStyleSheet("""
+                    font-size: 10px; 
+                    color: white; 
+                    background-color: rgba(231, 76, 60, 0.8); 
+                    padding: 2px 4px; 
+                    border-radius: 3px;
+                    margin-top: 2px;
+                """)
+                deadline_label.setWordWrap(True)
+                layout.addWidget(deadline_label)
+        else:
+            # Indicatore per aggiungere scadenza
+            add_hint = QLabel("+ Aggiungi")
+            add_hint.setStyleSheet("""
+                font-size: 9px; 
+                color: rgba(255, 255, 255, 0.5);
+            """)
+            add_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            layout.addWidget(add_hint)
+
+        layout.addStretch()
+
+    def mousePressEvent(self, event):
+        """Click sulla cella = apri dialog nuova scadenza"""
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.parent_calendar.add_deadline_for_date(self.date_str)
+        super().mousePressEvent(event)
+
+
 class PlannerCalendarWidget(QWidget):
     def __init__(self, deadline_service, property_service):
         super().__init__()
@@ -322,7 +387,7 @@ class PlannerCalendarWidget(QWidget):
         header.addWidget(self.month_label)
         header.addStretch()
 
-        # 🆕 Bottone per aggiungere scadenza
+        # 🆕 Bottone per aggiungere scadenza generica
         add_deadline_btn = QPushButton("+ Nuova Scadenza")
         add_deadline_btn.setStyleSheet("""
             QPushButton {
@@ -336,7 +401,7 @@ class PlannerCalendarWidget(QWidget):
                 background-color: #0056b3;
             }
         """)
-        add_deadline_btn.clicked.connect(self.add_deadline)
+        add_deadline_btn.clicked.connect(lambda: self.add_deadline())
         header.addWidget(add_deadline_btn)
 
         prev_btn = QPushButton()
@@ -346,6 +411,16 @@ class PlannerCalendarWidget(QWidget):
         header.addWidget(prev_btn)
         header.addWidget(next_btn)
         main_layout.addLayout(header)
+
+        # Giorni della settimana
+        weekdays_layout = QHBoxLayout()
+        weekdays = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
+        for day in weekdays:
+            day_label = QLabel(day)
+            day_label.setStyleSheet("font-size: 12px; color: white; font-weight: bold;")
+            day_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            weekdays_layout.addWidget(day_label)
+        main_layout.addLayout(weekdays_layout)
 
         # griglia giorni
         self.grid = QGridLayout()
@@ -359,10 +434,16 @@ class PlannerCalendarWidget(QWidget):
 
         self.populate_month()
 
-    def add_deadline(self):
-        """Apre dialog per aggiungere scadenza"""
+    def add_deadline(self, preset_date=None):
+        """Apre dialog per aggiungere scadenza (con data opzionale preimpostata)"""
         properties = self.property_service.get_all()
         dialog = AddDeadlineDialog(properties, self)
+
+        # 🆕 Se viene passata una data, preimpostala nel dialog
+        if preset_date:
+            date_obj = QDate.fromString(preset_date, "yyyy-MM-dd")
+            if date_obj.isValid():
+                dialog.due_date.setDate(date_obj)
 
         if dialog.exec():
             data = dialog.get_data()
@@ -378,6 +459,10 @@ class PlannerCalendarWidget(QWidget):
                 self.populate_month()  # Ricarica il calendario
             else:
                 QMessageBox.warning(self, "Errore", "Impossibile salvare la scadenza.")
+
+    def add_deadline_for_date(self, date_str):
+        """🆕 Aggiunge scadenza per una data specifica (chiamato dal click sulla cella)"""
+        self.add_deadline(preset_date=date_str)
 
     def populate_month(self):
         # pulisci celle precedenti
@@ -397,47 +482,16 @@ class PlannerCalendarWidget(QWidget):
         row, col = 0, start_col
         for day in range(1, days_in_month + 1):
             date_str = f"{year:04d}-{month:02d}-{day:02d}"
-            cell = self.create_day_cell(day, date_str)
+            deadlines = self.deadline_service.get_by_date(date_str)
+
+            # 🆕 Usa la nuova cella cliccabile
+            cell = ClickableDayCell(day, date_str, deadlines, self)
+
             self.grid.addWidget(cell, row, col)
             col += 1
             if col > 6:
                 col = 0
                 row += 1
-
-    def create_day_cell(self, day, date_str):
-        frame = QFrame()
-        frame.setStyleSheet(f"background-color: {COLORE_RIGA_1}; border-radius: 6px;")
-        layout = QVBoxLayout(frame)
-        layout.setContentsMargins(6, 4, 6, 4)
-
-        label = QLabel(str(day))
-        label.setStyleSheet("font-size: 14px; color: white; font-weight: bold;")
-        label.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        layout.addWidget(label)
-
-        # Mostra scadenze per questa data
-        deadlines = self.deadline_service.get_by_date(date_str)
-
-        if deadlines:
-            for deadline in deadlines:
-                deadline_label = QLabel(f"📌 {deadline['title']}")
-                deadline_label.setStyleSheet("""
-                    font-size: 10px; 
-                    color: white; 
-                    background-color: rgba(231, 76, 60, 0.8); 
-                    padding: 2px 4px; 
-                    border-radius: 3px;
-                    margin-top: 2px;
-                """)
-                deadline_label.setWordWrap(True)
-                layout.addWidget(deadline_label)
-        else:
-            # Spazio vuoto per mantenere dimensioni uniformi
-            spacer = QLabel("")
-            spacer.setFixedHeight(20)
-            layout.addWidget(spacer)
-
-        return frame
 
     def next_month(self):
         self.current_date = self.current_date.addMonths(1)
