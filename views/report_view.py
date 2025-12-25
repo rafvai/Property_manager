@@ -97,7 +97,7 @@ class TransactionsDialog(QDialog):
 
         filtered.sort(key=lambda x: x['date'], reverse=True)
 
-        # 🔧 FIX: Pulisce completamente la tabella
+        # Pulisce completamente la tabella
         self.transactions_table.clearContents()
         self.transactions_table.setRowCount(len(filtered))
 
@@ -139,7 +139,6 @@ class TransactionsDialog(QDialog):
                     background-color: #c0392b;
                 }
             """)
-            # 🔧 FIX: Lambda corretta con checked=False
             delete_btn.clicked.connect(lambda checked=False, t=trans: self.delete_transaction(t))
             self.transactions_table.setCellWidget(i, 5, delete_btn)
 
@@ -180,7 +179,7 @@ class ReportView(BaseView):
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(20)
 
-        # --- HEADER ---
+        # --- HEADER RIGA 1 ---
         header_layout = QHBoxLayout()
 
         title = QLabel("📊 Tracking mensile")
@@ -215,11 +214,19 @@ class ReportView(BaseView):
         self.month_selector.currentIndexChanged.connect(self.update_report)
         header_layout.addWidget(self.month_selector)
 
+        main_layout.addLayout(header_layout)
+
+        # --- HEADER RIGA 2 - PULSANTI AZIONI ---
+        actions_layout = QHBoxLayout()
+        actions_layout.setSpacing(10)
+
+        actions_layout.addStretch()  # Spinge i bottoni a destra
+
         # Bottone aggiungi transazione
         add_btn = QPushButton("+ Nueva transacción")
         add_btn.setStyleSheet(default_aggiungi_button)
         add_btn.clicked.connect(self.add_transaction)
-        header_layout.addWidget(add_btn)
+        actions_layout.addWidget(add_btn)
 
         # Bottone visualizza transazioni
         view_trans_btn = QPushButton("📋 Ver transacciones")
@@ -236,9 +243,9 @@ class ReportView(BaseView):
             }
         """)
         view_trans_btn.clicked.connect(self.show_transactions_dialog)
-        header_layout.addWidget(view_trans_btn)
+        actions_layout.addWidget(view_trans_btn)
 
-        # 🆕 Bottone Export
+        # Bottone Export
         export_btn = QPushButton("📥 Esporta")
         export_btn.setStyleSheet("""
             QPushButton {
@@ -253,9 +260,9 @@ class ReportView(BaseView):
             }
         """)
         export_btn.clicked.connect(self.open_export_dialog)
-        header_layout.addWidget(export_btn)
+        actions_layout.addWidget(export_btn)
 
-        main_layout.addLayout(header_layout)
+        main_layout.addLayout(actions_layout)
 
         # --- GRAFICI RIEPILOGO ---
         charts_layout = QHBoxLayout()

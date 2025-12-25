@@ -29,7 +29,7 @@ class DashboardWindow(QMainWindow):
     def __init__(self, db_service):
         super().__init__()
 
-        # ⭐ Inizializza i services
+        # Inizializza i services
         conn = db_service.conn
         self.property_service = PropertyService(conn)
         self.transaction_service = TransactionService(conn)
