@@ -37,7 +37,22 @@ class DocumentsView(BaseView):
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(15)
 
-        main_layout.addWidget(QLabel("📄 Documenti"))
+        # --- HEADER ---
+        header_layout = QHBoxLayout()
+
+        title = QLabel("📄 Documenti")
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
+        header_layout.addWidget(title)
+        header_layout.addStretch()
+
+        # 🆕 Bottone aggiungi spostato qui
+        add_doc_btn = QPushButton("+ Aggiungi documento")
+        add_doc_btn.setStyleSheet(default_aggiungi_button)
+        add_doc_btn.setFixedHeight(36)
+        add_doc_btn.clicked.connect(self.add_document)
+        header_layout.addWidget(add_doc_btn)
+
+        main_layout.addLayout(header_layout)
 
         # Combo proprietà
         self.property_selector = QComboBox()
@@ -64,15 +79,6 @@ class DocumentsView(BaseView):
         main_layout.addWidget(self.docs_list)
         self.load_documents()
 
-        # Bottone aggiungi
-        add_doc_btn = QPushButton("+")
-        add_doc_btn.setFixedSize(40, 40)
-        add_doc_btn.setStyleSheet(
-            "background-color: #007BFF; color: white; font-size: 18px; font-weight: bold; border-radius: 20px;"
-        )
-        add_doc_btn.clicked.connect(self.add_document)
-        main_layout.addWidget(add_doc_btn, alignment=Qt.AlignRight)
-
     def change_property(self, index):
         """Cambia proprietà selezionata"""
         if index >= 0 and index < len(self.proprieta):
@@ -85,9 +91,8 @@ class DocumentsView(BaseView):
         if not self.selected_property:
             return
 
-        # 🔧 FIX: Passa l'ID invece del nome
         documents = self.document_service.list_documents(
-            self.selected_property["id"],  # ← Cambiato da ["name"]
+            self.selected_property["id"],
             sub_directory
         )
 
@@ -108,6 +113,7 @@ class DocumentsView(BaseView):
             layout.addWidget(label, stretch=1)
 
             if doc["is_folder"]:
+                # Bottone per aprire la cartella
                 open_btn = QPushButton()
                 open_btn.setIcon(self.open_folder_icon)
                 open_btn.setIconSize(QSize(18, 18))
@@ -129,22 +135,41 @@ class DocumentsView(BaseView):
                 open_btn.clicked.connect(lambda _, sub_dir=new_path: self.load_documents(sub_dir))
                 layout.addWidget(open_btn)
             else:
-                # File buttons (preview e open location)
-                preview_btn = QPushButton()
-                preview_btn.setIcon(self.file_icon)
-                preview_btn.setIconSize(QSize(18, 18))
-                preview_btn.setFixedSize(28, 28)
-                preview_btn.setStyleSheet("border: none;")
-                preview_btn.clicked.connect(lambda _, path=doc["path"]: self.preview_file(path))
-                layout.addWidget(preview_btn)
+                # 🆕 Bottone per APRIRE il file
+                open_file_btn = QPushButton()
+                open_file_btn.setIcon(self.file_icon)
+                open_file_btn.setIconSize(QSize(18, 18))
+                open_file_btn.setFixedSize(28, 28)
+                open_file_btn.setStyleSheet("""
+                    QPushButton {
+                        border: none;
+                    }
+                    QPushButton:hover {
+                        background-color: #3498db;
+                        border-radius: 4px;
+                    }
+                """)
+                open_file_btn.setToolTip("Apri documento")
+                open_file_btn.clicked.connect(lambda _, path=doc["path"]: self.open_file(path))
+                layout.addWidget(open_file_btn)
 
-                open_btn = QPushButton()
-                open_btn.setIcon(self.open_folder_icon)
-                open_btn.setIconSize(QSize(18, 18))
-                open_btn.setFixedSize(28, 28)
-                open_btn.setStyleSheet("border: none;")
-                open_btn.clicked.connect(lambda _, path=doc["path"]: self.open_file_location(path))
-                layout.addWidget(open_btn)
+                # Bottone per aprire la CARTELLA contenente il file
+                open_folder_btn = QPushButton()
+                open_folder_btn.setIcon(self.open_folder_icon)
+                open_folder_btn.setIconSize(QSize(18, 18))
+                open_folder_btn.setFixedSize(28, 28)
+                open_folder_btn.setStyleSheet("""
+                    QPushButton {
+                        border: none;
+                    }
+                    QPushButton:hover {
+                        background-color: #f39c12;
+                        border-radius: 4px;
+                    }
+                """)
+                open_folder_btn.setToolTip("Apri cartella")
+                open_folder_btn.clicked.connect(lambda _, path=doc["path"]: self.open_file_location(path))
+                layout.addWidget(open_folder_btn)
 
             item = QListWidgetItem()
             item.setSizeHint(QSize(100, 35))
@@ -180,10 +205,9 @@ class DocumentsView(BaseView):
             )
 
             if trans_id:
-                # 🔧 FIX: Passa l'ID invece del nome
                 dest_path = self.document_service.save_document(
                     path,
-                    self.selected_property["id"],  # ← Cambiato da ["name"]
+                    self.selected_property["id"],
                     metadata=metadata
                 )
 
@@ -192,11 +216,18 @@ class DocumentsView(BaseView):
 
         self.load_documents()
 
-
-    def preview_file(self, path):
-        """Preview file (da implementare)"""
-        print("Preview:", path)
+    def open_file(self, path):
+        """🆕 Apre il file con l'applicazione predefinita del sistema"""
+        try:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(path))
+            print(f"📄 Apertura file: {path}")
+        except Exception as e:
+            print(f"❌ Errore apertura file: {e}")
 
     def open_file_location(self, path):
         """Apre la cartella contenente il file"""
-        QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.dirname(path)))
+        try:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.dirname(path)))
+            print(f"📂 Apertura cartella: {os.path.dirname(path)}")
+        except Exception as e:
+            print(f"❌ Errore apertura cartella: {e}")
