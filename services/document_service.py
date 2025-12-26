@@ -46,22 +46,49 @@ class DocumentService:
         return documents
 
     def save_document(self, source_path, property_id, metadata):
-        """Salva un documento nella cartella della proprietà usando l'ID"""
-        anno = metadata['data_fattura'].split("/")[-1]
-        trimestre = str(int(metadata['data_fattura'].split("/")[-2]) // 3)
-        sub_directory = metadata['service'] + '\\' + anno + '\\' + trimestre + ' T'
+        """Salva un documento nella cartella della proprietà con rinomina automatica"""
+        # Estrai data fattura e servizio dai metadati
+        data_fattura = metadata['data_fattura']  # Formato: dd/MM/yyyy
+        service = metadata['service']
+
+        # Estrai mese e anno dalla data (formato: dd/MM/yyyy)
+        parts = data_fattura.split("/")
+        giorno = parts[0]
+        mese = parts[1]
+        anno = parts[2]
+
+        # Crea struttura cartelle: servizio/anno/trimestre
+        trimestre = str((int(mese) - 1) // 3 + 1)
+        sub_directory = os.path.join(service, anno, f"{trimestre}T")
 
         folder = self.get_property_folder(property_id, sub_directory)
         os.makedirs(folder, exist_ok=True)
 
-        filename = os.path.basename(source_path)
-        dest_path = os.path.join(folder, filename)
+        # 🆕 RINOMINA FILE: mese_anno_servizio.estensione
+        original_filename = os.path.basename(source_path)
+        file_extension = os.path.splitext(original_filename)[1]  # Es: .pdf
+
+        # Sanitizza il nome del servizio (rimuovi caratteri non validi)
+        safe_service = "".join(c for c in service if c.isalnum() or c in (' ', '-', '_')).strip()
+        safe_service = safe_service.replace(' ', '_')
+
+        # Nuovo nome: mese_anno_servizio.estensione
+        new_filename = f"{mese}_{anno}_{safe_service}{file_extension}"
+        dest_path = os.path.join(folder, new_filename)
+
+        # 🔧 Gestisci file duplicati (se esiste già, aggiungi un numero)
+        counter = 1
+        while os.path.exists(dest_path):
+            new_filename = f"{mese}_{anno}_{safe_service}_{counter}{file_extension}"
+            dest_path = os.path.join(folder, new_filename)
+            counter += 1
 
         try:
             shutil.copy(source_path, dest_path)
+            print(f"✅ Documento salvato come: {new_filename}")
             return dest_path
         except Exception as e:
-            print(f"Errore salvataggio documento: {e}")
+            print(f"❌ Errore salvataggio documento: {e}")
             return None
 
     def delete_document(self, file_path):
