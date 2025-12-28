@@ -10,154 +10,11 @@ from PySide6.QtWidgets import (
     QFormLayout, QLineEdit, QDateEdit, QDialogButtonBox, QMessageBox,
     QHeaderView
 )
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
 
 from dialogs import ExportDialog
 from services.export_service import ExportService
 from styles import *
 from views.base_view import BaseView
-
-
-class TransactionsDialog(QDialog):
-    """Dialog per visualizzare tutte le transazioni"""
-
-    def __init__(self, transactions, transaction_service, parent=None):
-        super().__init__(parent)
-        self.transactions = transactions
-        self.transaction_service = transaction_service
-        self.all_transactions = transactions.copy()
-
-        self.setWindowTitle("📋 Transacciones detalladas")
-        self.setMinimumSize(900, 600)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(15)
-
-        # Header con filtro categoria
-        header_layout = QHBoxLayout()
-
-        title = QLabel("📋 Lista completa de transacciones")
-        title.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
-        header_layout.addWidget(title)
-        header_layout.addStretch()
-
-        filter_label = QLabel("Filtrar:")
-        filter_label.setStyleSheet("color: white;")
-        header_layout.addWidget(filter_label)
-
-        self.category_filter = QComboBox()
-        self.category_filter.setStyleSheet(default_combo_box_style)
-        self.category_filter.currentIndexChanged.connect(self.filter_transactions)
-        header_layout.addWidget(self.category_filter)
-
-        layout.addLayout(header_layout)
-
-        # Tabella transazioni
-        self.transactions_table = QTableWidget()
-        self.transactions_table.setColumnCount(6)
-        self.transactions_table.setHorizontalHeaderLabels([
-            "Fecha", "Importe", "Descripción", "Categoría", "Tipo", ""
-        ])
-        self.transactions_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.transactions_table.verticalHeader().setVisible(False)
-        self.transactions_table.setStyleSheet("""
-            QHeaderView::section { background-color: #34495e; color: white; font-weight: bold; padding: 8px; }
-            QTableWidget { color: white; background-color: #2c3e50; font-size: 13px; gridline-color: #7f8c8d; }
-        """)
-        layout.addWidget(self.transactions_table)
-
-        # Popola filtro e tabella
-        self.populate_category_filter()
-        self.filter_transactions()
-
-        # Stile dialog
-        self.setStyleSheet(f"QDialog {{ background-color: {COLORE_BACKGROUND}; }}")
-
-    def populate_category_filter(self):
-        """Popola il filtro categorie"""
-        self.category_filter.addItem("Todas las categorías", None)
-
-        categories = set()
-        for trans in self.all_transactions:
-            cat = trans.get('service') or 'Otros'
-            categories.add(cat)
-
-        for cat in sorted(categories):
-            self.category_filter.addItem(cat, cat)
-
-    def filter_transactions(self):
-        """Filtra transazioni per categoria"""
-        selected_category = self.category_filter.currentData()
-
-        filtered = self.all_transactions.copy()
-        if selected_category:
-            filtered = [t for t in filtered if t.get('service') == selected_category]
-
-        filtered.sort(key=lambda x: x['date'], reverse=True)
-
-        # Pulisce completamente la tabella
-        self.transactions_table.clearContents()
-        self.transactions_table.setRowCount(len(filtered))
-
-        for i, trans in enumerate(filtered):
-            date_item = QTableWidgetItem(trans['date'])
-            date_item.setForeground(QColor("white"))
-            self.transactions_table.setItem(i, 0, date_item)
-
-            amount_color = "#e74c3c" if trans['type'] == 'Uscita' else "#2ecc71"
-            amount_item = QTableWidgetItem(f"{trans['amount']:,.2f} €")
-            amount_item.setForeground(QColor(amount_color))
-            amount_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-            self.transactions_table.setItem(i, 1, amount_item)
-
-            desc = trans.get('provider') or trans['service']
-            desc_item = QTableWidgetItem(desc)
-            desc_item.setForeground(QColor("white"))
-            self.transactions_table.setItem(i, 2, desc_item)
-
-            category = trans.get('service') or 'Otros'
-            cat_item = QTableWidgetItem(category)
-            cat_item.setForeground(QColor("#bdc3c7"))
-            self.transactions_table.setItem(i, 3, cat_item)
-
-            tipo_item = QTableWidgetItem(trans['type'])
-            tipo_item.setForeground(QColor(amount_color))
-            self.transactions_table.setItem(i, 4, tipo_item)
-
-            delete_btn = QPushButton("🗑️")
-            delete_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #e74c3c;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    padding: 4px 8px;
-                }
-                QPushButton:hover {
-                    background-color: #c0392b;
-                }
-            """)
-            delete_btn.clicked.connect(lambda checked=False, t=trans: self.delete_transaction(t))
-            self.transactions_table.setCellWidget(i, 5, delete_btn)
-
-    def delete_transaction(self, trans):
-        """Elimina transazione"""
-        reply = QMessageBox.question(
-            self,
-            "Confirmar",
-            f"¿Eliminar transacción de {trans['amount']}€?",
-            QMessageBox.Yes | QMessageBox.No
-        )
-
-        if reply == QMessageBox.Yes:
-            success = self.transaction_service.delete(trans['id'])
-            if success:
-                QMessageBox.information(self, "Éxito", "Transacción eliminada!")
-                # Rimuovi dalla lista locale
-                self.all_transactions = [t for t in self.all_transactions if t['id'] != trans['id']]
-                self.filter_transactions()
 
 
 class ReportView(BaseView):
@@ -228,23 +85,6 @@ class ReportView(BaseView):
         add_btn.clicked.connect(self.add_transaction)
         actions_layout.addWidget(add_btn)
 
-        # Bottone visualizza transazioni
-        view_trans_btn = QPushButton("📋 Ver transacciones")
-        view_trans_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                font-weight: bold;
-                padding: 6px 14px;
-                border-radius: 8px;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
-        """)
-        view_trans_btn.clicked.connect(self.show_transactions_dialog)
-        actions_layout.addWidget(view_trans_btn)
-
         # Bottone Export
         export_btn = QPushButton("📥 Esporta")
         export_btn.setStyleSheet("""
@@ -264,43 +104,30 @@ class ReportView(BaseView):
 
         main_layout.addLayout(actions_layout)
 
-        # --- GRAFICI RIEPILOGO ---
-        charts_layout = QHBoxLayout()
-
-        # Grafico Gastos
-        self.fig_gastos = Figure(figsize=(6, 3), facecolor=COLORE_WIDGET_2)
-        self.canvas_gastos = FigureCanvas(self.fig_gastos)
-        self.ax_gastos = self.fig_gastos.add_subplot(111, facecolor=COLORE_WIDGET_2)
-        charts_layout.addWidget(self.canvas_gastos)
-
-        # Grafico Ganancias
-        self.fig_ganancias = Figure(figsize=(6, 3), facecolor=COLORE_WIDGET_2)
-        self.canvas_ganancias = FigureCanvas(self.fig_ganancias)
-        self.ax_ganancias = self.fig_ganancias.add_subplot(111, facecolor=COLORE_WIDGET_2)
-        charts_layout.addWidget(self.canvas_ganancias)
-
-        main_layout.addLayout(charts_layout)
-
-        # --- TABELLE CATEGORIE ---
+        # --- TABELLE CATEGORIE IN ALTO ---
         tables_layout = QHBoxLayout()
+        tables_layout.setSpacing(15)
 
         # Tabella Gastos
         gastos_frame = QFrame()
         gastos_frame.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
         gastos_layout = QVBoxLayout(gastos_frame)
 
-        gastos_title = QLabel("🔴 Gastos")
+        gastos_title = QLabel("● Gastos")
         gastos_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #e74c3c;")
         gastos_layout.addWidget(gastos_title)
 
         self.gastos_table = QTableWidget()
         self.gastos_table.setColumnCount(3)
-        self.gastos_table.setHorizontalHeaderLabels(["Categoría", "Real €", "% Total"])
-        self.gastos_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.gastos_table.horizontalHeader().setVisible(False)
         self.gastos_table.verticalHeader().setVisible(False)
         self.gastos_table.setStyleSheet("""
-            QHeaderView::section { background-color: #e74c3c; color: white; font-weight: bold; padding: 8px; }
-            QTableWidget { color: white; background-color: #2c3e50; font-size: 13px; gridline-color: #7f8c8d; }
+            QTableWidget { 
+                color: white; 
+                background-color: #2c3e50; 
+                font-size: 13px; 
+                gridline-color: #7f8c8d; 
+            }
         """)
         gastos_layout.addWidget(self.gastos_table)
         tables_layout.addWidget(gastos_frame)
@@ -310,23 +137,66 @@ class ReportView(BaseView):
         ganancias_frame.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
         ganancias_layout = QVBoxLayout(ganancias_frame)
 
-        ganancias_title = QLabel("🟢 Ganancias")
+        ganancias_title = QLabel("● Ganancias")
         ganancias_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #2ecc71;")
         ganancias_layout.addWidget(ganancias_title)
 
         self.ganancias_table = QTableWidget()
         self.ganancias_table.setColumnCount(3)
-        self.ganancias_table.setHorizontalHeaderLabels(["Categoría", "Real €", "% Total"])
-        self.ganancias_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        self.ganancias_table.horizontalHeader().setVisible(False)
         self.ganancias_table.verticalHeader().setVisible(False)
         self.ganancias_table.setStyleSheet("""
-            QHeaderView::section { background-color: #2ecc71; color: white; font-weight: bold; padding: 8px; }
-            QTableWidget { color: white; background-color: #2c3e50; font-size: 13px; gridline-color: #7f8c8d; }
+            QTableWidget { 
+                color: white; 
+                background-color: #2c3e50; 
+                font-size: 13px; 
+                gridline-color: #7f8c8d; 
+            }
         """)
         ganancias_layout.addWidget(self.ganancias_table)
         tables_layout.addWidget(ganancias_frame)
 
         main_layout.addLayout(tables_layout)
+
+        # --- TABELLA TRANSAZIONI IN BASSO ---
+        transactions_frame = QFrame()
+        transactions_frame.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
+        transactions_layout = QVBoxLayout(transactions_frame)
+
+        # Header con filtro
+        trans_header = QHBoxLayout()
+
+        trans_title = QLabel("📋 Lista Transacciones")
+        trans_title.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
+        trans_header.addWidget(trans_title)
+        trans_header.addStretch()
+
+        filter_label = QLabel("Filtrar:")
+        filter_label.setStyleSheet("color: white;")
+        trans_header.addWidget(filter_label)
+
+        self.category_filter = QComboBox()
+        self.category_filter.setStyleSheet(default_combo_box_style)
+        self.category_filter.currentIndexChanged.connect(self.filter_transactions)
+        trans_header.addWidget(self.category_filter)
+
+        transactions_layout.addLayout(trans_header)
+
+        # Tabella transazioni
+        self.transactions_table = QTableWidget()
+        self.transactions_table.setColumnCount(6)
+        self.transactions_table.setHorizontalHeaderLabels([
+            "Fecha", "Importe", "Descripción", "Categoría", "Tipo", ""
+        ])
+        self.transactions_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.transactions_table.verticalHeader().setVisible(False)
+        self.transactions_table.setStyleSheet("""
+            QHeaderView::section { background-color: #34495e; color: white; font-weight: bold; padding: 8px; }
+            QTableWidget { color: white; background-color: #2c3e50; font-size: 13px; gridline-color: #7f8c8d; }
+        """)
+        transactions_layout.addWidget(self.transactions_table)
+
+        main_layout.addWidget(transactions_frame)
 
         # Carica dati
         self.update_report()
@@ -353,6 +223,89 @@ class ReportView(BaseView):
 
         self.month_selector.setCurrentIndex(0)
 
+    def populate_category_filter(self):
+        """Popola il filtro categorie"""
+        self.category_filter.clear()
+        self.category_filter.addItem("Todas las categorías", None)
+
+        categories = set()
+        for trans in self.current_transactions:
+            cat = trans.get('service') or 'Otros'
+            categories.add(cat)
+
+        for cat in sorted(categories):
+            self.category_filter.addItem(cat, cat)
+
+    def filter_transactions(self):
+        """Filtra transazioni per categoria"""
+        selected_category = self.category_filter.currentData()
+
+        filtered = self.current_transactions.copy()
+        if selected_category:
+            filtered = [t for t in filtered if t.get('service') == selected_category]
+
+        filtered.sort(key=lambda x: x['date'], reverse=True)
+
+        # Pulisce completamente la tabella
+        self.transactions_table.clearContents()
+        self.transactions_table.setRowCount(len(filtered))
+
+        for i, trans in enumerate(filtered):
+            date_item = QTableWidgetItem(trans['date'])
+            date_item.setForeground(QColor("white"))
+            self.transactions_table.setItem(i, 0, date_item)
+
+            amount_color = "#e74c3c" if trans['type'] == 'Uscita' else "#2ecc71"
+            amount_item = QTableWidgetItem(f"{trans['amount']:,.2f} €")
+            amount_item.setForeground(QColor(amount_color))
+            amount_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            self.transactions_table.setItem(i, 1, amount_item)
+
+            desc = trans.get('provider') or trans['service']
+            desc_item = QTableWidgetItem(desc)
+            desc_item.setForeground(QColor("white"))
+            self.transactions_table.setItem(i, 2, desc_item)
+
+            category = trans.get('service') or 'Otros'
+            cat_item = QTableWidgetItem(category)
+            cat_item.setForeground(QColor("#bdc3c7"))
+            self.transactions_table.setItem(i, 3, cat_item)
+
+            tipo_item = QTableWidgetItem(trans['type'])
+            tipo_item.setForeground(QColor(amount_color))
+            self.transactions_table.setItem(i, 4, tipo_item)
+
+            delete_btn = QPushButton("🗑️")
+            delete_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #e74c3c;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                }
+                QPushButton:hover {
+                    background-color: #c0392b;
+                }
+            """)
+            delete_btn.clicked.connect(lambda checked=False, t=trans: self.delete_transaction(t))
+            self.transactions_table.setCellWidget(i, 5, delete_btn)
+
+    def delete_transaction(self, trans):
+        """Elimina transazione"""
+        reply = QMessageBox.question(
+            self,
+            "Confirmar",
+            f"¿Eliminar transacción de {trans['amount']}€?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            success = self.transaction_service.delete(trans['id'])
+            if success:
+                QMessageBox.information(self, "Éxito", "Transacción eliminada!")
+                self.update_report()
+
     def update_report(self):
         """Aggiorna tutto il report"""
         selected_month = self.month_selector.currentData()
@@ -373,7 +326,7 @@ class ReportView(BaseView):
             end_date=end_date
         )
 
-        # Salva le transazioni per il dialog
+        # Salva le transazioni
         self.current_transactions = transactions
 
         self.categories_gastos.clear()
@@ -393,26 +346,15 @@ class ReportView(BaseView):
                 ganancias[category] += amount
                 self.categories_ganancias.add(category)
 
-        self.update_chart(self.ax_gastos, self.canvas_gastos, gastos, "Gastos", "#e74c3c")
-        self.update_chart(self.ax_ganancias, self.canvas_ganancias, ganancias, "Ganancias", "#2ecc71")
-
         self.update_category_table(self.gastos_table, gastos, "#e74c3c")
         self.update_category_table(self.ganancias_table, ganancias, "#2ecc71")
 
-    def show_transactions_dialog(self):
-        """Mostra dialog con tutte le transazioni"""
-        if not hasattr(self, 'current_transactions'):
-            QMessageBox.warning(self, "Avviso", "Nessuna transazione da visualizzare!")
-            return
-
-        dialog = TransactionsDialog(self.current_transactions, self.transaction_service, self)
-        dialog.exec()
-
-        # Ricarica il report dopo la chiusura del dialog
-        self.update_report()
+        # Aggiorna filtro e tabella transazioni
+        self.populate_category_filter()
+        self.filter_transactions()
 
     def open_export_dialog(self):
-        """🆕 Apre il dialog per esportare transazioni"""
+        """Apre il dialog per esportare transazioni"""
         dialog = ExportDialog(
             self.transaction_service,
             self.property_service,
@@ -421,52 +363,46 @@ class ReportView(BaseView):
         )
         dialog.exec()
 
-    def update_chart(self, ax, canvas, data, title, color):
-        """Aggiorna grafico a barre"""
-        ax.clear()
-
-        if not data:
-            ax.text(0.5, 0.5, 'Sin datos', ha='center', va='center',
-                    color='white', fontsize=14, transform=ax.transAxes)
-            canvas.draw()
-            return
-
-        categories = list(data.keys())
-        values = list(data.values())
-
-        bars = ax.barh(categories, values, color=color, alpha=0.8)
-
-        for bar in bars:
-            width = bar.get_width()
-            ax.text(width, bar.get_y() + bar.get_height() / 2,
-                    f'{width:.0f}€', ha='left', va='center',
-                    color='white', fontsize=10, fontweight='bold')
-
-        ax.set_xlabel('Importe €', color='white', fontsize=11)
-        ax.set_title(title, color=color, fontsize=14, fontweight='bold')
-        ax.tick_params(colors='white')
-        ax.spines['bottom'].set_color('white')
-        ax.spines['top'].set_visible(False)
-        ax.spines['left'].set_color('white')
-        ax.spines['right'].set_visible(False)
-        ax.set_facecolor(COLORE_WIDGET_2)
-
-        canvas.figure.tight_layout()
-        canvas.draw()
-
     def update_category_table(self, table, data, color):
         """Aggiorna tabella categorie"""
         table.setRowCount(0)
 
         if not data:
+            # Se non ci sono dati, mostra solo l'header
+            table.setRowCount(1)
+
+            # Header personalizzato
+            for col, text in enumerate(["Categoría", "Real €", "% Total"]):
+                header_item = QTableWidgetItem(text)
+                header_item.setForeground(QColor("white"))
+                header_item.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+                header_item.setBackground(QColor("#34495e"))
+                header_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                table.setItem(0, col, header_item)
+
+            # Imposta larghezze colonne
+            table.setColumnWidth(0, 200)
+            table.setColumnWidth(1, 120)
+            table.setColumnWidth(2, 100)
             return
 
         total = sum(data.values())
         sorted_data = sorted(data.items(), key=lambda x: x[1], reverse=True)
 
-        table.setRowCount(len(sorted_data) + 1)
+        # +2 righe: 1 per header, 1 per totale
+        table.setRowCount(len(sorted_data) + 2)
 
-        for i, (category, amount) in enumerate(sorted_data):
+        # RIGA 0: Header personalizzato
+        for col, text in enumerate(["Categoría", "Real €", "% Total"]):
+            header_item = QTableWidgetItem(text)
+            header_item.setForeground(QColor("white"))
+            header_item.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+            header_item.setBackground(QColor("#34495e"))
+            header_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            table.setItem(0, col, header_item)
+
+        # RIGHE DATI (a partire dalla riga 1)
+        for i, (category, amount) in enumerate(sorted_data, start=1):
             percentage = (amount / total * 100) if total > 0 else 0
 
             cat_item = QTableWidgetItem(category)
@@ -483,22 +419,33 @@ class ReportView(BaseView):
             perc_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             table.setItem(i, 2, perc_item)
 
+        # RIGA TOTALE (ultima riga)
+        total_row = len(sorted_data) + 1
+
         total_cat = QTableWidgetItem("TOTAL")
         total_cat.setForeground(QColor("white"))
         total_cat.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-        table.setItem(len(sorted_data), 0, total_cat)
+        total_cat.setBackground(QColor("#1a2530"))
+        table.setItem(total_row, 0, total_cat)
 
         total_amount = QTableWidgetItem(f"{total:,.2f} €")
         total_amount.setForeground(QColor(color))
         total_amount.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         total_amount.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        table.setItem(len(sorted_data), 1, total_amount)
+        total_amount.setBackground(QColor("#1a2530"))
+        table.setItem(total_row, 1, total_amount)
 
         total_perc = QTableWidgetItem("100%")
         total_perc.setForeground(QColor("#bdc3c7"))
         total_perc.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         total_perc.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        table.setItem(len(sorted_data), 2, total_perc)
+        total_perc.setBackground(QColor("#1a2530"))
+        table.setItem(total_row, 2, total_perc)
+
+        # Imposta larghezze colonne
+        table.setColumnWidth(0, 200)
+        table.setColumnWidth(1, 120)
+        table.setColumnWidth(2, 100)
 
     def add_transaction(self):
         """Dialog per aggiungere transazione manuale"""
