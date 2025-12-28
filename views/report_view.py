@@ -531,4 +531,4 @@ class ReportView(BaseView):
                     QMessageBox.warning(self, "Error", "No se pudo guardar la transacción.")
 
             except ValueError:
-                QMessageBox.warning(self, "Error", "Importe inválido!")
+                QMessageBox.warning(self, "Error", "Importe inválido!") #errore
