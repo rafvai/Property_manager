@@ -15,6 +15,7 @@ from dialogs import ExportDialog
 from services.export_service import ExportService
 from styles import *
 from views.base_view import BaseView
+from translations_manager import get_translation_manager
 
 
 class ReportView(BaseView):
@@ -24,6 +25,7 @@ class ReportView(BaseView):
         # Cache per le categorie dinamiche
         self.categories_gastos = set()
         self.categories_ganancias = set()
+        self.tm = get_translation_manager()
 
         # Export service
         self.export_service = ExportService()
@@ -39,7 +41,7 @@ class ReportView(BaseView):
         # --- HEADER RIGA 1 ---
         header_layout = QHBoxLayout()
 
-        title = QLabel("📊 Tracking mensile")
+        title = QLabel(self.tm.get("report", "title"))
         title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
         header_layout.addWidget(title)
         header_layout.addStretch()
@@ -80,13 +82,13 @@ class ReportView(BaseView):
         actions_layout.addStretch()  # Spinge i bottoni a destra
 
         # Bottone aggiungi transazione
-        add_btn = QPushButton("+ Nueva transacción")
+        add_btn = QPushButton(self.tm.get("report", "new_transaction"))
         add_btn.setStyleSheet(default_aggiungi_button)
         add_btn.clicked.connect(self.add_transaction)
         actions_layout.addWidget(add_btn)
 
         # Bottone Export
-        export_btn = QPushButton("📥 Esporta")
+        export_btn = QPushButton(self.tm.get("report", "export"))
         export_btn.setStyleSheet("""
             QPushButton {
                 background-color: #28a745;

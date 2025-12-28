@@ -2,6 +2,7 @@ from PySide6.QtWidgets import QVBoxLayout, QFrame
 from views.base_view import BaseView
 from dialogs import PlannerCalendarWidget
 from styles import *
+from translations_manager import get_translation_manager
 
 
 class CalendarView(BaseView):
@@ -9,6 +10,7 @@ class CalendarView(BaseView):
 
     def __init__(self, property_service, transaction_service, deadline_service, parent=None):
         self.deadline_service = deadline_service
+        self.tm = get_translation_manager()
         super().__init__(property_service, transaction_service, None, parent)
 
     def setup_ui(self):

@@ -11,12 +11,14 @@ from PySide6.QtWidgets import (
 
 from views.base_view import BaseView
 from styles import *
+from translations_manager import get_translation_manager
 
 
 class SettingsView(BaseView):
     """View per le impostazioni dell'applicazione"""
 
     def __init__(self, property_service, transaction_service, parent=None):
+        self.tm = get_translation_manager()
         super().__init__(property_service, transaction_service, None, parent)
 
     def setup_ui(self):
@@ -28,7 +30,7 @@ class SettingsView(BaseView):
         # --- HEADER ---
         header_layout = QHBoxLayout()
 
-        title = QLabel("⚙️ Impostazioni")
+        title = QLabel(self.tm.get("settings", "title"))
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         header_layout.addWidget(title)
         header_layout.addStretch()

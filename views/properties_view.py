@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
 
 from styles import *
 from views.base_view import BaseView
+from translations_manager import get_translation_manager
 
 
 class PropertiesView(BaseView):
@@ -15,6 +16,7 @@ class PropertiesView(BaseView):
     def __init__(self, property_service, transaction_service, document_service, deadline_service, parent=None):
         self.deadline_service = deadline_service
         self.document_service = document_service
+        self.tm = get_translation_manager()
         super().__init__(property_service, transaction_service, document_service, parent)
 
     def setup_ui(self):
@@ -26,13 +28,13 @@ class PropertiesView(BaseView):
         # --- HEADER ---
         header_layout = QHBoxLayout()
 
-        title = QLabel("🏠 Le mie proprietà")
+        title = QLabel(self.tm.get("properties", "title"))
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         header_layout.addWidget(title)
         header_layout.addStretch()
 
         # Bottone aggiungi
-        add_btn = QPushButton("+ Aggiungi proprietà")
+        add_btn = QPushButton(self.tm.get("properties", "add_property"))
         add_btn.setStyleSheet(default_aggiungi_button)
         add_btn.setFixedHeight(36)
         add_btn.clicked.connect(self.add_property)
@@ -44,7 +46,7 @@ class PropertiesView(BaseView):
         search_layout = QHBoxLayout()
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Cerca per nome o indirizzo...")
+        self.search_input.setPlaceholderText(self.tm.get("properties", "search_placeholder"))
         self.search_input.setStyleSheet(f"""
             QLineEdit {{
                 background-color: {COLORE_WIDGET_2};
@@ -119,7 +121,7 @@ class PropertiesView(BaseView):
 
         # Se non ci sono proprietà
         if not properties:
-            no_data_label = QLabel("📭 Nessuna proprietà trovata")
+            no_data_label = QLabel(self.tm.get("properties", "no_properties"))
             no_data_label.setStyleSheet("color: #bdc3c7; font-size: 16px; padding: 40px;")
             no_data_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.cards_layout.addWidget(no_data_label)
@@ -186,7 +188,7 @@ class PropertiesView(BaseView):
         saldo = self.transaction_service.get_balance(property_id=prop['id'])
 
         # Conta documenti
-        docs = self.document_service.list_documents(prop['id'])  # 🔧 Usa ID
+        docs = self.document_service.list_documents(prop['id'])
         num_docs = len(docs)
 
         # Conta scadenze attive
@@ -196,17 +198,17 @@ class PropertiesView(BaseView):
         # Saldo
         saldo_color = "#2ecc71" if saldo >= 0 else "#e74c3c"
         saldo_icon = "💰" if saldo >= 0 else "⚠️"
-        saldo_label = QLabel(f"{saldo_icon} Saldo: {saldo:,.2f}€")
+        saldo_label = QLabel(f"{saldo_icon} {self.tm.get('properties', 'balance')}: {saldo:,.2f}€")
         saldo_label.setStyleSheet(f"color: {saldo_color}; font-size: 13px; font-weight: bold;")
         stats_layout.addWidget(saldo_label)
 
         # Documenti
-        docs_label = QLabel(f"📄 {num_docs} doc")
+        docs_label = QLabel(f"📄 {num_docs} {self.tm.get('properties', 'documents_short')}")
         docs_label.setStyleSheet("color: #3498db; font-size: 13px;")
         stats_layout.addWidget(docs_label)
 
         # Scadenze
-        deadline_label = QLabel(f"⏰ {num_deadlines} scadenze")
+        deadline_label = QLabel(f"⏰ {num_deadlines} {self.tm.get('properties', 'deadlines')}")
         deadline_label.setStyleSheet("color: #f39c12; font-size: 13px;")
         stats_layout.addWidget(deadline_label)
 
@@ -218,7 +220,7 @@ class PropertiesView(BaseView):
         buttons_layout.setSpacing(10)
 
         # Bottone Modifica
-        edit_btn = QPushButton("✏️ Modifica")
+        edit_btn = QPushButton(f"✏️ {self.tm.get('common', 'edit')}")
         edit_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
@@ -237,7 +239,7 @@ class PropertiesView(BaseView):
         buttons_layout.addWidget(edit_btn)
 
         # Bottone Elimina
-        delete_btn = QPushButton("🗑️ Elimina")
+        delete_btn = QPushButton(f"🗑️ {self.tm.get('common', 'delete')}")
         delete_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e74c3c;
@@ -263,7 +265,7 @@ class PropertiesView(BaseView):
     def add_property(self):
         """Dialog per aggiungere una nuova proprietà"""
         dialog = QDialog(self)
-        dialog.setWindowTitle("Nuova proprietà")
+        dialog.setWindowTitle(self.tm.get("properties", "new_property"))
         dialog.setMinimumWidth(400)
 
         layout = QFormLayout(dialog)
@@ -275,9 +277,9 @@ class PropertiesView(BaseView):
         owner_input = QLineEdit()
         owner_input.setPlaceholderText("Es: Mario Rossi")
 
-        layout.addRow("Nome*:", name_input)
-        layout.addRow("Indirizzo*:", address_input)
-        layout.addRow("Proprietario*:", owner_input)
+        layout.addRow(self.tm.get("common", "name") + "*:", name_input)
+        layout.addRow(self.tm.get("common", "address") + "*:", address_input)
+        layout.addRow(self.tm.get("common", "owner") + "*:", owner_input)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)
@@ -290,21 +292,24 @@ class PropertiesView(BaseView):
             proprietario = owner_input.text().strip()
 
             if not nome or not indirizzo or not proprietario:
-                QMessageBox.warning(self, "Campi obbligatori", "Compila tutti i campi!")
+                QMessageBox.warning(self, self.tm.get("common", "error"),
+                                  self.tm.get("properties", "required_fields"))
                 return
 
             property_id = self.property_service.create(nome, indirizzo, proprietario)
 
             if property_id:
-                QMessageBox.information(self, "Successo", f"Proprietà '{nome}' aggiunta!")
+                QMessageBox.information(self, self.tm.get("common", "success"),
+                                      self.tm.get("properties", "property_added").format(nome))
                 self.load_properties()
             else:
-                QMessageBox.warning(self, "Errore", "Impossibile aggiungere la proprietà.")
+                QMessageBox.warning(self, self.tm.get("common", "error"),
+                                  "Impossibile aggiungere la proprietà.")
 
     def edit_property(self, prop):
         """Dialog per modificare una proprietà esistente"""
         dialog = QDialog(self)
-        dialog.setWindowTitle(f"Modifica: {prop['name']}")
+        dialog.setWindowTitle(self.tm.get("properties", "edit_property") + f": {prop['name']}")
         dialog.setMinimumWidth(400)
 
         layout = QFormLayout(dialog)
@@ -313,9 +318,9 @@ class PropertiesView(BaseView):
         address_input = QLineEdit(prop['address'])
         owner_input = QLineEdit(prop['owner'])
 
-        layout.addRow("Nome*:", name_input)
-        layout.addRow("Indirizzo*:", address_input)
-        layout.addRow("Proprietario*:", owner_input)
+        layout.addRow(self.tm.get("common", "name") + "*:", name_input)
+        layout.addRow(self.tm.get("common", "address") + "*:", address_input)
+        layout.addRow(self.tm.get("common", "owner") + "*:", owner_input)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)
@@ -328,7 +333,8 @@ class PropertiesView(BaseView):
             proprietario = owner_input.text().strip()
 
             if not nome or not indirizzo or not proprietario:
-                QMessageBox.warning(self, "Campi obbligatori", "Compila tutti i campi!")
+                QMessageBox.warning(self, self.tm.get("common", "error"),
+                                  self.tm.get("properties", "required_fields"))
                 return
 
             success = self.property_service.update(
@@ -339,22 +345,20 @@ class PropertiesView(BaseView):
             )
 
             if success:
-                QMessageBox.information(self, "Successo", "Proprietà aggiornata!")
+                QMessageBox.information(self, self.tm.get("common", "success"),
+                                      self.tm.get("properties", "property_updated"))
                 self.load_properties()
             else:
-                QMessageBox.warning(self, "Errore", "Impossibile aggiornare la proprietà.")
+                QMessageBox.warning(self, self.tm.get("common", "error"),
+                                  "Impossibile aggiornare la proprietà.")
 
     def delete_property(self, prop):
         """Elimina una proprietà con conferma"""
         reply = QMessageBox.question(
             self,
-            "Conferma eliminazione",
-            f"Sei sicuro di voler eliminare '{prop['name']}'?\n\n"
-            f"⚠️ ATTENZIONE: Verranno eliminate anche:\n"
-            f"• Tutte le transazioni associate\n"
-            f"• Tutte le scadenze associate\n"
-            f"• I documenti NON verranno eliminati\n\n"
-            f"Questa operazione è IRREVERSIBILE!",
+            self.tm.get("common", "confirm"),
+            self.tm.get("properties", "delete_confirm").format(prop['name']) + "\n\n" +
+            self.tm.get("properties", "delete_warning"),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
@@ -374,10 +378,12 @@ class PropertiesView(BaseView):
             success = self.property_service.delete(prop['id'])
 
             if success:
-                QMessageBox.information(self, "Successo", f"Proprietà '{prop['name']}' eliminata!")
+                QMessageBox.information(self, self.tm.get("common", "success"),
+                                      self.tm.get("properties", "property_deleted").format(prop['name']))
                 self.load_properties()
             else:
-                QMessageBox.warning(self, "Errore", "Impossibile eliminare la proprietà.")
+                QMessageBox.warning(self, self.tm.get("common", "error"),
+                                  "Impossibile eliminare la proprietà.")
 
     def filter_properties(self, text):
         """Filtra le proprietà in base al testo di ricerca"""

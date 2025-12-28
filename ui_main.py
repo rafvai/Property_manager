@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt
 from dialogs import CustomTitleBar
 import Functions
 from styles import *
+from translations_manager import get_translation_manager
 
 from services.database_service import DatabaseService
 from services.property_service import PropertyService
@@ -27,8 +28,12 @@ from views.settings_view import SettingsView
 
 
 class DashboardWindow(QMainWindow):
-    def __init__(self, db_service):
+    def __init__(self, db_service, preferences_service):
         super().__init__()
+
+        # Servizi
+        self.preferences_service = preferences_service
+        self.tm = get_translation_manager()
 
         # Inizializza i services
         conn = db_service.conn
@@ -61,18 +66,7 @@ class DashboardWindow(QMainWindow):
 
         # Menu laterale
         self.menu = QListWidget()
-        menu_items = [
-            ("icons/homepage.png", "Dashboard"),
-            ("icons/property.png", "Le mie proprietà"),
-            ("icons/document.png", "Documenti"),
-            ("icons/bar-chart.png", "Contabilità"),
-            ("icons/pie-chart.png", "Report"),
-            ("icons/calendar.png", "Calendario"),
-            ("icons/settings.png", "Impostazioni"),
-        ]
-        for icon_path, text in menu_items:
-            item = QListWidgetItem(QIcon(icon_path), text)
-            self.menu.addItem(item)
+        self.update_menu_items()
 
         self.menu.setFixedWidth(int(self.width() * W_LAT_MENU))
         self.menu.setMinimumWidth(100)
@@ -99,11 +93,30 @@ class DashboardWindow(QMainWindow):
             self.property_service,
             self.transaction_service,
             self.deadline_service,
-            self  # Passa riferimento alla finestra principale
+            self.preferences_service,
+            self
         ))
 
         # SCHERMO INTERO DI DEFAULT
         self.showMaximized()
+
+    def update_menu_items(self):
+        """Aggiorna le voci del menu con le traduzioni"""
+        self.menu.clear()
+
+        menu_items = [
+            ("icons/homepage.png", self.tm.get("menu", "dashboard")),
+            ("icons/property.png", self.tm.get("menu", "properties")),
+            ("icons/document.png", self.tm.get("menu", "documents")),
+            ("icons/bar-chart.png", self.tm.get("menu", "accounting")),
+            ("icons/pie-chart.png", self.tm.get("menu", "report")),
+            ("icons/calendar.png", self.tm.get("menu", "calendar")),
+            ("icons/settings.png", self.tm.get("menu", "settings")),
+        ]
+
+        for icon_path, text in menu_items:
+            item = QListWidgetItem(QIcon(icon_path), text)
+            self.menu.addItem(item)
 
     def show_view(self, view):
         """Mostra una view nell'area contenuti"""
@@ -117,16 +130,15 @@ class DashboardWindow(QMainWindow):
 
     def menu_navigation(self, index):
         """Gestisce la navigazione del menu"""
-        voce = self.sender().item(index).text()
-
-        if "Dashboard" in voce:
+        if index == 0:  # Dashboard
             self.show_view(DashboardView(
                 self.property_service,
                 self.transaction_service,
                 self.deadline_service,
+                self.preferences_service,
                 self
             ))
-        elif "proprietà" in voce:
+        elif index == 1:  # Properties
             self.show_view(PropertiesView(
                 self.property_service,
                 self.transaction_service,
@@ -134,60 +146,60 @@ class DashboardWindow(QMainWindow):
                 self.deadline_service,
                 self
             ))
-        elif "Documenti" in voce:
+        elif index == 2:  # Documents
             self.show_view(DocumentsView(
                 self.property_service,
                 self.transaction_service,
                 self.document_service,
                 self
             ))
-        elif "Contabilità" in voce:
+        elif index == 3:  # Accounting
             self.show_view(AccountingView(
                 self.property_service,
                 self.transaction_service,
                 self
             ))
-        elif "Report" in voce:
+        elif index == 4:  # Report
             self.show_view(ReportView(
                 self.property_service,
                 self.transaction_service,
                 self
             ))
-        elif "Calendario" in voce:
+        elif index == 5:  # Calendar
             self.show_view(CalendarView(
                 self.property_service,
                 self.transaction_service,
                 self.deadline_service,
                 self
             ))
-        elif "Impostazioni" in voce:
+        elif index == 6:  # Settings
             self.show_view(SettingsView(
                 self.property_service,
                 self.transaction_service,
                 self
             ))
 
-    # NAVIGA ALLE SEZIONI
     def navigate_to_section(self, section_name):
         """Naviga a una sezione specifica tramite nome"""
-        section_map = {
-            "Dashboard": 0,
-            "Le mie proprietà": 1,
-            "Documenti": 2,
-            "Contabilità": 3,
-            "Report": 4,
-            "Calendario": 5,
-            "Impostazioni": 6
+        # Mappa i nomi tradotti agli indici
+        section_indices = {
+            self.tm.get("menu", "dashboard"): 0,
+            self.tm.get("menu", "properties"): 1,
+            self.tm.get("menu", "documents"): 2,
+            self.tm.get("menu", "accounting"): 3,
+            self.tm.get("menu", "report"): 4,
+            self.tm.get("menu", "calendar"): 5,
+            self.tm.get("menu", "settings"): 6
         }
 
-        if section_name in section_map:
-            index = section_map[section_name]
+        if section_name in section_indices:
+            index = section_indices[section_name]
             self.menu.setCurrentRow(index)
             self.menu_navigation(index)
 
     def resizeEvent(self, event):
         """Ridimensiona il menu laterale"""
-        if hasattr(self, 'menu'):  # 🔧 Verifica che il menu esista
+        if hasattr(self, 'menu'):
             self.menu.setFixedWidth(int(self.width() * W_LAT_MENU))
         super().resizeEvent(event)
 

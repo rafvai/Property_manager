@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 from dialogs import DocumentMetadataDialog
 from styles import *
 from views.base_view import BaseView
+from translations_manager import get_translation_manager
 
 DOCS_DIR = "docs"
 
@@ -22,7 +23,7 @@ class DocumentsView(BaseView):
     def __init__(self, property_service, transaction_service, document_service, parent=None):
         self.proprieta = property_service.get_all()
         self.selected_property = self.proprieta[0] if self.proprieta else None
-
+        self.tm = get_translation_manager()
         # Icone
         icon_path = os.path.join(os.path.dirname(__file__), "..", "icons", "folder.png")
         self.folder_icon = QIcon(icon_path) if os.path.exists(icon_path) else QIcon()
@@ -40,13 +41,13 @@ class DocumentsView(BaseView):
         # --- HEADER ---
         header_layout = QHBoxLayout()
 
-        title = QLabel("📄 Documenti")
+        title = QLabel(self.tm.get("documents", "title"))
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         header_layout.addWidget(title)
         header_layout.addStretch()
 
         # 🆕 Bottone aggiungi spostato qui
-        add_doc_btn = QPushButton("+ Aggiungi documento")
+        add_doc_btn = QPushButton(self.tm.get("documents", "add_document"))
         add_doc_btn.setStyleSheet(default_aggiungi_button)
         add_doc_btn.setFixedHeight(36)
         add_doc_btn.clicked.connect(self.add_document)
