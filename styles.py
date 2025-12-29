@@ -1,45 +1,102 @@
 ########### COLORS ####################
-COLORE_BACKGROUND = "#131b23"
-COLORE_SECONDARIO = "#1a2530"
-COLORE_ITEM_SELEZIONATO = "#1e7be7"
-COLORE_ITEM_HOVER = "#539fec"
-COLORE_WIDGET_1 = "#FFFDF8"
-COLORE_WIDGET_2 = "#1a2530"
-COLORE_RIGA_1 = "#dc8317"
-COLORE_RIGA_2 = "#bd7014"
-COLORE_BIANCO = "#d4d4d4"
+# Schema colori professionale: Dark Blue Corporate
+COLORE_BACKGROUND = "#0f1419"           # Nero-blu molto scuro
+COLORE_SECONDARIO = "#1a2332"           # Blu scuro
+COLORE_ITEM_SELEZIONATO = "#2563eb"     # Blu corporate
+COLORE_ITEM_HOVER = "#3b82f6"           # Blu più chiaro per hover
+COLORE_WIDGET_1 = "#ffffff"             # Bianco
+COLORE_WIDGET_2 = "#1e293b"             # Slate scuro
+COLORE_RIGA_1 = "#334155"               # Slate
+COLORE_RIGA_2 = "#475569"               # Slate chiaro
+COLORE_BIANCO = "#f8fafc"               # Off-white
+
+# Colori semantici
+COLORE_SUCCESS = "#10b981"              # Verde
+COLORE_ERROR = "#ef4444"                # Rosso
+COLORE_WARNING = "#f59e0b"              # Arancione
+COLORE_INFO = "#3b82f6"
 
 ########### DIMENSIONS ##################
-W_LAT_MENU = 0.25
+W_LAT_MENU = 0.20
 
 ######## STYLES #######################
 default_combo_box_style = f"""
-    QComboBox {{background-color: {COLORE_SECONDARIO}; padding: 4px 8px; min-height: 24px; border-radius: 5px; color: white; font-size: 14px;}}
-    QComboBox::drop-down {{ border: 0px;}}
-    QComboBox QAbstractItemView {{ background-color: {COLORE_SECONDARIO}; color: white; selection-background-color: #007BFF; selection-color: white;}}
-    """
+    QComboBox {{
+        background-color: {COLORE_SECONDARIO}; 
+        padding: 8px 12px; 
+        min-height: 20px; 
+        border-radius: 6px; 
+        color: {COLORE_BIANCO}; 
+        font-size: 14px;
+        border: 1px solid #334155;
+    }}
+    QComboBox:hover {{
+        border: 1px solid {COLORE_ITEM_HOVER};
+    }}
+    QComboBox::drop-down {{ 
+        border: 0px;
+        width: 30px;
+    }}
+    QComboBox::down-arrow {{
+        image: url(icons/down-arrow.png);
+        width: 12px;
+        height: 12px;
+    }}
+    QComboBox QAbstractItemView {{ 
+        background-color: {COLORE_SECONDARIO}; 
+        color: {COLORE_BIANCO}; 
+        selection-background-color: {COLORE_ITEM_SELEZIONATO}; 
+        selection-color: white;
+        border: 1px solid #334155;
+    }}
+"""
 
 default_menu_lat_style = f"""
-    QListWidget {{ color: white; background-color: {COLORE_BACKGROUND}; padding: 10px; border-radius: 5px;}}
-    QListWidget::item {{ padding: 10px 10px 10px 20px; font-size: 20px; }}
-    QListWidget::item:selected {{ background:{COLORE_ITEM_SELEZIONATO}; border-radius: 8px;}}
-    QListWidget::item:hover {{background: {COLORE_ITEM_HOVER}; border-radius: 8px;}}
-    """
+    QListWidget {{ 
+        color: {COLORE_BIANCO}; 
+        background-color: {COLORE_BACKGROUND}; 
+        padding: 10px; 
+        border-radius: 0px;
+        border-right: 1px solid #334155;
+    }}
+    QListWidget::item {{ 
+        padding: 12px 10px 12px 20px; 
+        font-size: 15px;
+        font-weight: 500;
+        margin: 2px 0px;
+    }}
+    QListWidget::item:selected {{ 
+        background: {COLORE_ITEM_SELEZIONATO}; 
+        border-radius: 6px;
+        color: white;
+    }}
+    QListWidget::item:hover {{
+        background: {COLORE_ITEM_HOVER}; 
+        border-radius: 6px;
+    }}
+"""
 
-default_aggiungi_button = """
-            QPushButton {
-                background-color: #007BFF;
-                color: white;
-                font-weight: bold;
-                padding: 6px 14px;
-                border-radius: 8px;
-            }
-            QPushButton:hover {
-                background-color: #0056b3;
-            }
-        """
+default_aggiungi_button = f"""
+    QPushButton {{
+        background-color: {COLORE_ITEM_SELEZIONATO};
+        color: white;
+        font-weight: 600;
+        padding: 8px 16px;
+        border-radius: 6px;
+        border: none;
+        font-size: 14px;
+    }}
+    QPushButton:hover {{
+        background-color: {COLORE_ITEM_HOVER};
+    }}
+    QPushButton:pressed {{
+        background-color: #1d4ed8;
+    }}
+"""
+
 custom_title_style = f"""
-            background-color: {COLORE_SECONDARIO}; 
-            color: white;
-            padding: 10px 15px;
-        """
+    background-color: {COLORE_SECONDARIO}; 
+    color: white;
+    padding: 10px 15px;
+    border-bottom: 1px solid #334155;
+"""

@@ -115,7 +115,7 @@ class ReportView(BaseView):
         gastos_frame.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
         gastos_layout = QVBoxLayout(gastos_frame)
 
-        gastos_title = QLabel("● Gastos")
+        gastos_title = QLabel(f"● {self.tm.get("report", "expenses")}")
         gastos_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #e74c3c;")
         gastos_layout.addWidget(gastos_title)
 
@@ -139,7 +139,7 @@ class ReportView(BaseView):
         ganancias_frame.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
         ganancias_layout = QVBoxLayout(ganancias_frame)
 
-        ganancias_title = QLabel("● Ganancias")
+        ganancias_title = QLabel(f"● {self.tm.get("report", "income")}")
         ganancias_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #2ecc71;")
         ganancias_layout.addWidget(ganancias_title)
 
@@ -168,7 +168,7 @@ class ReportView(BaseView):
         # Header con filtro
         trans_header = QHBoxLayout()
 
-        trans_title = QLabel("📋 Lista Transacciones")
+        trans_title = QLabel(self.tm.get("report", "view_transactions"))
         trans_title.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
         trans_header.addWidget(trans_title)
         trans_header.addStretch()

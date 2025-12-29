@@ -88,8 +88,8 @@ class TranslationManager:
                     "new_transaction": "+ Nuova transazione",
                     "view_transactions": "📋 Visualizza transazioni",
                     "export": "📥 Esporta",
-                    "expenses": "🔴 Uscite",
-                    "income": "🟢 Entrate"
+                    "expenses": "Uscite",
+                    "income": "Entrate"
                 },
                 "calendar": {
                     "title": "📅 Calendario"
@@ -180,8 +180,8 @@ class TranslationManager:
                     "new_transaction": "+ Nueva transacción",
                     "view_transactions": "📋 Ver transacciones",
                     "export": "📥 Exportar",
-                    "expenses": "🔴 Gastos",
-                    "income": "🟢 Ingresos"
+                    "expenses": "Gastos",
+                    "income": "Ingresos"
                 },
                 "calendar": {
                     "title": "📅 Calendario"
@@ -268,12 +268,12 @@ class TranslationManager:
                     "month": "Month"
                 },
                 "report": {
-                    "title": "📊 Monthly Tracking",
+                    "title": "Monthly Tracking",
                     "new_transaction": "+ New transaction",
                     "view_transactions": "📋 View transactions",
                     "export": "📥 Export",
-                    "expenses": "🔴 Expenses",
-                    "income": "🟢 Income"
+                    "expenses": "Expenses",
+                    "income": "Income"
                 },
                 "calendar": {
                     "title": "📅 Calendar"

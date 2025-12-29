@@ -8,6 +8,7 @@ from matplotlib.figure import Figure
 import matplotlib.patches as mpatches
 from datetime import datetime, timedelta
 import numpy as np
+import flag
 
 from views.base_view import BaseView
 from styles import *
@@ -294,9 +295,19 @@ class DashboardView(BaseView):
         self.preferences_service.set_language(lang_code)
         self.tm.set_language(lang_code)
 
+        # 🔧 FIX: Blocca temporaneamente i segnali del menu per evitare navigazione
+        if hasattr(self.main_window, 'menu'):
+            self.main_window.menu.blockSignals(True)
+
         # Aggiorna anche il menu della finestra principale
         if hasattr(self.main_window, 'update_menu_items'):
             self.main_window.update_menu_items()
+            # Assicurati che "Dashboard" sia selezionato
+            self.main_window.menu.setCurrentRow(0)
+
+        # 🔧 FIX: Riattiva i segnali del menu
+        if hasattr(self.main_window, 'menu'):
+            self.main_window.menu.blockSignals(False)
 
         # Ricarica i dati (potrebbero essere cambiati)
         self.proprieta = self.property_service.get_all()
