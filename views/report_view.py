@@ -123,6 +123,8 @@ class ReportView(BaseView):
         self.gastos_table.setColumnCount(3)
         self.gastos_table.horizontalHeader().setVisible(False)
         self.gastos_table.verticalHeader().setVisible(False)
+        # 🔧 FIX: Rendi NON editabile
+        self.gastos_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.gastos_table.setStyleSheet("""
             QTableWidget { 
                 color: white; 
@@ -147,6 +149,8 @@ class ReportView(BaseView):
         self.ganancias_table.setColumnCount(3)
         self.ganancias_table.horizontalHeader().setVisible(False)
         self.ganancias_table.verticalHeader().setVisible(False)
+        # 🔧 FIX: Rendi NON editabile
+        self.ganancias_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.ganancias_table.setStyleSheet("""
             QTableWidget { 
                 color: white; 
@@ -190,11 +194,25 @@ class ReportView(BaseView):
         self.transactions_table.setHorizontalHeaderLabels([
             self.tm.get("common", "date"), "Importe", self.tm.get("common", "description"), self.tm.get("common", "category"), "Tipo",""
         ])
+        # 🔧 FIX: Header visibile e stile coerente
+        self.transactions_table.horizontalHeader().setVisible(True)
         self.transactions_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.transactions_table.verticalHeader().setVisible(False)
+        # 🔧 FIX: Rendi NON editabile (tranne bottone delete)
+        self.transactions_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.transactions_table.setStyleSheet("""
-            QHeaderView::section { background-color: #34495e; color: white; font-weight: bold; padding: 8px; }
-            QTableWidget { color: white; background-color: #2c3e50; font-size: 13px; gridline-color: #7f8c8d; }
+            QHeaderView::section { 
+                background-color: #34495e; 
+                color: white; 
+                font-weight: bold; 
+                padding: 8px; 
+            }
+            QTableWidget { 
+                color: white; 
+                background-color: #2c3e50; 
+                font-size: 13px; 
+                gridline-color: #7f8c8d; 
+            }
         """)
         transactions_layout.addWidget(self.transactions_table)
 

@@ -71,7 +71,7 @@ class AccountingView(BaseView):
         main_layout.addLayout(header_layout)
 
         # --- GRAFICO CON MATPLOTLIB ---
-        self.fig = Figure(figsize=(10, 4), facecolor=COLORE_WIDGET_2)
+        self.fig = Figure(figsize=(10, 3.5), facecolor=COLORE_WIDGET_2)
         self.canvas = FigureCanvas(self.fig)
         self.ax = self.fig.add_subplot(111, facecolor=COLORE_WIDGET_2)
 
@@ -85,8 +85,9 @@ class AccountingView(BaseView):
         self.ax.spines['right'].set_color('white')
         self.ax.grid(True, alpha=0.3, color='white')
 
-        self.canvas.setMinimumHeight(300)
-        self.canvas.setMaximumHeight(400)
+        # 🔧 FIX: Riduci altezza minima e massima del grafico
+        self.canvas.setMinimumHeight(250)
+        self.canvas.setMaximumHeight(350)
 
         main_layout.addWidget(self.canvas, stretch=0)
 
@@ -104,6 +105,9 @@ class AccountingView(BaseView):
         ])
 
         self.accounting_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+
+        # 🔧 FIX: Rendi la tabella NON editabile
+        self.accounting_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
         for i in range(3):
             self.accounting_table.setRowHeight(i, 45)
