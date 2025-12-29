@@ -62,9 +62,7 @@ class DashboardView(BaseView):
         self.main_window = main_window
         self.preferences_service = preferences_service
 
-        # NON chiamare get_translation_manager qui perché BaseView lo fa già
-        # self.tm sarà disponibile dopo super().__init__
-
+        # Ricarica le proprietà
         self.proprieta = property_service.get_all()
         self.selected_property = None
 
@@ -72,6 +70,7 @@ class DashboardView(BaseView):
         self._saved_property_index = 0
         self._saved_period_index = 0
 
+        # IMPORTANTE: BaseView.__init__ imposterà self.tm e chiamerà setup_ui()
         super().__init__(property_service, transaction_service, None, parent)
 
     def setup_ui(self):
