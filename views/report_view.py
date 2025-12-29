@@ -82,7 +82,7 @@ class ReportView(BaseView):
         actions_layout.addStretch()  # Spinge i bottoni a destra
 
         # Bottone aggiungi transazione
-        add_btn = QPushButton(f"+ {self.tm.get("report", "new_transaction")}")
+        add_btn = QPushButton(f"+ {self.tm.get('report', 'new_transaction')}")
         add_btn.setStyleSheet(default_aggiungi_button)
         add_btn.clicked.connect(self.add_transaction)
         actions_layout.addWidget(add_btn)
@@ -115,7 +115,7 @@ class ReportView(BaseView):
         gastos_frame.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
         gastos_layout = QVBoxLayout(gastos_frame)
 
-        gastos_title = QLabel(f"● {self.tm.get("report", "expenses")}")
+        gastos_title = QLabel(f"● {self.tm.get('report', 'expenses')}")
         gastos_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #e74c3c;")
         gastos_layout.addWidget(gastos_title)
 
@@ -123,8 +123,6 @@ class ReportView(BaseView):
         self.gastos_table.setColumnCount(3)
         self.gastos_table.horizontalHeader().setVisible(False)
         self.gastos_table.verticalHeader().setVisible(False)
-        # 🔧 FIX: Rendi NON editabile
-        self.gastos_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.gastos_table.setStyleSheet("""
             QTableWidget { 
                 color: white; 
@@ -141,7 +139,7 @@ class ReportView(BaseView):
         ganancias_frame.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
         ganancias_layout = QVBoxLayout(ganancias_frame)
 
-        ganancias_title = QLabel(f"● {self.tm.get("report", "income")}")
+        ganancias_title = QLabel(f"● {self.tm.get('report', 'income')}")
         ganancias_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #2ecc71;")
         ganancias_layout.addWidget(ganancias_title)
 
@@ -149,8 +147,6 @@ class ReportView(BaseView):
         self.ganancias_table.setColumnCount(3)
         self.ganancias_table.horizontalHeader().setVisible(False)
         self.ganancias_table.verticalHeader().setVisible(False)
-        # 🔧 FIX: Rendi NON editabile
-        self.ganancias_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.ganancias_table.setStyleSheet("""
             QTableWidget { 
                 color: white; 
@@ -191,29 +187,15 @@ class ReportView(BaseView):
         # Tabella transazioni
         self.transactions_table = QTableWidget()
         self.transactions_table.setColumnCount(6)
-        self.transactions_table.setHorizontalHeaderLabels([
-            self.tm.get("common", "date"), "Importe", self.tm.get("common", "description"), self.tm.get("common", "category"), "Tipo",""
-        ])
-        # 🔧 FIX: Header visibile e stile coerente
-        self.transactions_table.horizontalHeader().setVisible(True)
-        self.transactions_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.transactions_table.horizontalHeader().setVisible(False)  # Nascondi header Qt
         self.transactions_table.verticalHeader().setVisible(False)
-        # 🔧 FIX: Rendi NON editabile (tranne bottone delete)
-        self.transactions_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.transactions_table.setStyleSheet("""
-            QHeaderView::section { 
-                background-color: #34495e; 
-                color: white; 
-                font-weight: bold; 
-                padding: 8px; 
-            }
-            QTableWidget { 
-                color: white; 
-                background-color: #2c3e50; 
-                font-size: 13px; 
-                gridline-color: #7f8c8d; 
-            }
+            QTableWidget { color: white; background-color: #2c3e50; font-size: 13px; gridline-color: #7f8c8d; }
         """)
+
+        # Imposta resize mode per colonna descrizione (indice 2)
+        self.transactions_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+
         transactions_layout.addWidget(self.transactions_table)
 
         main_layout.addWidget(transactions_frame)
@@ -265,11 +247,30 @@ class ReportView(BaseView):
 
         filtered.sort(key=lambda x: x['date'], reverse=True)
 
-        # Pulisce completamente la tabella
-        self.transactions_table.clearContents()
-        self.transactions_table.setRowCount(len(filtered))
+        # +1 riga per l'header personalizzato
+        self.transactions_table.setRowCount(len(filtered) + 1)
 
-        for i, trans in enumerate(filtered):
+        # RIGA 0: Header personalizzato
+        headers = [
+            self.tm.get("common", "date"),
+            "Importe",
+            self.tm.get("common", "description"),
+            self.tm.get("common", "category"),
+            "Tipo",
+            ""
+        ]
+
+        for col, header_text in enumerate(headers):
+            header_item = QTableWidgetItem(header_text)
+            header_item.setForeground(QColor("white"))
+            header_item.setFont(QFont("Arial", 12, QFont.Weight.Bold))
+            header_item.setBackground(QColor("#34495e"))
+            header_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignCenter if col != 2 else Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+            self.transactions_table.setItem(0, col, header_item)
+
+        # RIGHE DATI (a partire dalla riga 1)
+        for i, trans in enumerate(filtered, start=1):
             date_item = QTableWidgetItem(trans['date'])
             date_item.setForeground(QColor("white"))
             self.transactions_table.setItem(i, 0, date_item)
@@ -391,7 +392,8 @@ class ReportView(BaseView):
             table.setRowCount(1)
 
             # Header personalizzato
-            for col, text in enumerate([self.tm.get("common", "category"), "Real €", f"% {self.tm.get("common", "total")}"]):
+            for col, text in enumerate(
+                    [self.tm.get("common", "category"), "Real €", f"% {self.tm.get('common', 'total')}"]):
                 header_item = QTableWidgetItem(text)
                 header_item.setForeground(QColor("white"))
                 header_item.setFont(QFont("Arial", 12, QFont.Weight.Bold))
@@ -412,7 +414,8 @@ class ReportView(BaseView):
         table.setRowCount(len(sorted_data) + 2)
 
         # RIGA 0: Header personalizzato
-        for col, text in enumerate([self.tm.get("common", "category"), "Real €", f"% {self.tm.get("common", "total")}"]):
+        for col, text in enumerate(
+                [self.tm.get("common", "category"), "Real €", f"% {self.tm.get('common', 'total')}"]):
             header_item = QTableWidgetItem(text)
             header_item.setForeground(QColor("white"))
             header_item.setFont(QFont("Arial", 12, QFont.Weight.Bold))
@@ -493,7 +496,7 @@ class ReportView(BaseView):
 
         type_combo.currentTextChanged.connect(update_categories)
         update_categories()
-        layout.addRow(f"{self.tm.get("common", "category")}*:", category_combo)
+        layout.addRow(f"{self.tm.get('common', 'category')}*:", category_combo)
 
         amount_input = QLineEdit()
         amount_input.setPlaceholderText("100.50")
@@ -507,7 +510,7 @@ class ReportView(BaseView):
         date_input.setDisplayFormat("dd/MM/yyyy")
         date_input.setCalendarPopup(True)
         date_input.setDate(QDate.currentDate())
-        layout.addRow(f"{self.tm.get("common", "date")}*:", date_input)
+        layout.addRow(f"{self.tm.get('common', 'date')}*:", date_input)
 
         property_combo = QComboBox()
         properties = self.property_service.get_all()
@@ -550,4 +553,4 @@ class ReportView(BaseView):
                     QMessageBox.warning(self, self.tm.get("common", "error"), "No se pudo guardar la transacción.")
 
             except ValueError:
-                QMessageBox.warning(self, self.tm.get("common", "error"), "Importe inválido!") #errore
+                QMessageBox.warning(self, self.tm.get("common", "error"), "Importe inválido!")
