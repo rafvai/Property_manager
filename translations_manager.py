@@ -38,7 +38,11 @@ class TranslationManager:
                     "income": "Entrata",
                     "expense": "Uscita",
                     "success": "Successo",
-                    "error": "Errore"
+                    "error": "Errore",
+                    "date": "Data",
+                    "description": "Descrizione",
+                    "category": "Categoria",
+                    "total": "Totale",
                 },
                 "dashboard": {
                     "title": "Dashboard",
@@ -85,11 +89,12 @@ class TranslationManager:
                 },
                 "report": {
                     "title": "📊 Tracking mensile",
-                    "new_transaction": "+ Nuova transazione",
+                    "new_transaction": "Nuova transazione",
                     "view_transactions": "📋 Visualizza transazioni",
                     "export": "📥 Esporta",
                     "expenses": "Uscite",
-                    "income": "Entrate"
+                    "income": "Entrate",
+                    "filter": "Filtra:"
                 },
                 "calendar": {
                     "title": "📅 Calendario"
@@ -130,7 +135,11 @@ class TranslationManager:
                     "income": "Ingreso",
                     "expense": "Gasto",
                     "success": "Éxito",
-                    "error": "Error"
+                    "error": "Error",
+                    "date": "Fecha",
+                    "description": "Descripción",
+                    "category": "Categoría",
+                    "total": "Total",
                 },
                 "dashboard": {
                     "title": "Panel de Control",
@@ -177,11 +186,12 @@ class TranslationManager:
                 },
                 "report": {
                     "title": "📊 Seguimiento mensual",
-                    "new_transaction": "+ Nueva transacción",
+                    "new_transaction": "Nueva transacción",
                     "view_transactions": "📋 Ver transacciones",
                     "export": "📥 Exportar",
                     "expenses": "Gastos",
-                    "income": "Ingresos"
+                    "income": "Ingresos",
+                    "filter": "Filtrar:"
                 },
                 "calendar": {
                     "title": "📅 Calendario"
@@ -222,7 +232,11 @@ class TranslationManager:
                     "income": "Income",
                     "expense": "Expense",
                     "success": "Success",
-                    "error": "Error"
+                    "error": "Error",
+                    "date": "Data",
+                    "description": "Description",
+                    "category": "Category",
+                    "total": "Total",
                 },
                 "dashboard": {
                     "title": "Dashboard",
@@ -269,11 +283,12 @@ class TranslationManager:
                 },
                 "report": {
                     "title": "Monthly Tracking",
-                    "new_transaction": "+ New transaction",
+                    "new_transaction": "New transaction",
                     "view_transactions": "📋 View transactions",
                     "export": "📥 Export",
                     "expenses": "Expenses",
-                    "income": "Income"
+                    "income": "Income",
+                    "filter": "Filter:",
                 },
                 "calendar": {
                     "title": "📅 Calendar"

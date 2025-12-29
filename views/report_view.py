@@ -82,7 +82,7 @@ class ReportView(BaseView):
         actions_layout.addStretch()  # Spinge i bottoni a destra
 
         # Bottone aggiungi transazione
-        add_btn = QPushButton(self.tm.get("report", "new_transaction"))
+        add_btn = QPushButton(f"+ {self.tm.get("report", "new_transaction")}")
         add_btn.setStyleSheet(default_aggiungi_button)
         add_btn.clicked.connect(self.add_transaction)
         actions_layout.addWidget(add_btn)
@@ -173,7 +173,7 @@ class ReportView(BaseView):
         trans_header.addWidget(trans_title)
         trans_header.addStretch()
 
-        filter_label = QLabel("Filtrar:")
+        filter_label = QLabel(self.tm.get("report", "filter"))
         filter_label.setStyleSheet("color: white;")
         trans_header.addWidget(filter_label)
 
@@ -188,7 +188,7 @@ class ReportView(BaseView):
         self.transactions_table = QTableWidget()
         self.transactions_table.setColumnCount(6)
         self.transactions_table.setHorizontalHeaderLabels([
-            "Fecha", "Importe", "Descripción", "Categoría", "Tipo", ""
+            self.tm.get("common", "date"), "Importe", self.tm.get("common", "description"), self.tm.get("common", "category"), "Tipo",""
         ])
         self.transactions_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
         self.transactions_table.verticalHeader().setVisible(False)
@@ -206,8 +206,7 @@ class ReportView(BaseView):
     def populate_month_selector(self):
         """Popola il selettore con gli ultimi 24 mesi"""
         current_date = datetime.now()
-        months_it = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
-                     "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
+        months_it = self.tm.get("months", "full")
 
         for i in range(24):
             date = datetime(current_date.year, current_date.month, 1)
@@ -374,7 +373,7 @@ class ReportView(BaseView):
             table.setRowCount(1)
 
             # Header personalizzato
-            for col, text in enumerate(["Categoría", "Real €", "% Total"]):
+            for col, text in enumerate([self.tm.get("common", "category"), "Real €", f"% {self.tm.get("common", "total")}"]):
                 header_item = QTableWidgetItem(text)
                 header_item.setForeground(QColor("white"))
                 header_item.setFont(QFont("Arial", 12, QFont.Weight.Bold))
@@ -395,7 +394,7 @@ class ReportView(BaseView):
         table.setRowCount(len(sorted_data) + 2)
 
         # RIGA 0: Header personalizzato
-        for col, text in enumerate(["Categoría", "Real €", "% Total"]):
+        for col, text in enumerate([self.tm.get("common", "category"), "Real €", f"% {self.tm.get("common", "total")}"]):
             header_item = QTableWidgetItem(text)
             header_item.setForeground(QColor("white"))
             header_item.setFont(QFont("Arial", 12, QFont.Weight.Bold))
@@ -452,7 +451,7 @@ class ReportView(BaseView):
     def add_transaction(self):
         """Dialog per aggiungere transazione manuale"""
         dialog = QDialog(self)
-        dialog.setWindowTitle("Nueva transacción")
+        dialog.setWindowTitle(self.tm.get("report", "new_transaction"))
         dialog.setMinimumWidth(400)
 
         layout = QFormLayout(dialog)
@@ -476,7 +475,7 @@ class ReportView(BaseView):
 
         type_combo.currentTextChanged.connect(update_categories)
         update_categories()
-        layout.addRow("Categoría*:", category_combo)
+        layout.addRow(f"{self.tm.get("common", "category")}*:", category_combo)
 
         amount_input = QLineEdit()
         amount_input.setPlaceholderText("100.50")
@@ -490,7 +489,7 @@ class ReportView(BaseView):
         date_input.setDisplayFormat("dd/MM/yyyy")
         date_input.setCalendarPopup(True)
         date_input.setDate(QDate.currentDate())
-        layout.addRow("Fecha*:", date_input)
+        layout.addRow(f"{self.tm.get("common", "date")}*:", date_input)
 
         property_combo = QComboBox()
         properties = self.property_service.get_all()
@@ -514,7 +513,7 @@ class ReportView(BaseView):
                 property_id = property_combo.currentData() if properties else None
 
                 if not category:
-                    QMessageBox.warning(self, "Error", "Inserta una categoría!")
+                    QMessageBox.warning(self, self.tm.get("common", "error"), "Inserta una categoría!")
                     return
 
                 trans_id = self.transaction_service.create(
@@ -530,7 +529,7 @@ class ReportView(BaseView):
                     QMessageBox.information(self, "Éxito", f"Transacción añadida!\n\nCategoría: {category}")
                     self.update_report()
                 else:
-                    QMessageBox.warning(self, "Error", "No se pudo guardar la transacción.")
+                    QMessageBox.warning(self, self.tm.get("common", "error"), "No se pudo guardar la transacción.")
 
             except ValueError:
-                QMessageBox.warning(self, "Error", "Importe inválido!") #errore
+                QMessageBox.warning(self, self.tm.get("common", "error"), "Importe inválido!") #errore
