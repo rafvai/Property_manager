@@ -379,6 +379,7 @@ class ReportView(BaseView):
             self.transaction_service,
             self.property_service,
             self.export_service,
+            self.tm,
             self
         )
         dialog.exec()

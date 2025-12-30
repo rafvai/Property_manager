@@ -23,7 +23,7 @@ class CalendarView(BaseView):
         frame_layout = QVBoxLayout(frame)
 
         # Passa i services al calendario
-        calendar_widget = PlannerCalendarWidget(self.deadline_service, self.property_service)
+        calendar_widget = PlannerCalendarWidget(self.deadline_service, self.property_service, self.tm)
         frame_layout.addWidget(calendar_widget)
 
         main_layout.addWidget(frame)

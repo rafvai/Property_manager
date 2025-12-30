@@ -370,7 +370,7 @@ class ClickableDayCell(QFrame):
 
 
 class PlannerCalendarWidget(QWidget):
-    def __init__(self, deadline_service, property_service):
+    def __init__(self, deadline_service, property_service, tm):
         super().__init__()
         self.deadline_service = deadline_service
         self.property_service = property_service
@@ -388,7 +388,7 @@ class PlannerCalendarWidget(QWidget):
         header.addStretch()
 
         # Bottone per aggiungere scadenza generica
-        add_deadline_btn = QPushButton("+ Nuova Scadenza")
+        add_deadline_btn = QPushButton(f"+ {tm.get("calendar", "new_deadline")}")
         add_deadline_btn.setStyleSheet("""
             QPushButton {
                 background-color: #007BFF;
@@ -414,7 +414,7 @@ class PlannerCalendarWidget(QWidget):
 
         # Giorni della settimana
         weekdays_layout = QHBoxLayout()
-        weekdays = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom']
+        weekdays = tm.get("weekdays", "short")
         for day in weekdays:
             day_label = QLabel(day)
             day_label.setStyleSheet("font-size: 12px; color: white; font-weight: bold;")
@@ -461,7 +461,7 @@ class PlannerCalendarWidget(QWidget):
                 QMessageBox.warning(self, "Errore", "Impossibile salvare la scadenza.")
 
     def add_deadline_for_date(self, date_str):
-        """🆕 Aggiunge scadenza per una data specifica (chiamato dal click sulla cella)"""
+        """ Aggiunge scadenza per una data specifica (chiamato dal click sulla cella)"""
         self.add_deadline(preset_date=date_str)
 
     def populate_month(self):
@@ -484,7 +484,7 @@ class PlannerCalendarWidget(QWidget):
             date_str = f"{year:04d}-{month:02d}-{day:02d}"
             deadlines = self.deadline_service.get_by_date(date_str)
 
-            # 🆕 Usa la nuova cella cliccabile
+            # Usa la nuova cella cliccabile
             cell = ClickableDayCell(day, date_str, deadlines, self)
 
             self.grid.addWidget(cell, row, col)
@@ -505,13 +505,13 @@ class PlannerCalendarWidget(QWidget):
 class ExportDialog(QDialog):
     """Dialog per esportare transazioni in PDF/Excel"""
 
-    def __init__(self, transaction_service, property_service, export_service, parent=None):
+    def __init__(self, transaction_service, property_service, export_service, tm, parent=None):
         super().__init__(parent)
         self.transaction_service = transaction_service
         self.property_service = property_service
         self.export_service = export_service
 
-        self.setWindowTitle("📥 Esporta Transazioni")
+        self.setWindowTitle(tm.get("report", "export"))
         self.setMinimumSize(500, 400)
         self.setStyleSheet(f"QDialog {{ background-color: #131b23; }}")
 
@@ -520,12 +520,12 @@ class ExportDialog(QDialog):
         main_layout.setContentsMargins(25, 25, 25, 25)
 
         # Titolo
-        title = QLabel("📥 Esporta Report Transazioni")
+        title = QLabel(f"📥 {tm.get("report", "export_transactions")}")
         title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
         main_layout.addWidget(title)
 
         # === SELEZIONE PROPRIETÀ ===
-        property_group = QGroupBox("Proprietà")
+        property_group = QGroupBox(tm.get("common", "property"))
         property_group.setStyleSheet("""
             QGroupBox {
                 color: white;
@@ -560,16 +560,16 @@ class ExportDialog(QDialog):
             }
         """)
 
-        self.property_combo.addItem("🏠 Tutte le proprietà", None)
+        self.property_combo.addItem(tm.get("common", "all_properties"), None)
         properties = self.property_service.get_all()
         for prop in properties:
-            self.property_combo.addItem(f"🏡 {prop['name']}", prop['id'])
+            self.property_combo.addItem(f"{prop['name']}", prop['id'])
 
         property_layout.addWidget(self.property_combo)
         main_layout.addWidget(property_group)
 
         # === SELEZIONE PERIODO ===
-        period_group = QGroupBox("Periodo")
+        period_group = QGroupBox(tm.get("common", "period"))
         period_group.setStyleSheet("""
             QGroupBox {
                 color: white;
