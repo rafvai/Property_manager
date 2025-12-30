@@ -222,7 +222,7 @@ class PropertiesView(BaseView):
         top_row.addStretch()
 
         # Bottoni azioni
-        edit_btn = QPushButton("Modifica")
+        edit_btn = QPushButton(self.tm.get("common", "edit"))
         edit_btn.setFixedHeight(28)
         edit_btn.setStyleSheet("""
             QPushButton {
@@ -241,7 +241,7 @@ class PropertiesView(BaseView):
         edit_btn.clicked.connect(lambda: self.edit_property(prop))
         top_row.addWidget(edit_btn)
 
-        delete_btn = QPushButton("Elimina")
+        delete_btn = QPushButton(self.tm.get("common", "delete"))
         delete_btn.setFixedHeight(28)
         delete_btn.setStyleSheet("""
             QPushButton {
@@ -267,12 +267,12 @@ class PropertiesView(BaseView):
         info_row.setSpacing(20)
 
         # Indirizzo
-        address_label = QLabel(f"Indirizzo: {prop['address']}")
+        address_label = QLabel(f"{self.tm.get("common", "address")}: {prop['address']}")
         address_label.setStyleSheet("color: #bdc3c7; font-size: 12px;")
         info_row.addWidget(address_label, stretch=2)
 
         # Proprietario
-        owner_label = QLabel(f"Proprietario: {prop['owner']}")
+        owner_label = QLabel(f"{self.tm.get("common", "owner")}: {prop['owner']}")
         owner_label.setStyleSheet("color: #bdc3c7; font-size: 12px;")
         info_row.addWidget(owner_label, stretch=1)
 
@@ -298,18 +298,18 @@ class PropertiesView(BaseView):
         stats_row.addWidget(saldo_label)
 
         # Transazioni
-        trans_label = QLabel(f"Transazioni: {stats['num_entrate']} entrate, {stats['num_uscite']} uscite")
+        trans_label = QLabel(f"{self.tm.get("report", "transactions")}: {stats['num_entrate']} entrate, {stats['num_uscite']} uscite")
         trans_label.setStyleSheet("color: #95a5a6; font-size: 11px;")
         stats_row.addWidget(trans_label)
 
         # Documenti
-        docs_label = QLabel(f"Documenti: {stats['num_docs']}")
+        docs_label = QLabel(f"{self.tm.get("documents", "title")}: {stats['num_docs']}")
         docs_label.setStyleSheet("color: #3498db; font-size: 11px;")
         stats_row.addWidget(docs_label)
 
         # Scadenze
         deadline_color = "#e74c3c" if stats['num_deadlines_active'] > 0 else "#95a5a6"
-        deadline_label = QLabel(f"Scadenze: {stats['num_deadlines_active']} attive")
+        deadline_label = QLabel(f"{self.tm.get("properties", "deadlines")}: {stats['num_deadlines_active']} attive")
         deadline_label.setStyleSheet(f"color: {deadline_color}; font-size: 11px;")
         stats_row.addWidget(deadline_label)
 
@@ -340,8 +340,8 @@ class PropertiesView(BaseView):
         owner_input.setPlaceholderText("Es: Mario Rossi")
 
         layout.addRow("Nome*:", name_input)
-        layout.addRow("Indirizzo*:", address_input)
-        layout.addRow("Proprietario*:", owner_input)
+        layout.addRow(f"{self.tm.get("common", "address")}*:", address_input)
+        layout.addRow(f"{self.tm.get("common", "owner")}*:", owner_input)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)
@@ -378,8 +378,8 @@ class PropertiesView(BaseView):
         owner_input = QLineEdit(prop['owner'])
 
         layout.addRow("Nome*:", name_input)
-        layout.addRow("Indirizzo*:", address_input)
-        layout.addRow("Proprietario*:", owner_input)
+        layout.addRow(f"{self.tm.get("common", "address")}*:", address_input)
+        layout.addRow(f"{self.tm.get("common", "owner")}*:", owner_input)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)

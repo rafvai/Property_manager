@@ -8,7 +8,6 @@ from matplotlib.figure import Figure
 import matplotlib.patches as mpatches
 from datetime import datetime, timedelta
 import numpy as np
-import flag
 
 from views.base_view import BaseView
 from styles import *
@@ -122,7 +121,7 @@ class DashboardView(BaseView):
         lang_layout.setContentsMargins(0, 0, 0, 0)
         lang_layout.setSpacing(5)
 
-        # Bottoni bandierine
+        # Bottoni bandierine - EMOJI DIRETTE
         self.btn_it = LanguageButton("🇮🇹", "it")
         self.btn_es = LanguageButton("🇪🇸", "es")
         self.btn_en = LanguageButton("🇬🇧", "en")

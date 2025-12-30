@@ -43,7 +43,9 @@ class TranslationManager:
                     "description": "Descrizione",
                     "category": "Categoria",
                     "total": "Totale",
-                    "type": "Tipo"
+                    "type": "Tipo",
+                    "owner": "Proprietario",
+                    "address": "Indirizzo"
                 },
                 "dashboard": {
                     "title": "Dashboard",
@@ -145,7 +147,9 @@ class TranslationManager:
                     "description": "Descripción",
                     "category": "Categoría",
                     "total": "Total",
-                    "type": "Tipo"
+                    "type": "Tipo",
+                    "owner": "Propietario",
+                    "address": "Dirección"
                 },
                 "dashboard": {
                     "title": "Panel de Control",
@@ -247,7 +251,9 @@ class TranslationManager:
                     "description": "Description",
                     "category": "Category",
                     "total": "Total",
-                    "type": "Type"
+                    "type": "Type",
+                    "owner": "Owner",
+                    "address": "Address",
                 },
                 "dashboard": {
                     "title": "Dashboard",
@@ -276,7 +282,7 @@ class TranslationManager:
                     "no_properties": "📭 No properties found",
                     "balance": "Balance",
                     "documents_short": "docs",
-                    "deadlines": "deadlines"
+                    "deadlines": "Deadlines"
                 },
                 "documents": {
                     "title": "Documents",
@@ -296,6 +302,7 @@ class TranslationManager:
                     "title": "Monthly Tracking",
                     "new_transaction": "New transaction",
                     "view_transactions": "📋 View transactions",
+                    "transactions": "Transactions",
                     "export": "📥 Export",
                     "expenses": "Expenses",
                     "income": "Income",
