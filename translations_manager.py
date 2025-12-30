@@ -43,6 +43,7 @@ class TranslationManager:
                     "description": "Descrizione",
                     "category": "Categoria",
                     "total": "Totale",
+                    "type": "Tipo"
                 },
                 "dashboard": {
                     "title": "Dashboard",
@@ -65,7 +66,7 @@ class TranslationManager:
                     "period_3_years": "3 anni"
                 },
                 "properties": {
-                    "title": "🏠 Le mie proprietà",
+                    "title": "Le mie proprietà",
                     "add_property": "+ Aggiungi proprietà",
                     "search_placeholder": "🔍 Cerca per nome o indirizzo...",
                     "no_properties": "📭 Nessuna proprietà trovata",
@@ -74,11 +75,11 @@ class TranslationManager:
                     "deadlines": "scadenze"
                 },
                 "documents": {
-                    "title": "📄 Documenti",
+                    "title": "Documenti",
                     "add_document": "+ Aggiungi documento"
                 },
                 "accounting": {
-                    "title": "📊 Contabilità - Andamento annuale",
+                    "title": "Contabilità - Andamento annuale",
                     "year": "Anno",
                     "income_total": "Entrate (€)",
                     "expenses_total": "Uscite (€)",
@@ -88,19 +89,23 @@ class TranslationManager:
                     "month": "Mese"
                 },
                 "report": {
-                    "title": "📊 Tracking mensile",
+                    "title": "Tracking mensile",
                     "new_transaction": "Nuova transazione",
                     "view_transactions": "📋 Visualizza transazioni",
                     "export": "📥 Esporta",
                     "expenses": "Uscite",
                     "income": "Entrate",
-                    "filter": "Filtra:"
+                    "filter": "Filtra:",
+                    "supplier": "Fornitore",
+                    "supplier_name": "Nome fornitore",
+                    "amount": "Importo"
                 },
                 "calendar": {
-                    "title": "📅 Calendario"
+                    "title": "Calendario",
+                    "new_deadline": "Nuova Scadenza"
                 },
                 "settings": {
-                    "title": "⚙️ Impostazioni"
+                    "title": "Impostazioni"
                 },
                 "months": {
                     "short": ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"],
@@ -111,7 +116,7 @@ class TranslationManager:
                 }
             },
             "es": {
-                "app_title": "🏠 Property Manager",
+                "app_title": "Property Manager",
                 "menu": {
                     "dashboard": "Panel de Control",
                     "properties": "Mis Propiedades",
@@ -140,6 +145,7 @@ class TranslationManager:
                     "description": "Descripción",
                     "category": "Categoría",
                     "total": "Total",
+                    "type": "Tipo"
                 },
                 "dashboard": {
                     "title": "Panel de Control",
@@ -162,7 +168,7 @@ class TranslationManager:
                     "period_3_years": "3 años"
                 },
                 "properties": {
-                    "title": "🏠 Mis Propiedades",
+                    "title": "Mis Propiedades",
                     "add_property": "+ Añadir propiedad",
                     "search_placeholder": "🔍 Buscar por nombre o dirección...",
                     "no_properties": "📭 No se encontraron propiedades",
@@ -171,11 +177,11 @@ class TranslationManager:
                     "deadlines": "vencimientos"
                 },
                 "documents": {
-                    "title": "📄 Documentos",
+                    "title": "Documentos",
                     "add_document": "+ Añadir documento"
                 },
                 "accounting": {
-                    "title": "📊 Contabilidad - Evolución anual",
+                    "title": "Contabilidad - Evolución anual",
                     "year": "Año",
                     "income_total": "Ingresos (€)",
                     "expenses_total": "Gastos (€)",
@@ -185,19 +191,23 @@ class TranslationManager:
                     "month": "Mes"
                 },
                 "report": {
-                    "title": "📊 Seguimiento mensual",
+                    "title": "Seguimiento mensual",
                     "new_transaction": "Nueva transacción",
                     "view_transactions": "📋 Ver transacciones",
                     "export": "📥 Exportar",
                     "expenses": "Gastos",
                     "income": "Ingresos",
-                    "filter": "Filtrar:"
+                    "filter": "Filtrar:",
+                    "supplier": "Proveedor",
+                    "supplier_name": "Nombre Proveedor",
+                    "amount": "Importe",
                 },
                 "calendar": {
-                    "title": "📅 Calendario"
+                    "title": "Calendario",
+                    "new_deadline" : "Nueva fecha limite"
                 },
                 "settings": {
-                    "title": "⚙️ Configuración"
+                    "title": "Configuración"
                 },
                 "months": {
                     "short": ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"],
@@ -208,7 +218,7 @@ class TranslationManager:
                 }
             },
             "en": {
-                "app_title": "🏠 Property Manager",
+                "app_title": "Property Manager",
                 "menu": {
                     "dashboard": "Dashboard",
                     "properties": "My Properties",
@@ -237,6 +247,7 @@ class TranslationManager:
                     "description": "Description",
                     "category": "Category",
                     "total": "Total",
+                    "type": "Type"
                 },
                 "dashboard": {
                     "title": "Dashboard",
@@ -259,7 +270,7 @@ class TranslationManager:
                     "period_3_years": "3 years"
                 },
                 "properties": {
-                    "title": "🏠 My Properties",
+                    "title": "My Properties",
                     "add_property": "+ Add property",
                     "search_placeholder": "🔍 Search by name or address...",
                     "no_properties": "📭 No properties found",
@@ -268,11 +279,11 @@ class TranslationManager:
                     "deadlines": "deadlines"
                 },
                 "documents": {
-                    "title": "📄 Documents",
+                    "title": "Documents",
                     "add_document": "+ Add document"
                 },
                 "accounting": {
-                    "title": "📊 Accounting - Annual Overview",
+                    "title": "Accounting - Annual Overview",
                     "year": "Year",
                     "income_total": "Income (€)",
                     "expenses_total": "Expenses (€)",
@@ -289,12 +300,16 @@ class TranslationManager:
                     "expenses": "Expenses",
                     "income": "Income",
                     "filter": "Filter:",
+                    "supplier": "Supplier",
+                    "supplier_name": "Supplier_name",
+                    "amount": "Amount",
                 },
                 "calendar": {
-                    "title": "📅 Calendar"
+                    "title": "Calendar",
+                    "new_deadline": "New deadline",
                 },
                 "settings": {
-                    "title": "⚙️ Settings"
+                    "title": "Settings"
                 },
                 "months": {
                     "short": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],

@@ -47,12 +47,12 @@ class ReportView(BaseView):
         header_layout.addStretch()
 
         # Selettore proprietà
-        property_label = QLabel("Proprietà:")
+        property_label = QLabel(f"{self.tm.get("common", "property")}:")
         property_label.setStyleSheet("color: white;")
         header_layout.addWidget(property_label)
 
         self.property_selector = QComboBox()
-        self.property_selector.addItem("Tutte le proprietà", None)
+        self.property_selector.addItem(self.tm.get("common", "all_properties"), None)
 
         properties = self.property_service.get_all()
         for prop in properties:
@@ -63,7 +63,7 @@ class ReportView(BaseView):
         header_layout.addWidget(self.property_selector)
 
         # Selettore mese/anno
-        month_label = QLabel("Periodo:")
+        month_label = QLabel(f"{self.tm.get("common", "period")}:")
         month_label.setStyleSheet("color: white;")
         header_layout.addWidget(month_label)
 
@@ -253,10 +253,10 @@ class ReportView(BaseView):
         # RIGA 0: Header personalizzato
         headers = [
             self.tm.get("common", "date"),
-            "Importe",
+            self.tm.get("report", "amount"),
             self.tm.get("common", "description"),
             self.tm.get("common", "category"),
-            "Tipo",
+            self.tm.get("common", "type"),
             ""
         ]
 
@@ -323,7 +323,7 @@ class ReportView(BaseView):
         if reply == QMessageBox.Yes:
             success = self.transaction_service.delete(trans['id'])
             if success:
-                QMessageBox.information(self, "Éxito", "Transacción eliminada!")
+                QMessageBox.information(self, self.tm.get("common", "success"), "Transacción eliminada!")
                 self.update_report()
 
     def update_report(self):
@@ -393,7 +393,7 @@ class ReportView(BaseView):
 
             # Header personalizzato
             for col, text in enumerate(
-                    [self.tm.get("common", "category"), "Real €", f"% {self.tm.get('common', 'total')}"]):
+                    [self.tm.get("common", "category"), f"{self.tm.get("report", "amount")} €", f"% {self.tm.get('common', 'total')}"]):
                 header_item = QTableWidgetItem(text)
                 header_item.setForeground(QColor("white"))
                 header_item.setFont(QFont("Arial", 12, QFont.Weight.Bold))
@@ -415,7 +415,7 @@ class ReportView(BaseView):
 
         # RIGA 0: Header personalizzato
         for col, text in enumerate(
-                [self.tm.get("common", "category"), "Real €", f"% {self.tm.get('common', 'total')}"]):
+                [self.tm.get("common", "category"), f"{self.tm.get("report", "amount")} €", f"% {self.tm.get('common', 'total')}"]):
             header_item = QTableWidgetItem(text)
             header_item.setForeground(QColor("white"))
             header_item.setFont(QFont("Arial", 12, QFont.Weight.Bold))
@@ -444,7 +444,7 @@ class ReportView(BaseView):
         # RIGA TOTALE (ultima riga)
         total_row = len(sorted_data) + 1
 
-        total_cat = QTableWidgetItem("TOTAL")
+        total_cat = QTableWidgetItem(self.tm.get("common", "total"))
         total_cat.setForeground(QColor("white"))
         total_cat.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         total_cat.setBackground(QColor("#1a2530"))
@@ -500,11 +500,11 @@ class ReportView(BaseView):
 
         amount_input = QLineEdit()
         amount_input.setPlaceholderText("100.50")
-        layout.addRow("Importe €*:", amount_input)
+        layout.addRow(f"{self.tm.get("report", "amount")} €*:", amount_input)
 
         provider_input = QLineEdit()
-        provider_input.setPlaceholderText("Nombre proveedor")
-        layout.addRow("Proveedor:", provider_input)
+        provider_input.setPlaceholderText(self.tm.get("report", "supplier_name"))
+        layout.addRow(f"{self.tm.get("report", "supplier")}:", provider_input)
 
         date_input = QDateEdit()
         date_input.setDisplayFormat("dd/MM/yyyy")

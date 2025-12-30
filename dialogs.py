@@ -387,7 +387,7 @@ class PlannerCalendarWidget(QWidget):
         header.addWidget(self.month_label)
         header.addStretch()
 
-        # 🆕 Bottone per aggiungere scadenza generica
+        # Bottone per aggiungere scadenza generica
         add_deadline_btn = QPushButton("+ Nuova Scadenza")
         add_deadline_btn.setStyleSheet("""
             QPushButton {
