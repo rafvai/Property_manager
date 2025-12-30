@@ -4,6 +4,7 @@ from PySide6.QtWidgets import (
     QFrame, QScrollArea, QWidget, QLineEdit, QDialog,
     QFormLayout, QDialogButtonBox, QMessageBox
 )
+from datetime import datetime
 
 from styles import *
 from views.base_view import BaseView
@@ -91,7 +92,7 @@ class PropertiesView(BaseView):
         # Container per le card
         self.cards_container = QWidget()
         self.cards_layout = QVBoxLayout(self.cards_container)
-        self.cards_layout.setSpacing(15)
+        self.cards_layout.setSpacing(8)
         self.cards_layout.setContentsMargins(0, 0, 0, 0)
 
         scroll_area.setWidget(self.cards_container)
@@ -129,143 +130,204 @@ class PropertiesView(BaseView):
             return
 
         # Crea card per ogni proprietà
-        for prop in properties:
-            card = self.create_property_card(prop)
+        for index, prop in enumerate(properties):
+            card = self.create_property_card(prop, index)
             self.cards_layout.addWidget(card)
 
         # Spacer finale
         self.cards_layout.addStretch()
 
-    def create_property_card(self, prop):
-        """Crea una card per una proprietà"""
+    def get_property_stats(self, property_id):
+        """Calcola statistiche avanzate per una proprietà"""
+        # Recupera tutte le transazioni
+        transactions = self.transaction_service.get_all(property_id=property_id)
+
+        # Data prima transazione (data di inizio gestione)
+        start_date = None
+        if transactions:
+            dates = [datetime.strptime(t['date'], '%d/%m/%Y') for t in transactions]
+            start_date = min(dates)
+
+        # Calcola saldo
+        saldo = self.transaction_service.get_balance(property_id=property_id)
+
+        # Conta transazioni per tipo
+        num_entrate = len([t for t in transactions if t['type'] == 'Entrata'])
+        num_uscite = len([t for t in transactions if t['type'] == 'Uscita'])
+
+        # Conta documenti
+        docs = self.document_service.list_documents(property_id)
+        num_docs = len(docs)
+
+        # Conta scadenze attive e totali
+        deadlines_active = self.deadline_service.get_all(property_id=property_id, include_completed=False)
+        deadlines_total = self.deadline_service.get_all(property_id=property_id, include_completed=True)
+        num_deadlines_active = len(deadlines_active)
+        num_deadlines_completed = len(deadlines_total) - num_deadlines_active
+
+        # Calcola media mensile entrate/uscite
+        entrate_totali = sum(t['amount'] for t in transactions if t['type'] == 'Entrata')
+        uscite_totali = sum(t['amount'] for t in transactions if t['type'] == 'Uscita')
+
+        # Calcola mesi di gestione
+        mesi_gestione = 0
+        if start_date:
+            delta = datetime.now() - start_date
+            mesi_gestione = max(1, delta.days // 30)
+
+        media_entrate = entrate_totali / mesi_gestione if mesi_gestione > 0 else 0
+        media_uscite = uscite_totali / mesi_gestione if mesi_gestione > 0 else 0
+
+        return {
+            'saldo': saldo,
+            'start_date': start_date,
+            'num_entrate': num_entrate,
+            'num_uscite': num_uscite,
+            'num_docs': num_docs,
+            'num_deadlines_active': num_deadlines_active,
+            'num_deadlines_completed': num_deadlines_completed,
+            'media_entrate': media_entrate,
+            'media_uscite': media_uscite,
+            'mesi_gestione': mesi_gestione
+        }
+
+    def create_property_card(self, prop, index):
+        """Crea una card compatta e professionale per una proprietà"""
+        # Alternanza colori
+        bg_color = COLORE_RIGA_1 if index % 2 == 0 else COLORE_RIGA_2
+
         card = QFrame()
         card.setStyleSheet(f"""
             QFrame {{
-                background-color: {COLORE_WIDGET_2};
-                border-radius: 12px;
-                padding: 15px;
-            }}
-            QFrame:hover {{
-                background-color: {COLORE_SECONDARIO};
+                background-color: {bg_color};
+                border-radius: 8px;
+                padding: 15px 20px;
             }}
         """)
 
-        layout = QVBoxLayout(card)
-        layout.setSpacing(10)
+        # Layout principale
+        main_layout = QVBoxLayout(card)
+        main_layout.setSpacing(10)
+        main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # --- INFO PRINCIPALI ---
-        info_layout = QVBoxLayout()
-        info_layout.setSpacing(5)
+        # --- RIGA 1: NOME E AZIONI ---
+        top_row = QHBoxLayout()
+        top_row.setSpacing(15)
 
-        # Nome
-        name_label = QLabel(f"🏡 {prop['name']}")
-        name_label.setStyleSheet("color: white; font-size: 18px; font-weight: bold;")
-        info_layout.addWidget(name_label)
+        # Nome proprietà
+        name_label = QLabel(f"{prop['name']}")
+        name_label.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
+        top_row.addWidget(name_label)
 
-        # Indirizzo
-        address_label = QLabel(f"📍 {prop['address']}")
-        address_label.setStyleSheet("color: #bdc3c7; font-size: 14px;")
-        info_layout.addWidget(address_label)
+        top_row.addStretch()
 
-        # Proprietario
-        owner_label = QLabel(f"👤 {prop['owner']}")
-        owner_label.setStyleSheet("color: #bdc3c7; font-size: 14px;")
-        info_layout.addWidget(owner_label)
-
-        layout.addLayout(info_layout)
-
-        # --- SEPARATORE ---
-        separator = QFrame()
-        separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setStyleSheet(f"background-color: {COLORE_BACKGROUND}; max-height: 2px;")
-        layout.addWidget(separator)
-
-        # --- STATISTICHE ---
-        stats_layout = QHBoxLayout()
-        stats_layout.setSpacing(20)
-
-        # Calcola statistiche
-        saldo = self.transaction_service.get_balance(property_id=prop['id'])
-
-        # Conta documenti
-        docs = self.document_service.list_documents(prop['id'])
-        num_docs = len(docs)
-
-        # Conta scadenze attive
-        deadlines = self.deadline_service.get_all(property_id=prop['id'], include_completed=False)
-        num_deadlines = len(deadlines)
-
-        # Saldo
-        saldo_color = "#2ecc71" if saldo >= 0 else "#e74c3c"
-        saldo_icon = "💰" if saldo >= 0 else "⚠️"
-        saldo_label = QLabel(f"{saldo_icon} {self.tm.get('properties', 'balance')}: {saldo:,.2f}€")
-        saldo_label.setStyleSheet(f"color: {saldo_color}; font-size: 13px; font-weight: bold;")
-        stats_layout.addWidget(saldo_label)
-
-        # Documenti
-        docs_label = QLabel(f"📄 {num_docs} {self.tm.get('properties', 'documents_short')}")
-        docs_label.setStyleSheet("color: #3498db; font-size: 13px;")
-        stats_layout.addWidget(docs_label)
-
-        # Scadenze
-        deadline_label = QLabel(f"⏰ {num_deadlines} {self.tm.get('properties', 'deadlines')}")
-        deadline_label.setStyleSheet("color: #f39c12; font-size: 13px;")
-        stats_layout.addWidget(deadline_label)
-
-        stats_layout.addStretch()
-        layout.addLayout(stats_layout)
-
-        # --- BOTTONI AZIONI ---
-        buttons_layout = QHBoxLayout()
-        buttons_layout.setSpacing(10)
-
-        # Bottone Modifica
-        edit_btn = QPushButton(f"✏️ {self.tm.get('common', 'edit')}")
+        # Bottoni azioni
+        edit_btn = QPushButton("Modifica")
+        edit_btn.setFixedHeight(28)
         edit_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db;
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-weight: bold;
-                font-size: 13px;
+                border-radius: 5px;
+                padding: 4px 12px;
+                font-size: 12px;
+                font-weight: 500;
             }
             QPushButton:hover {
                 background-color: #2980b9;
             }
         """)
         edit_btn.clicked.connect(lambda: self.edit_property(prop))
-        buttons_layout.addWidget(edit_btn)
+        top_row.addWidget(edit_btn)
 
-        # Bottone Elimina
-        delete_btn = QPushButton(f"🗑️ {self.tm.get('common', 'delete')}")
+        delete_btn = QPushButton("Elimina")
+        delete_btn.setFixedHeight(28)
         delete_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e74c3c;
                 color: white;
                 border: none;
-                border-radius: 6px;
-                padding: 8px 16px;
-                font-weight: bold;
-                font-size: 13px;
+                border-radius: 5px;
+                padding: 4px 12px;
+                font-size: 12px;
+                font-weight: 500;
             }
             QPushButton:hover {
                 background-color: #c0392b;
             }
         """)
         delete_btn.clicked.connect(lambda: self.delete_property(prop))
-        buttons_layout.addWidget(delete_btn)
+        top_row.addWidget(delete_btn)
 
-        buttons_layout.addStretch()
-        layout.addLayout(buttons_layout)
+        main_layout.addLayout(top_row)
+
+        # --- RIGA 2: INFO BASE ---
+        info_row = QHBoxLayout()
+        info_row.setSpacing(20)
+
+        # Indirizzo
+        address_label = QLabel(f"Indirizzo: {prop['address']}")
+        address_label.setStyleSheet("color: #bdc3c7; font-size: 12px;")
+        info_row.addWidget(address_label, stretch=2)
+
+        # Proprietario
+        owner_label = QLabel(f"Proprietario: {prop['owner']}")
+        owner_label.setStyleSheet("color: #bdc3c7; font-size: 12px;")
+        info_row.addWidget(owner_label, stretch=1)
+
+        main_layout.addLayout(info_row)
+
+        # --- RIGA 3: STATISTICHE ---
+        stats = self.get_property_stats(prop['id'])
+
+        stats_row = QHBoxLayout()
+        stats_row.setSpacing(25)
+
+        # Gestita dal
+        if stats['start_date']:
+            start_str = stats['start_date'].strftime('%d/%m/%Y')
+            managed_label = QLabel(f"Gestita dal: {start_str}")
+            managed_label.setStyleSheet("color: #95a5a6; font-size: 11px;")
+            stats_row.addWidget(managed_label)
+
+        # Saldo
+        saldo_color = "#2ecc71" if stats['saldo'] >= 0 else "#e74c3c"
+        saldo_label = QLabel(f"Saldo: {stats['saldo']:,.2f}€")
+        saldo_label.setStyleSheet(f"color: {saldo_color}; font-size: 12px; font-weight: bold;")
+        stats_row.addWidget(saldo_label)
+
+        # Transazioni
+        trans_label = QLabel(f"Transazioni: {stats['num_entrate']} entrate, {stats['num_uscite']} uscite")
+        trans_label.setStyleSheet("color: #95a5a6; font-size: 11px;")
+        stats_row.addWidget(trans_label)
+
+        # Documenti
+        docs_label = QLabel(f"Documenti: {stats['num_docs']}")
+        docs_label.setStyleSheet("color: #3498db; font-size: 11px;")
+        stats_row.addWidget(docs_label)
+
+        # Scadenze
+        deadline_color = "#e74c3c" if stats['num_deadlines_active'] > 0 else "#95a5a6"
+        deadline_label = QLabel(f"Scadenze: {stats['num_deadlines_active']} attive")
+        deadline_label.setStyleSheet(f"color: {deadline_color}; font-size: 11px;")
+        stats_row.addWidget(deadline_label)
+
+        # Media mensile
+        if stats['mesi_gestione'] > 0:
+            avg_label = QLabel(f"Media mensile: +{stats['media_entrate']:,.0f}€ / -{stats['media_uscite']:,.0f}€")
+            avg_label.setStyleSheet("color: #95a5a6; font-size: 11px;")
+            stats_row.addWidget(avg_label)
+
+        stats_row.addStretch()
+        main_layout.addLayout(stats_row)
 
         return card
 
     def add_property(self):
         """Dialog per aggiungere una nuova proprietà"""
         dialog = QDialog(self)
-        dialog.setWindowTitle(self.tm.get("properties", "new_property"))
+        dialog.setWindowTitle("Nuova Proprietà")
         dialog.setMinimumWidth(400)
 
         layout = QFormLayout(dialog)
@@ -277,9 +339,9 @@ class PropertiesView(BaseView):
         owner_input = QLineEdit()
         owner_input.setPlaceholderText("Es: Mario Rossi")
 
-        layout.addRow(self.tm.get("common", "name") + "*:", name_input)
-        layout.addRow(self.tm.get("common", "address") + "*:", address_input)
-        layout.addRow(self.tm.get("common", "owner") + "*:", owner_input)
+        layout.addRow("Nome*:", name_input)
+        layout.addRow("Indirizzo*:", address_input)
+        layout.addRow("Proprietario*:", owner_input)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)
@@ -292,24 +354,21 @@ class PropertiesView(BaseView):
             proprietario = owner_input.text().strip()
 
             if not nome or not indirizzo or not proprietario:
-                QMessageBox.warning(self, self.tm.get("common", "error"),
-                                  self.tm.get("properties", "required_fields"))
+                QMessageBox.warning(self, "Errore", "Tutti i campi sono obbligatori!")
                 return
 
             property_id = self.property_service.create(nome, indirizzo, proprietario)
 
             if property_id:
-                QMessageBox.information(self, self.tm.get("common", "success"),
-                                      self.tm.get("properties", "property_added").format(nome))
+                QMessageBox.information(self, "Successo", f"Proprietà '{nome}' aggiunta con successo!")
                 self.load_properties()
             else:
-                QMessageBox.warning(self, self.tm.get("common", "error"),
-                                  "Impossibile aggiungere la proprietà.")
+                QMessageBox.warning(self, "Errore", "Impossibile aggiungere la proprietà.")
 
     def edit_property(self, prop):
         """Dialog per modificare una proprietà esistente"""
         dialog = QDialog(self)
-        dialog.setWindowTitle(self.tm.get("properties", "edit_property") + f": {prop['name']}")
+        dialog.setWindowTitle(f"Modifica Proprietà: {prop['name']}")
         dialog.setMinimumWidth(400)
 
         layout = QFormLayout(dialog)
@@ -318,9 +377,9 @@ class PropertiesView(BaseView):
         address_input = QLineEdit(prop['address'])
         owner_input = QLineEdit(prop['owner'])
 
-        layout.addRow(self.tm.get("common", "name") + "*:", name_input)
-        layout.addRow(self.tm.get("common", "address") + "*:", address_input)
-        layout.addRow(self.tm.get("common", "owner") + "*:", owner_input)
+        layout.addRow("Nome*:", name_input)
+        layout.addRow("Indirizzo*:", address_input)
+        layout.addRow("Proprietario*:", owner_input)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)
@@ -333,8 +392,7 @@ class PropertiesView(BaseView):
             proprietario = owner_input.text().strip()
 
             if not nome or not indirizzo or not proprietario:
-                QMessageBox.warning(self, self.tm.get("common", "error"),
-                                  self.tm.get("properties", "required_fields"))
+                QMessageBox.warning(self, "Errore", "Tutti i campi sono obbligatori!")
                 return
 
             success = self.property_service.update(
@@ -345,20 +403,18 @@ class PropertiesView(BaseView):
             )
 
             if success:
-                QMessageBox.information(self, self.tm.get("common", "success"),
-                                      self.tm.get("properties", "property_updated"))
+                QMessageBox.information(self, "Successo", "Proprietà aggiornata con successo!")
                 self.load_properties()
             else:
-                QMessageBox.warning(self, self.tm.get("common", "error"),
-                                  "Impossibile aggiornare la proprietà.")
+                QMessageBox.warning(self, "Errore", "Impossibile aggiornare la proprietà.")
 
     def delete_property(self, prop):
         """Elimina una proprietà con conferma"""
         reply = QMessageBox.question(
             self,
-            self.tm.get("common", "confirm"),
-            self.tm.get("properties", "delete_confirm").format(prop['name']) + "\n\n" +
-            self.tm.get("properties", "delete_warning"),
+            "Conferma Eliminazione",
+            f"Sei sicuro di voler eliminare '{prop['name']}'?\n\n"
+            "ATTENZIONE: Verranno eliminate anche tutte le transazioni, documenti e scadenze associate!",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
@@ -378,12 +434,10 @@ class PropertiesView(BaseView):
             success = self.property_service.delete(prop['id'])
 
             if success:
-                QMessageBox.information(self, self.tm.get("common", "success"),
-                                      self.tm.get("properties", "property_deleted").format(prop['name']))
+                QMessageBox.information(self, "Successo", f"Proprietà '{prop['name']}' eliminata con successo!")
                 self.load_properties()
             else:
-                QMessageBox.warning(self, self.tm.get("common", "error"),
-                                  "Impossibile eliminare la proprietà.")
+                QMessageBox.warning(self, "Errore", "Impossibile eliminare la proprietà.")
 
     def filter_properties(self, text):
         """Filtra le proprietà in base al testo di ricerca"""
