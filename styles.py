@@ -103,11 +103,48 @@ custom_title_style = f"""
 """
 
 default_report_table = f"""
-            QTableWidget {{
-                color: {COLORE_BIANCO}; 
-                background-color: {COLORE_TERZIARIO}; 
-                font-size: 13px; 
-                gridline-color: #7f8c8d; 
-            }}
-        """
+    QTableWidget {{
+        color: {COLORE_BIANCO}; 
+        background-color: {COLORE_TERZIARIO}; 
+        font-size: 13px; 
+        gridline-color: #7f8c8d; 
+    }}
+"""
+
+default_button_main_header = f"""
+        QPushButton {{
+            background-color: transparent;
+            border: none;
+            color: {COLORE_BIANCO};
+            font-weight: normal;
+            font-size: 16px;
+        }}
+        QPushButton:hover {{
+            background-color: rgba(255, 255, 255, 0.1);
+        }}
+"""
+
+default_selector_date_export = f"""
+        QDateEdit {{
+        background-color: #1a2530;
+        color: {COLORE_BIANCO};
+        padding: 8px;
+        border-radius: 6px;
+    }}
+"""
+
+default_export_button = f"""
+        QPushButton {{
+        background-color: #28a745;
+        color: {COLORE_BIANCO};
+        font-weight: bold;
+        font-size 14px;
+        padding: 8px 16px;
+        border-radius: 6px;
+        border: none;
+    }}
+    QPushButton:hover {{
+        background-color: #218838;
+    }}
+"""
 

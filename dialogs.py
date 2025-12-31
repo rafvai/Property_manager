@@ -10,7 +10,8 @@ from PySide6.QtWidgets import (
     QDateEdit, QWidget, QHBoxLayout, QSizePolicy, QGridLayout, QFrame, QTextEdit, QRadioButton, QButtonGroup, QGroupBox
 )
 
-from styles import COLORE_SECONDARIO, COLORE_WIDGET_2, COLORE_RIGA_1, COLORE_ITEM_HOVER
+from styles import COLORE_SECONDARIO, COLORE_WIDGET_2, COLORE_RIGA_1, COLORE_ITEM_HOVER, default_button_main_header, \
+    default_aggiungi_button, default_selector_date_export, default_export_button
 
 DOCS_DIR = "docs"
 
@@ -225,55 +226,31 @@ class CustomTitleBar(QWidget):
         title_label.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
         title_layout.addWidget(title_label)
 
-        minimize_btn = QPushButton("-")
-        minimize_btn.setFixedSize(25, 25)
-        minimize_btn.setStyleSheet("""
-        QPushButton {
-            background-color: transparent;
-            border: none;
-            border-radius: 4px;
-            color: white !important;
-            font-weight: bold;
-            font-size: 20px;
-        }
-        QPushButton:hover {
-            background-color: #e74c3c;
-        }
-        """)
+        minimize_btn = QPushButton("─")
+        minimize_btn.setFixedSize(40, 30)
+        minimize_btn.setStyleSheet(default_button_main_header)
         minimize_btn.clicked.connect(parent.showMinimized)
         title_layout.addWidget(minimize_btn)
 
-        maximize_btn = QPushButton("□")
-        maximize_btn.setFixedSize(25, 25)
-        maximize_btn.setStyleSheet("""
+        # 🆕 Salva riferimento al pulsante maximize per aggiornarlo
+        self.maximize_btn = QPushButton("☐")
+        self.maximize_btn.setFixedSize(40, 30)
+        self.maximize_btn.setStyleSheet(default_button_main_header)
+        self.maximize_btn.clicked.connect(self.toggle_maximize)
+        title_layout.addWidget(self.maximize_btn)
+
+        close_btn = QPushButton("✕")
+        close_btn.setFixedSize(40, 30)
+        close_btn.setStyleSheet("""
         QPushButton {
             background-color: transparent;
             border: none;
-            border-radius: 4px;
-            color: white !important;
-            font-weight: bold;
-            font-size: 26px;
+            color: white;
+            font-weight: normal;
+            font-size: 16px;
         }
         QPushButton:hover {
-            background-color: #e74c3c;
-        }
-        """)
-        maximize_btn.clicked.connect(parent.toggle_max_restore)
-        title_layout.addWidget(maximize_btn)
-
-        close_btn = QPushButton("✕")
-        close_btn.setFixedSize(25, 25)
-        close_btn.setStyleSheet("""
-        QPushButton {
-            background-color: red;
-            border: none;
-            border-radius: 4px;
-            color: white !important;
-            font-weight: bold;
-            font-size: 14px;
-        }
-        QPushButton:hover {
-            background-color: #e74c3c;
+            background-color: #e81123;
         }
         """)
         close_btn.clicked.connect(parent.close)
@@ -287,6 +264,24 @@ class CustomTitleBar(QWidget):
         # --- Drag logic ---
         self._is_dragging = False
         self._drag_pos = QPoint()
+
+        # 🆕 Aggiorna icona iniziale
+        self.update_maximize_icon()
+
+    def toggle_maximize(self):
+        """🆕 Gestisce il toggle e aggiorna l'icona"""
+        if self.parent.isMaximized():
+            self.parent.showNormal()
+        else:
+            self.parent.showMaximized()
+        self.update_maximize_icon()
+
+    def update_maximize_icon(self):
+        """🆕 Aggiorna l'icona del pulsante in base allo stato della finestra"""
+        if self.parent.isMaximized():
+            self.maximize_btn.setText("❐")  # Icona "restore" (due quadrati sovrapposti)
+        else:
+            self.maximize_btn.setText("☐")  # Icona "maximize" (quadrato vuoto)
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
@@ -375,6 +370,7 @@ class PlannerCalendarWidget(QWidget):
         self.deadline_service = deadline_service
         self.property_service = property_service
         self.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; color: white;")
+        self.tm = tm
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(10, 10, 10, 10)
@@ -388,19 +384,8 @@ class PlannerCalendarWidget(QWidget):
         header.addStretch()
 
         # Bottone per aggiungere scadenza generica
-        add_deadline_btn = QPushButton(f"+ {tm.get("calendar", "new_deadline")}")
-        add_deadline_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #007BFF;
-                color: white;
-                font-weight: bold;
-                padding: 6px 12px;
-                border-radius: 6px;
-            }
-            QPushButton:hover {
-                background-color: #0056b3;
-            }
-        """)
+        add_deadline_btn = QPushButton(f"+ {self.tm.get("calendar", "new_deadline")}")
+        add_deadline_btn.setStyleSheet(default_aggiungi_button)
         add_deadline_btn.clicked.connect(lambda: self.add_deadline())
         header.addWidget(add_deadline_btn)
 
@@ -439,7 +424,7 @@ class PlannerCalendarWidget(QWidget):
         properties = self.property_service.get_all()
         dialog = AddDeadlineDialog(properties, self)
 
-        # 🆕 Se viene passata una data, preimpostala nel dialog
+        # Se viene passata una data, preimpostala nel dialog
         if preset_date:
             date_obj = QDate.fromString(preset_date, "yyyy-MM-dd")
             if date_obj.isValid():
@@ -455,10 +440,10 @@ class PlannerCalendarWidget(QWidget):
             )
 
             if deadline_id:
-                QMessageBox.information(self, "Successo", "Scadenza aggiunta correttamente!")
+                QMessageBox.information(self, self.tm.get("common", "success"), "Scadenza aggiunta correttamente!")
                 self.populate_month()  # Ricarica il calendario
             else:
-                QMessageBox.warning(self, "Errore", "Impossibile salvare la scadenza.")
+                QMessageBox.warning(self, self.tm.get("common", "error"), "Impossibile salvare la scadenza.")
 
     def add_deadline_for_date(self, date_str):
         """ Aggiunge scadenza per una data specifica (chiamato dal click sulla cella)"""
@@ -510,8 +495,9 @@ class ExportDialog(QDialog):
         self.transaction_service = transaction_service
         self.property_service = property_service
         self.export_service = export_service
+        self.tm = tm
 
-        self.setWindowTitle(tm.get("report", "export"))
+        self.setWindowTitle(self.tm.get("report", "export"))
         self.setMinimumSize(500, 400)
         self.setStyleSheet(f"QDialog {{ background-color: #131b23; }}")
 
@@ -520,12 +506,12 @@ class ExportDialog(QDialog):
         main_layout.setContentsMargins(25, 25, 25, 25)
 
         # Titolo
-        title = QLabel(f"📥 {tm.get("report", "export_transactions")}")
+        title = QLabel(f"📥 {self.tm.get("report", "export_transactions")}")
         title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
         main_layout.addWidget(title)
 
         # === SELEZIONE PROPRIETÀ ===
-        property_group = QGroupBox(tm.get("common", "property"))
+        property_group = QGroupBox(self.tm.get("common", "property"))
         property_group.setStyleSheet("""
             QGroupBox {
                 color: white;
@@ -560,7 +546,7 @@ class ExportDialog(QDialog):
             }
         """)
 
-        self.property_combo.addItem(tm.get("common", "all_properties"), None)
+        self.property_combo.addItem(self.tm.get("common", "all_properties"), None)
         properties = self.property_service.get_all()
         for prop in properties:
             self.property_combo.addItem(f"{prop['name']}", prop['id'])
@@ -569,7 +555,7 @@ class ExportDialog(QDialog):
         main_layout.addWidget(property_group)
 
         # === SELEZIONE PERIODO ===
-        period_group = QGroupBox(tm.get("common", "period"))
+        period_group = QGroupBox(self.tm.get("common", "period"))
         period_group.setStyleSheet("""
             QGroupBox {
                 color: white;
@@ -598,14 +584,7 @@ class ExportDialog(QDialog):
         self.start_date.setDisplayFormat("dd/MM/yyyy")
         self.start_date.setCalendarPopup(True)
         self.start_date.setDate(QDate.currentDate().addMonths(-1))
-        self.start_date.setStyleSheet("""
-            QDateEdit {
-                background-color: #1a2530;
-                color: white;
-                padding: 8px;
-                border-radius: 6px;
-            }
-        """)
+        self.start_date.setStyleSheet(default_selector_date_export)
         dates_layout.addWidget(self.start_date)
 
         end_label = QLabel("A:")
@@ -616,14 +595,7 @@ class ExportDialog(QDialog):
         self.end_date.setDisplayFormat("dd/MM/yyyy")
         self.end_date.setCalendarPopup(True)
         self.end_date.setDate(QDate.currentDate())
-        self.end_date.setStyleSheet("""
-            QDateEdit {
-                background-color: #1a2530;
-                color: white;
-                padding: 8px;
-                border-radius: 6px;
-            }
-        """)
+        self.end_date.setStyleSheet(default_selector_date_export)
         dates_layout.addWidget(self.end_date)
 
         period_layout.addLayout(dates_layout)
@@ -716,20 +688,8 @@ class ExportDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         buttons_layout.addWidget(cancel_btn)
 
-        export_btn = QPushButton("📥 Esporta")
-        export_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #007BFF;
-                color: white;
-                font-weight: bold;
-                padding: 10px 20px;
-                border-radius: 8px;
-                font-size: 13px;
-            }
-            QPushButton:hover {
-                background-color: #0056b3;
-            }
-        """)
+        export_btn = QPushButton(f"📥 {self.tm.get("report", "export")}")
+        export_btn.setStyleSheet(default_export_button)
         export_btn.clicked.connect(self.do_export)
         buttons_layout.addWidget(export_btn)
 

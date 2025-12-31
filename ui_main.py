@@ -44,7 +44,8 @@ class DashboardWindow(QMainWindow):
 
         # Finestra principale
         self.setWindowTitle("Property Manager MVP")
-        self.setGeometry(200, 200, 1000, 600)
+        self.setGeometry(200, 200, 1200, 700)  # Dimensioni iniziali più grandi
+        self.setMinimumSize(800, 600)  # 🆕 Imposta dimensioni minime
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
 
         # Container principale

@@ -88,21 +88,8 @@ class ReportView(BaseView):
         actions_layout.addWidget(add_btn)
 
         # Bottone Export
-        export_btn = QPushButton(self.tm.get("report", "export"))
-        export_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #28a745;
-                color: white;
-                font-weight: bold;
-                font-size 14px;
-                padding: 8px 16px;
-                border-radius: 6px;
-                border: none;
-            }
-            QPushButton:hover {
-                background-color: #218838;
-            }
-        """)
+        export_btn = QPushButton(f"📥 {self.tm.get("report", "export")}")
+        export_btn.setStyleSheet(default_export_button)
         export_btn.clicked.connect(self.open_export_dialog)
         actions_layout.addWidget(export_btn)
 
@@ -257,6 +244,9 @@ class ReportView(BaseView):
                 Qt.AlignmentFlag.AlignCenter if col != 2 else Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             self.transactions_table.setItem(0, col, header_item)
 
+        # Imposta larghezza colonne DOPO aver creato l'header
+        self.transactions_table.setColumnWidth(5, 50)  # Colonna delete button più stretta
+
         # RIGHE DATI (a partire dalla riga 1)
         for i, trans in enumerate(filtered, start=1):
             date_item = QTableWidgetItem(trans['date'])
@@ -289,7 +279,7 @@ class ReportView(BaseView):
                     background-color: #e74c3c;
                     color: white;
                     border: none;
-                    border-radius: 4px;
+                    border-radius: 0px;
                     padding: 4px 8px;
                 }
                 QPushButton:hover {
