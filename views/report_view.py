@@ -94,8 +94,10 @@ class ReportView(BaseView):
                 background-color: #28a745;
                 color: white;
                 font-weight: bold;
-                padding: 6px 14px;
-                border-radius: 8px;
+                font-size 14px;
+                padding: 8px 16px;
+                border-radius: 6px;
+                border: none;
             }
             QPushButton:hover {
                 background-color: #218838;
@@ -123,14 +125,7 @@ class ReportView(BaseView):
         self.gastos_table.setColumnCount(3)
         self.gastos_table.horizontalHeader().setVisible(False)
         self.gastos_table.verticalHeader().setVisible(False)
-        self.gastos_table.setStyleSheet("""
-            QTableWidget { 
-                color: white; 
-                background-color: #2c3e50; 
-                font-size: 13px; 
-                gridline-color: #7f8c8d; 
-            }
-        """)
+        self.gastos_table.setStyleSheet(default_report_table)
         gastos_layout.addWidget(self.gastos_table)
         tables_layout.addWidget(gastos_frame)
 
@@ -147,14 +142,7 @@ class ReportView(BaseView):
         self.ganancias_table.setColumnCount(3)
         self.ganancias_table.horizontalHeader().setVisible(False)
         self.ganancias_table.verticalHeader().setVisible(False)
-        self.ganancias_table.setStyleSheet("""
-            QTableWidget { 
-                color: white; 
-                background-color: #2c3e50; 
-                font-size: 13px; 
-                gridline-color: #7f8c8d; 
-            }
-        """)
+        self.ganancias_table.setStyleSheet(default_report_table)
         ganancias_layout.addWidget(self.ganancias_table)
         tables_layout.addWidget(ganancias_frame)
 

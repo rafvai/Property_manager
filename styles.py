@@ -2,6 +2,7 @@
 # Schema colori professionale: Dark Blue Corporate
 COLORE_BACKGROUND = "#0f1419"           # Nero-blu molto scuro
 COLORE_SECONDARIO = "#1a2332"           # Blu scuro
+COLORE_TERZIARIO = "#2c3e50"
 COLORE_ITEM_SELEZIONATO = "#2563eb"     # Blu corporate
 COLORE_ITEM_HOVER = "#3b82f6"           # Blu più chiaro per hover
 COLORE_WIDGET_1 = "#ffffff"             # Bianco
@@ -100,3 +101,13 @@ custom_title_style = f"""
     padding: 10px 15px;
     border-bottom: 1px solid #334155;
 """
+
+default_report_table = f"""
+            QTableWidget {{
+                color: {COLORE_BIANCO}; 
+                background-color: {COLORE_TERZIARIO}; 
+                font-size: 13px; 
+                gridline-color: #7f8c8d; 
+            }}
+        """
+
