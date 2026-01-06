@@ -29,7 +29,7 @@ if __name__ == "__main__":
     conn = db_service.initialize()
 
     # Avvia interfaccia
-    window = DashboardWindow(db_service, prefs_service)
+    window = DashboardWindow(db_service, prefs_service, logger=logger)
     window.show()
 
     sys.exit(app.exec())

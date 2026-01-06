@@ -29,8 +29,11 @@ from views.settings_view import SettingsView
 
 
 class DashboardWindow(QMainWindow):
-    def __init__(self, db_service, preferences_service):
+    def __init__(self, db_service, preferences_service, logger):
         super().__init__()
+
+        # Logger
+        self.logger = logger
 
         # Servizi
         self.preferences_service = preferences_service
@@ -38,10 +41,10 @@ class DashboardWindow(QMainWindow):
 
         # Inizializza i services
         conn = db_service.conn
-        self.property_service = PropertyService(conn)
-        self.transaction_service = TransactionService(conn)
-        self.document_service = DocumentService(conn)
-        self.deadline_service = DeadlineService(conn)
+        self.property_service = PropertyService(conn, self.logger)
+        self.transaction_service = TransactionService(conn, self.logger)
+        self.document_service = DocumentService(conn, self.logger)
+        self.deadline_service = DeadlineService(conn, self.logger)
 
         # Finestra principale
         self.setWindowTitle("Property Manager MVP")

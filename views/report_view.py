@@ -448,8 +448,6 @@ class ReportView(BaseView):
         table.setColumnWidth(1, 120)
         table.setColumnWidth(2, 100)
 
-    # 🔧 SOSTITUISCI SOLO IL METODO add_transaction() in report_view.py
-
     def add_transaction(self):
         """Dialog per aggiungere transazione manuale CON VALIDAZIONE"""
         from validation_utils import parse_decimal, validate_required_text, ValidationError
@@ -481,7 +479,7 @@ class ReportView(BaseView):
         update_categories()
         layout.addRow(f"{self.tm.get('common', 'category')}*:", category_combo)
 
-        # 🆕 Input con tooltip
+        # Input con tooltip
         amount_input = QLineEdit()
         amount_input.setPlaceholderText("Es: 100,50 oppure 100.50")
         amount_input.setToolTip("Puoi usare sia la virgola (100,50) che il punto (100.50)")

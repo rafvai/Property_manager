@@ -167,7 +167,7 @@ class AccountingView(BaseView):
 
         self.ax.plot(mesi, entrate,
                      color='#2ecc71',
-                     linewidth=3,
+                     linewidth=1,
                      marker='o',
                      markersize=10,
                      label=self.tm.get("dashboard", "income_label"),
@@ -177,7 +177,7 @@ class AccountingView(BaseView):
 
         self.ax.plot(mesi, spese,
                      color='#e74c3c',
-                     linewidth=3,
+                     linewidth=1,
                      marker='o',
                      markersize=10,
                      label=self.tm.get("dashboard", "expense_label"),
@@ -187,7 +187,7 @@ class AccountingView(BaseView):
 
         self.ax.plot(mesi, saldo,
                      color='#bdc3c7',
-                     linewidth=3,
+                     linewidth=1,
                      marker='s',
                      markersize=8,
                      label=self.tm.get("accounting", "balance"),

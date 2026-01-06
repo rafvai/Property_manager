@@ -1,9 +1,10 @@
 class TransactionService:
     """Gestisce le operazioni sulle transazioni"""
 
-    def __init__(self, conn):
+    def __init__(self, conn, logger):
         self.conn = conn
         self.cursor = conn.cursor()
+        self.logger = logger
 
     def get_all(self, property_id=None, start_date=None, end_date=None):
         """Recupera tutte le transazioni con filtri opzionali"""

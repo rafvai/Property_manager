@@ -43,7 +43,7 @@ class DocumentMetadataDialog(QDialog):
         self.service_input.setPlaceholderText("Es: Bolletta Luce")
         layout.addRow("Servizio:", self.service_input)
 
-        # Importo - 🆕 CON TOOLTIP
+        # Importo
         self.importo_input = QLineEdit()
         self.importo_input.setPlaceholderText("Es: 123,45 oppure 123.45")
         self.importo_input.setToolTip("Puoi usare sia la virgola (123,45) che il punto (123.45)")
@@ -63,7 +63,7 @@ class DocumentMetadataDialog(QDialog):
         buttons.rejected.connect(self.reject)
 
     def accept(self):
-        """🆕 Validazione con gestione errori dettagliata"""
+        """Validazione con gestione errori dettagliata"""
         try:
             # Valida tipo
             tipo = self.type_box.currentText().strip()
@@ -155,7 +155,7 @@ class AddDeadlineDialog(QDialog):
         buttons.rejected.connect(self.reject)
 
     def accept(self):
-        """🆕 Validazione"""
+        """Validazione"""
         try:
             # Valida titolo
             validate_required_text(
@@ -391,7 +391,7 @@ class CustomTitleBar(QWidget):
         minimize_btn.clicked.connect(parent.showMinimized)
         title_layout.addWidget(minimize_btn)
 
-        # 🆕 Salva riferimento al pulsante maximize per aggiornarlo
+        # Salva riferimento al pulsante maximize per aggiornarlo
         self.maximize_btn = QPushButton("☐")
         self.maximize_btn.setFixedSize(40, 30)
         self.maximize_btn.setStyleSheet(default_button_main_header)
@@ -424,11 +424,11 @@ class CustomTitleBar(QWidget):
         self._is_dragging = False
         self._drag_pos = QPoint()
 
-        # 🆕 Aggiorna icona iniziale
+        # Aggiorna icona iniziale
         self.update_maximize_icon()
 
     def toggle_maximize(self):
-        """🆕 Gestisce il toggle e aggiorna l'icona"""
+        """Gestisce il toggle e aggiorna l'icona"""
         if self.parent.isMaximized():
             self.parent.showNormal()
         else:
@@ -436,7 +436,7 @@ class CustomTitleBar(QWidget):
         self.update_maximize_icon()
 
     def update_maximize_icon(self):
-        """🆕 Aggiorna l'icona del pulsante in base allo stato della finestra"""
+        """Aggiorna l'icona del pulsante in base allo stato della finestra"""
         if self.parent.isMaximized():
             self.maximize_btn.setText("❐")  # Icona "restore" (due quadrati sovrapposti)
         else:

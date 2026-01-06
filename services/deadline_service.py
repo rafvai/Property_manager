@@ -4,12 +4,14 @@ from datetime import datetime
 class DeadlineService:
     """Gestisce le operazioni sulle scadenze"""
 
-    def __init__(self, conn):
+    def __init__(self, conn, logger):
         self.conn = conn
         self.cursor = conn.cursor()
+        self.logger = logger
 
     def get_all(self, property_id=None, include_completed=False):
         """Recupera tutte le scadenze con filtri opzionali"""
+
         query = """
             SELECT id, property_id, title, description, due_date, completed, created_at
             FROM deadlines
@@ -43,11 +45,12 @@ class DeadlineService:
                 })
             return deadlines
         except Exception as e:
-            print(f"Errore recupero scadenze: {e}")
+            self.logger.error(f"DeadlineService:Errore recupero scadenze: {e}")
             return []
 
     def get_next_deadline(self, property_id=None):
         """Recupera la prossima scadenza non completata"""
+
         query = """
             SELECT id, property_id, title, description, due_date, completed
             FROM deadlines
@@ -76,11 +79,12 @@ class DeadlineService:
                 }
             return None
         except Exception as e:
-            print(f"Errore recupero prossima scadenza: {e}")
+            self.logger.error(f"DeadlineService:Errore recupero prossima scadenza: {e}")
             return None
 
     def get_by_date(self, date_str):
         """Recupera scadenze per una data specifica (formato: YYYY-MM-DD)"""
+
         try:
             self.cursor.execute("""
                 SELECT id, property_id, title, description, completed
@@ -101,24 +105,27 @@ class DeadlineService:
                 })
             return deadlines
         except Exception as e:
-            print(f"Errore recupero scadenze per data: {e}")
+            self.logger.error(f"DeadlineService:Errore recupero scadenze per data: {e}")
             return []
 
     def create(self, title, due_date, description=None, property_id=None):
         """Crea una nuova scadenza"""
+
         try:
             self.cursor.execute("""
                 INSERT INTO deadlines (property_id, title, description, due_date, completed)
                 VALUES (?, ?, ?, ?, 0)
             """, (property_id, title, description, due_date))
             self.conn.commit()
+            self.logger.info("DeadlineService: Scadenza aggiunta correttamente")
             return self.cursor.lastrowid
         except Exception as e:
-            print(f"Errore creazione scadenza: {e}")
+            self.logger.error(f"DeadlineService:Errore creazione scadenza: {e}")
             return None
 
     def update(self, deadline_id, **kwargs):
         """Aggiorna una scadenza"""
+
         allowed_fields = ['title', 'description', 'due_date', 'completed', 'property_id']
         updates = []
         params = []
@@ -137,9 +144,10 @@ class DeadlineService:
         try:
             self.cursor.execute(query, params)
             self.conn.commit()
+            self.logger.info(f"DeadlineService:Scadenza modificata correttamente")
             return True
         except Exception as e:
-            print(f"Errore aggiornamento scadenza: {e}")
+            self.logger.error(f"DeadlineService:Errore aggiornamento scadenza: {e}")
             return False
 
     def mark_completed(self, deadline_id):
@@ -148,10 +156,12 @@ class DeadlineService:
 
     def delete(self, deadline_id):
         """Elimina una scadenza"""
+
         try:
             self.cursor.execute("DELETE FROM deadlines WHERE id = ?", (deadline_id,))
             self.conn.commit()
+            self.logger.info(f"DeadlineService:Scadenza eliminata correttamente")
             return True
         except Exception as e:
-            print(f"Errore eliminazione scadenza: {e}")
+            self.logger.error(f"DeadlineService:Errore eliminazione scadenza: {e}")
             return False

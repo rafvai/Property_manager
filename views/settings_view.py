@@ -58,12 +58,12 @@ class SettingsView(BaseView):
         )
 
         # Documenti
-        self.add_setting_item(
+        """self.add_setting_item(
             settings_layout,
             "📂 Apri Cartella Documenti",
             "Visualizza tutti i documenti salvati",
             self.open_documents_folder
-        )
+        )"""
 
         # Export
         self.add_setting_item(
@@ -78,6 +78,13 @@ class SettingsView(BaseView):
             "🗑️ Pulisci Export Vecchi",
             "Elimina automaticamente i report più vecchi di 30 giorni",
             self.clean_old_exports
+        )
+
+        self.add_setting_item(
+            settings_layout,
+            "🗂️ Pulisci Cartelle Documenti Orfane",
+            "Elimina cartelle documenti di proprietà non più esistenti",
+            self.clean_orphaned_folders
         )
 
         # Info
@@ -288,3 +295,127 @@ class SettingsView(BaseView):
 
         except Exception as e:
             QMessageBox.critical(self, "Errore", f"Errore durante la pulizia:\n{str(e)}")
+
+    def clean_orphaned_folders(self):
+        """Pulisce cartelle documenti senza proprietà associate"""
+        try:
+            docs_dir = "docs"
+            if not os.path.exists(docs_dir):
+                QMessageBox.information(self, "Info", "Nessuna cartella documenti trovata.")
+                return
+
+            # Ottieni tutti gli ID proprietà esistenti
+            properties = self.property_service.get_all()
+            valid_property_ids = {prop['id'] for prop in properties}
+
+            # Scansiona cartelle in docs/
+            orphaned_folders = []
+            total_size = 0
+
+            for folder_name in os.listdir(docs_dir):
+                folder_path = os.path.join(docs_dir, folder_name)
+
+                # Salta se non è una cartella
+                if not os.path.isdir(folder_path):
+                    continue
+
+                # Verifica se è una cartella proprietà (formato: property_123)
+                if folder_name.startswith("property_"):
+                    try:
+                        property_id = int(folder_name.split("_")[1])
+
+                        # Se l'ID non esiste più nel DB, è orfana
+                        if property_id not in valid_property_ids:
+                            # Calcola dimensione
+                            folder_size = 0
+                            for root, dirs, files in os.walk(folder_path):
+                                for file in files:
+                                    file_path = os.path.join(root, file)
+                                    if os.path.exists(file_path):
+                                        folder_size += os.path.getsize(file_path)
+
+                            orphaned_folders.append({
+                                'name': folder_name,
+                                'path': folder_path,
+                                'size': folder_size,
+                                'property_id': property_id
+                            })
+                            total_size += folder_size
+
+                    except (ValueError, IndexError):
+                        # Nome cartella non valido, ignora
+                        continue
+
+            # Se non ci sono cartelle orfane
+            if not orphaned_folders:
+                QMessageBox.information(
+                    self,
+                    "✅ Tutto OK",
+                    "Non sono state trovate cartelle documenti orfane.\n\n"
+                    "Tutte le cartelle corrispondono a proprietà esistenti."
+                )
+                return
+
+            # Mostra dialog di conferma
+            def format_size(size_bytes):
+                if size_bytes == 0:
+                    return "0 B"
+                units = ['B', 'KB', 'MB', 'GB']
+                unit_index = 0
+                size = float(size_bytes)
+                while size >= 1024 and unit_index < len(units) - 1:
+                    size /= 1024
+                    unit_index += 1
+                return f"{size:.2f} {units[unit_index]}"
+
+            total_size_str = format_size(total_size)
+
+            orphaned_list = "\n".join([
+                f"  • {f['name']} ({format_size(f['size'])})"
+                for f in orphaned_folders
+            ])
+
+            reply = QMessageBox.question(
+                self,
+                "🗑️ Cartelle Orfane Trovate",
+                f"Trovate {len(orphaned_folders)} cartelle senza proprietà associate:\n\n"
+                f"{orphaned_list}\n\n"
+                f"Spazio totale occupato: {total_size_str}\n\n"
+                f"⚠️ Vuoi eliminarle definitivamente?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            )
+
+            if reply == QMessageBox.Yes:
+                deleted_count = 0
+                deleted_size = 0
+                errors = []
+
+                for folder_info in orphaned_folders:
+                    try:
+                        shutil.rmtree(folder_info['path'])
+                        deleted_count += 1
+                        deleted_size += folder_info['size']
+                        print(f"🗑️ Eliminata: {folder_info['name']}")
+                    except Exception as e:
+                        errors.append(f"{folder_info['name']}: {str(e)}")
+                        print(f"❌ Errore eliminazione {folder_info['name']}: {e}")
+
+                # Messaggio risultato
+                result_message = (
+                    f"✅ Pulizia completata!\n\n"
+                    f"Cartelle eliminate: {deleted_count}/{len(orphaned_folders)}\n"
+                    f"Spazio liberato: {format_size(deleted_size)}"
+                )
+
+                if errors:
+                    result_message += f"\n\n⚠️ Errori:\n" + "\n".join(errors)
+
+                QMessageBox.information(self, "Pulizia Completata", result_message)
+
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "❌ Errore",
+                f"Errore durante la pulizia:\n\n{str(e)}"
+            )

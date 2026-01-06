@@ -1,9 +1,10 @@
 class PropertyService:
     """Gestisce le operazioni sulle proprietà"""
 
-    def __init__(self, conn):
+    def __init__(self, conn, logger):
         self.conn = conn
         self.cursor = conn.cursor()
+        self.logger = logger
 
     def get_all(self):
         """Recupera tutte le proprietà"""

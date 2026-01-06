@@ -7,9 +7,10 @@ DOCS_DIR = "docs"
 class DocumentService:
     """Gestisce le operazioni sui documenti"""
 
-    def __init__(self, conn):
+    def __init__(self, conn, logger):
         self.conn = conn
         self.cursor = conn.cursor()
+        self.logger = logger
 
         # Crea cartella documenti se non esiste
         if not os.path.exists(DOCS_DIR):
@@ -17,7 +18,8 @@ class DocumentService:
 
     def get_property_folder(self, property_id, sub_directory=None):
         """Ottiene il percorso della cartella di una proprietà usando l'ID"""
-        # 🔧 FIX: Usa property_id invece del nome
+
+        # Usa property_id per associare cartella a quella proprietà
         base_path = os.path.join(DOCS_DIR, f"property_{property_id}")
         if sub_directory:
             return os.path.join(base_path, sub_directory)
@@ -25,6 +27,7 @@ class DocumentService:
 
     def list_documents(self, property_id, sub_directory=None):
         """Lista i documenti di una proprietà usando l'ID"""
+
         folder = self.get_property_folder(property_id, sub_directory)
 
         if not os.path.exists(folder):
@@ -47,6 +50,7 @@ class DocumentService:
 
     def save_document(self, source_path, property_id, metadata):
         """Salva un documento nella cartella della proprietà con rinomina automatica"""
+
         # Estrai data fattura e servizio dai metadati
         data_fattura = metadata['data_fattura']  # Formato: dd/MM/yyyy
         service = metadata['service']
@@ -64,11 +68,11 @@ class DocumentService:
         folder = self.get_property_folder(property_id, sub_directory)
         os.makedirs(folder, exist_ok=True)
 
-        # 🆕 RINOMINA FILE: mese_anno_servizio.estensione
+        # RINOMINA FILE: mese_anno_servizio.estensione
         original_filename = os.path.basename(source_path)
-        file_extension = os.path.splitext(original_filename)[1]  # Es: .pdf
+        file_extension = os.path.splitext(original_filename)[1]
 
-        # Sanitizza il nome del servizio (rimuovi caratteri non validi)
+        # rimuovi caratteri non validi dal nome del servizio
         safe_service = "".join(c for c in service if c.isalnum() or c in (' ', '-', '_')).strip()
         safe_service = safe_service.replace(' ', '_')
 
@@ -76,7 +80,7 @@ class DocumentService:
         new_filename = f"{mese}_{anno}_{safe_service}{file_extension}"
         dest_path = os.path.join(folder, new_filename)
 
-        # 🔧 Gestisci file duplicati (se esiste già, aggiungi un numero)
+        # Gestisci file duplicati (se esiste già, aggiungi un numero)
         counter = 1
         while os.path.exists(dest_path):
             new_filename = f"{mese}_{anno}_{safe_service}_{counter}{file_extension}"
@@ -85,10 +89,11 @@ class DocumentService:
 
         try:
             shutil.copy(source_path, dest_path)
-            print(f"✅ Documento salvato come: {new_filename}")
+
+            self.logger.info(f"Document_service: Documento salvato come: {new_filename}")
             return dest_path
         except Exception as e:
-            print(f"❌ Errore salvataggio documento: {e}")
+            self.logger.error(f"Document_service:Errore salvataggio documento: {e}")
             return None
 
     def delete_document(self, file_path):
@@ -98,9 +103,10 @@ class DocumentService:
                 os.remove(file_path)
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
+            self.logger.info(f"Document_service: Documento eliminato correttamente: {file_path}")
             return True
         except Exception as e:
-            print(f"Errore eliminazione documento: {e}")
+            self.logger.error(f"Document_service:Errore eliminazione documento: {e}")
             return False
 
     def create_folder(self, property_id, folder_name, sub_directory=None):
@@ -110,26 +116,83 @@ class DocumentService:
 
         try:
             os.makedirs(new_folder, exist_ok=True)
+            self.logger.info(f"Document_service: Cartella creata con successo: {new_folder}")
             return new_folder
         except Exception as e:
-            print(f"Errore creazione cartella: {e}")
+            self.logger.error(f"Document_service:Errore creazione cartella: {e}")
             return None
 
-    def rename_property_folder(self, old_name, property_id):
-        """
-        🆕 METODO DI MIGRAZIONE
-        Rinomina una cartella esistente con nome testuale al nuovo formato con ID.
-        Usalo UNA VOLTA per migrare le cartelle esistenti.
-        """
-        old_path = os.path.join(DOCS_DIR, old_name)
-        new_path = os.path.join(DOCS_DIR, f"property_{property_id}")
+    def delete_property_folder(self, property_id):
+        """Elimina la cartella documenti di una proprietà"""
 
-        if os.path.exists(old_path) and not os.path.exists(new_path):
-            try:
-                shutil.move(old_path, new_path)
-                print(f"✅ Migrata cartella: {old_name} → property_{property_id}")
-                return True
-            except Exception as e:
-                print(f"❌ Errore migrazione cartella {old_name}: {e}")
-                return False
-        return False
+        folder_path = self.get_property_folder(property_id)
+
+        result = {
+            'success': False,
+            'folder_path': folder_path,
+            'files_deleted': 0,
+            'folders_deleted': 0,
+            'error': None
+        }
+
+        # Se la cartella non esiste, considera come successo
+        if not os.path.exists(folder_path):
+            result['success'] = True
+            return result
+
+        try:
+            # Conta file e sottocartelle prima di eliminare
+            for root, dirs, files in os.walk(folder_path):
+                result['files_deleted'] += len(files)
+                result['folders_deleted'] += len(dirs)
+
+            # Elimina ricorsivamente
+            shutil.rmtree(folder_path)
+            result['success'] = True
+
+            self.logger.info(f"️DocumentService:Cartella eliminata: {folder_path}")
+            self.logger.info(f"️DocumentService:File eliminati: {result['files_deleted']}")
+            self.logger.info(f"️DocumentService:Cartelle eliminate: {result['folders_deleted']}")
+
+        except PermissionError as e:
+            result['error'] = f"Permessi insufficienti: {str(e)}"
+            self.logger.error(f"DocumentService: {result['error']}")
+        except Exception as e:
+            result['error'] = f"Errore generico: {str(e)}"
+            self.logger.error(f"DocumentService: {result['error']}")
+
+        return result
+
+    def get_property_folder_size(self, property_id):
+        """Calcola la dimensione totale della cartella documenti"""
+        folder_path = self.get_property_folder(property_id)
+
+        if not os.path.exists(folder_path):
+            return 0
+
+        total_size = 0
+        try:
+            for root, dirs, files in os.walk(folder_path):
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    if os.path.exists(file_path):
+                        total_size += os.path.getsize(file_path)
+        except Exception as e:
+            self.logger.error(f"DocumentService:Errore calcolo dimensione: {e}")
+
+        return total_size
+
+    def format_size(self, size_bytes):
+        """Formatta dimensione in formato leggibile"""
+        if size_bytes == 0:
+            return "0 B"
+
+        units = ['B', 'KB', 'MB', 'GB', 'TB']
+        unit_index = 0
+        size = float(size_bytes)
+
+        while size >= 1024 and unit_index < len(units) - 1:
+            size /= 1024
+            unit_index += 1
+
+        return f"{size:.2f} {units[unit_index]}"

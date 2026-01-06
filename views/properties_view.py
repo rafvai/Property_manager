@@ -1,3 +1,5 @@
+import os
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -409,35 +411,122 @@ class PropertiesView(BaseView):
                 QMessageBox.warning(self, "Errore", "Impossibile aggiornare la proprietà.")
 
     def delete_property(self, prop):
-        """Elimina una proprietà con conferma"""
+        """Elimina una proprietà con conferma e pulizia completa"""
+
+        # Conta quanti dati verranno eliminati
+        transactions = self.transaction_service.get_all(property_id=prop['id'])
+        deadlines = self.deadline_service.get_all(property_id=prop['id'], include_completed=True)
+
+        # Verifica cartella documenti e calcola dimensione
+        folder_size_bytes = self.document_service.get_property_folder_size(prop['id'])
+        folder_size_str = self.document_service.format_size(folder_size_bytes)
+        property_folder = self.document_service.get_property_folder(prop['id'])
+        has_documents = os.path.exists(property_folder)
+
+        # Costruisci messaggio di conferma dettagliato
+        warning_message = (
+            f"Sei sicuro di voler eliminare '{prop['name']}'?\n\n"
+            f"⚠️ ATTENZIONE: Questa operazione è IRREVERSIBILE!\n\n"
+            f"Verranno eliminati permanentemente:\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📊 Transazioni: {len(transactions)}\n"
+            f"📅 Scadenze: {len(deadlines)}\n"
+        )
+
+        if has_documents and folder_size_bytes > 0:
+            warning_message += f"📁 Documenti: {folder_size_str}\n"
+            warning_message += f"🗑️ Cartella: {os.path.basename(property_folder)}\n"
+
+        warning_message += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
         reply = QMessageBox.question(
             self,
-            "Conferma Eliminazione",
-            f"Sei sicuro di voler eliminare '{prop['name']}'?\n\n"
-            "ATTENZIONE: Verranno eliminate anche tutte le transazioni, documenti e scadenze associate!",
+            "🚨 Conferma Eliminazione",
+            warning_message,
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
 
         if reply == QMessageBox.Yes:
-            # Elimina transazioni associate
-            transactions = self.transaction_service.get_all(property_id=prop['id'])
-            for trans in transactions:
-                self.transaction_service.delete(trans['id'])
+            error_messages = []
 
-            # Elimina scadenze associate
-            deadlines = self.deadline_service.get_all(property_id=prop['id'], include_completed=True)
-            for deadline in deadlines:
-                self.deadline_service.delete(deadline['id'])
+            try:
+                # 1. Elimina transazioni associate
+                deleted_trans = 0
+                for trans in transactions:
+                    if self.transaction_service.delete(trans['id']):
+                        deleted_trans += 1
 
-            # Elimina proprietà
-            success = self.property_service.delete(prop['id'])
+                if deleted_trans < len(transactions):
+                    error_messages.append(
+                        f"⚠️ Solo {deleted_trans}/{len(transactions)} transazioni eliminate"
+                    )
 
-            if success:
-                QMessageBox.information(self, "Successo", f"Proprietà '{prop['name']}' eliminata con successo!")
-                self.load_properties()
-            else:
-                QMessageBox.warning(self, "Errore", "Impossibile eliminare la proprietà.")
+                # 2. Elimina scadenze associate
+                deleted_deadlines = 0
+                for deadline in deadlines:
+                    if self.deadline_service.delete(deadline['id']):
+                        deleted_deadlines += 1
+
+                if deleted_deadlines < len(deadlines):
+                    error_messages.append(
+                        f"⚠️ Solo {deleted_deadlines}/{len(deadlines)} scadenze eliminate"
+                    )
+
+                # 3. 🆕 Elimina cartella documenti usando il service
+                folder_result = self.document_service.delete_property_folder(prop['id'])
+
+                # 4. Elimina proprietà dal database
+                success = self.property_service.delete(prop['id'])
+
+                if success:
+                    # Messaggio di successo dettagliato
+                    success_message = (
+                        f"✅ Proprietà '{prop['name']}' eliminata con successo!\n\n"
+                        f"Riepilogo operazioni:\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"📊 Transazioni eliminate: {deleted_trans}\n"
+                        f"📅 Scadenze eliminate: {deleted_deadlines}\n"
+                    )
+
+                    if folder_result['success']:
+                        success_message += (
+                            f"📁 Documenti eliminati: {folder_result['files_deleted']}\n"
+                            f"🗑️ Cartelle eliminate: {folder_result['folders_deleted']}\n"
+                            f"💾 Spazio liberato: {folder_size_str}\n"
+                        )
+                    elif folder_result['error']:
+                        error_messages.append(
+                            f"⚠️ Cartella documenti: {folder_result['error']}"
+                        )
+
+                    success_message += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+                    # Aggiungi eventuali warning
+                    if error_messages:
+                        success_message += f"\n\n⚠️ Avvisi:\n" + "\n".join(error_messages)
+
+                    QMessageBox.information(
+                        self,
+                        "✅ Eliminazione Completata",
+                        success_message
+                    )
+                    self.load_properties()
+                else:
+                    QMessageBox.warning(
+                        self,
+                        "❌ Errore",
+                        "Impossibile eliminare la proprietà dal database."
+                    )
+
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "❌ Errore Critico",
+                    f"Si è verificato un errore durante l'eliminazione:\n\n{str(e)}\n\n"
+                    f"La proprietà potrebbe essere stata eliminata solo parzialmente.\n"
+                    f"Controlla manualmente i dati."
+                )
 
     def filter_properties(self, text):
         """Filtra le proprietà in base al testo di ricerca"""
