@@ -6,7 +6,7 @@ from PySide6.QtGui import QIcon, QColor
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
     QPushButton, QListWidget, QListWidgetItem, QWidget,
-    QFileDialog, QDialog
+    QFileDialog, QDialog, QMessageBox
 )
 
 from dialogs import DocumentMetadataDialog
@@ -179,7 +179,9 @@ class DocumentsView(BaseView):
             row_widget.setStyleSheet(f"background-color: {bg_color.name()};border-radius: 5px;")
 
     def add_document(self):
-        """Aggiunge nuovi documenti"""
+        """Aggiunge nuovi documenti CON VALIDAZIONE"""
+        from validation_utils import parse_decimal, ValidationError
+
         dialog = QFileDialog(self)
         dialog.setFileMode(QFileDialog.ExistingFiles)
         if dialog.exec() != QDialog.Accepted:
@@ -195,25 +197,57 @@ class DocumentsView(BaseView):
 
             metadata = meta_dialog.get_data()
 
-            # Salva transazione
-            trans_id = self.transaction_service.create(
-                property_id=self.selected_property["id"],
-                date=metadata["data_fattura"],
-                trans_type=metadata["tipo"],
-                amount=float(metadata["importo"]),
-                provider=metadata['provider'],
-                service=metadata['service']
-            )
+            try:
+                # 🔥 CONVERTI IMPORTO GESTENDO SIA VIRGOLA CHE PUNTO
+                importo_float = parse_decimal(metadata["importo"], "Importo")
 
-            if trans_id:
-                dest_path = self.document_service.save_document(
-                    path,
-                    self.selected_property["id"],
-                    metadata=metadata
+                # Salva transazione
+                trans_id = self.transaction_service.create(
+                    property_id=self.selected_property["id"],
+                    date=metadata["data_fattura"],
+                    trans_type=metadata["tipo"],
+                    amount=importo_float,  # 🆕 Usa il float validato
+                    provider=metadata['provider'],
+                    service=metadata['service']
                 )
 
-                if dest_path:
-                    print(f"✅ Documento salvato: {dest_path}")
+                if trans_id:
+                    dest_path = self.document_service.save_document(
+                        path,
+                        self.selected_property["id"],
+                        metadata=metadata
+                    )
+
+                    if dest_path:
+                        print(f"✅ Documento salvato: {dest_path}")
+                        QMessageBox.information(
+                            self,
+                            "✅ Successo",
+                            f"Documento salvato correttamente!\n\n"
+                            f"📄 {os.path.basename(dest_path)}\n"
+                            f"💰 {importo_float:,.2f}€"
+                        )
+                else:
+                    QMessageBox.warning(
+                        self,
+                        "⚠️ Errore",
+                        "Impossibile salvare la transazione nel database"
+                    )
+
+            except ValidationError as e:
+                QMessageBox.warning(
+                    self,
+                    "⚠️ Validazione fallita",
+                    f"Errore nell'importo del documento '{filename}':\n\n{str(e)}"
+                )
+                continue
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "❌ Errore",
+                    f"Errore durante il salvataggio:\n\n{str(e)}"
+                )
+                continue
 
         self.load_documents()
 

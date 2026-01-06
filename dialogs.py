@@ -12,12 +12,14 @@ from PySide6.QtWidgets import (
 
 from styles import COLORE_SECONDARIO, COLORE_WIDGET_2, COLORE_RIGA_1, COLORE_ITEM_HOVER, default_button_main_header, \
     default_aggiungi_button, default_selector_date_export, default_export_button
+from validation_utils import parse_decimal, validate_required_text, validate_date, ValidationError
+
 
 DOCS_DIR = "docs"
 
 
 class DocumentMetadataDialog(QDialog):
-    """Dialog per inserire i metadati del documento"""
+    """Dialog per inserire i metadati del documento CON VALIDAZIONE"""
 
     def __init__(self, filename, parent=None):
         super().__init__(parent)
@@ -33,14 +35,18 @@ class DocumentMetadataDialog(QDialog):
 
         # Emittente
         self.emittente_input = QLineEdit()
+        self.emittente_input.setPlaceholderText("Es: ENEL Energia")
         layout.addRow("Fornitore/Emittente:", self.emittente_input)
 
         # servizio
         self.service_input = QLineEdit()
+        self.service_input.setPlaceholderText("Es: Bolletta Luce")
         layout.addRow("Servizio:", self.service_input)
 
-        # Importo
+        # Importo - 🆕 CON TOOLTIP
         self.importo_input = QLineEdit()
+        self.importo_input.setPlaceholderText("Es: 123,45 oppure 123.45")
+        self.importo_input.setToolTip("Puoi usare sia la virgola (123,45) che il punto (123.45)")
         layout.addRow("Importo totale (€):", self.importo_input)
 
         # Data Fattura
@@ -57,32 +63,185 @@ class DocumentMetadataDialog(QDialog):
         buttons.rejected.connect(self.reject)
 
     def accept(self):
-        if not self.type_box.currentText().strip():
-            QMessageBox.warning(self, "Campo obbligatorio", "Seleziona il tipo.")
-            return
-        if not self.emittente_input.text().strip():
-            QMessageBox.warning(self, "Campo obbligatorio", "Inserisci l'emittente.")
-            return
-        if not self.service_input.text().strip():
-            QMessageBox.warning(self, "Campo obbligatorio", "Inserisci il servizio.")
-            return
-        if not self.importo_input.text().strip():
-            QMessageBox.warning(self, "Campo obbligatorio", "Inserisci l'importo.")
-            return
-        if not self.data_fattura.date().isValid():
-            QMessageBox.warning(self, "Campo obbligatorio", "Inserisci una data valida.")
-            return
+        """🆕 Validazione con gestione errori dettagliata"""
+        try:
+            # Valida tipo
+            tipo = self.type_box.currentText().strip()
+            if not tipo:
+                raise ValidationError("Seleziona il tipo")
 
-        super().accept()
+            # Valida emittente
+            emittente = validate_required_text(
+                self.emittente_input.text(),
+                "Fornitore/Emittente",
+                min_length=2,
+                max_length=100
+            )
+
+            # Valida servizio
+            servizio = validate_required_text(
+                self.service_input.text(),
+                "Servizio",
+                min_length=2,
+                max_length=100
+            )
+
+            # Valida importo - 🔥 GESTISCE SIA VIRGOLA CHE PUNTO
+            importo = parse_decimal(
+                self.importo_input.text(),
+                "Importo"
+            )
+
+            # Valida data
+            validate_date(self.data_fattura.date(), "Data fattura")
+
+            # Se tutto ok, procedi
+            super().accept()
+
+        except ValidationError as e:
+            QMessageBox.warning(self, "⚠️ Validazione fallita", str(e))
 
     def get_data(self):
+        """Restituisce i dati validati"""
         return {
             "tipo": self.type_box.currentText(),
             "provider": self.emittente_input.text().strip(),
             "service": self.service_input.text().strip(),
-            "importo": self.importo_input.text().strip(),
+            "importo": self.importo_input.text().strip(),  # Verrà parsato dal service
             "data_fattura": self.data_fattura.date().toString("dd/MM/yyyy"),
         }
+
+
+class AddDeadlineDialog(QDialog):
+    """Dialog per inserire una nuova scadenza CON VALIDAZIONE"""
+
+    def __init__(self, properties=None, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Nuova Scadenza")
+        self.setMinimumSize(400, 300)
+
+        layout = QFormLayout(self)
+
+        # Titolo
+        self.title_input = QLineEdit()
+        self.title_input.setPlaceholderText("Es: Pagamento IMU")
+        layout.addRow("Titolo*:", self.title_input)
+
+        # Descrizione
+        self.description_input = QTextEdit()
+        self.description_input.setPlaceholderText("Dettagli aggiuntivi (opzionale)")
+        self.description_input.setMaximumHeight(80)
+        layout.addRow("Descrizione:", self.description_input)
+
+        # Data scadenza
+        self.due_date = QDateEdit()
+        self.due_date.setDisplayFormat("dd/MM/yyyy")
+        self.due_date.setCalendarPopup(True)
+        self.due_date.setDate(QDate.currentDate())
+        layout.addRow("Data scadenza*:", self.due_date)
+
+        # Proprietà (opzionale)
+        self.property_combo = QComboBox()
+        self.property_combo.addItem("Nessuna proprietà", None)
+        if properties:
+            for prop in properties:
+                self.property_combo.addItem(prop["name"], prop["id"])
+        layout.addRow("Proprietà:", self.property_combo)
+
+        # Pulsanti
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        layout.addWidget(buttons)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+
+    def accept(self):
+        """🆕 Validazione"""
+        try:
+            # Valida titolo
+            validate_required_text(
+                self.title_input.text(),
+                "Titolo",
+                min_length=3,
+                max_length=200
+            )
+
+            # Valida data
+            validate_date(self.due_date.date(), "Data scadenza")
+
+            super().accept()
+
+        except ValidationError as e:
+            QMessageBox.warning(self, "⚠️ Validazione fallita", str(e))
+
+    def get_data(self):
+        return {
+            "title": self.title_input.text().strip(),
+            "description": self.description_input.toPlainText().strip() or None,
+            "due_date": self.due_date.date().toString("yyyy-MM-dd"),
+            "property_id": self.property_combo.currentData()
+        }
+
+
+# ... (resto del codice rimane identico, aggiungo solo i commenti dove serve validazione)
+
+class AddDocumentDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Aggiungi documento")
+        self.setMinimumSize(400, 300)
+        self.setAcceptDrops(True)
+
+        self.selected_files = []
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Trascina qui i documenti oppure premi il pulsante:"))
+
+        self.docs_list = QListWidget()
+        layout.addWidget(self.docs_list)
+
+        self.browse_btn = QPushButton("Sfoglia...")
+        layout.addWidget(self.browse_btn, alignment=Qt.AlignRight)
+        self.browse_btn.clicked.connect(self.browse_files)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        for url in event.mimeData().urls():
+            file_path = url.toLocalFile()
+            self.add_file(file_path)
+
+    def browse_files(self):
+        """Apre dialog per selezionare file"""
+        file_paths, _ = QFileDialog.getOpenFileNames(self, "Seleziona documenti")
+        for path in file_paths:
+            self.add_file(path)
+
+    def add_file(self, file_path):
+        if not os.path.exists(DOCS_DIR):
+            os.makedirs(DOCS_DIR)
+
+        filename = os.path.basename(file_path)
+        dest_path = os.path.join(DOCS_DIR, filename)
+
+        try:
+            shutil.copy(file_path, dest_path)
+            self.docs_list.addItem(filename)
+            self.selected_files.append(dest_path)
+
+            self.docs_list.hide()
+            self.browse_btn.hide()
+
+            meta_dialog = DocumentMetadataDialog(filename, self)
+            if meta_dialog.exec():
+                data = meta_dialog.get_data()
+                print("Metadati salvati:", data)
+
+            self.accept()
+
+        except Exception as e:
+            print(f"Errore copiando {filename}: {e}")
 
 
 # Dialog per aggiungere scadenze
@@ -706,7 +865,7 @@ class ExportDialog(QDialog):
         """Esegue l'export"""
         # Valida date
         if self.start_date.date() > self.end_date.date():
-            QMessageBox.warning(self, "Errore", "La data di inizio deve essere precedente alla data di fine!")
+            QMessageBox.warning(self, self.tm.get("common","error"), "La data di inizio deve essere precedente alla data di fine!")
             return
 
         # Recupera transazioni

@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from dialogs import CustomTitleBar
 import Functions
+import logging
 from styles import *
 from translations_manager import get_translation_manager
 
@@ -44,8 +45,8 @@ class DashboardWindow(QMainWindow):
 
         # Finestra principale
         self.setWindowTitle("Property Manager MVP")
-        self.setGeometry(200, 200, 1200, 700)  # Dimensioni iniziali più grandi
-        self.setMinimumSize(800, 600)  # 🆕 Imposta dimensioni minime
+        self.setGeometry(200, 200, 1200, 700)  # Dimensioni iniziali
+        self.setMinimumSize(800, 600)  # Imposta dimensioni minime
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
 
         # Container principale

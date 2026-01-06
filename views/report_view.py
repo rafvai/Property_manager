@@ -448,8 +448,12 @@ class ReportView(BaseView):
         table.setColumnWidth(1, 120)
         table.setColumnWidth(2, 100)
 
+    # 🔧 SOSTITUISCI SOLO IL METODO add_transaction() in report_view.py
+
     def add_transaction(self):
-        """Dialog per aggiungere transazione manuale"""
+        """Dialog per aggiungere transazione manuale CON VALIDAZIONE"""
+        from validation_utils import parse_decimal, validate_required_text, ValidationError
+
         dialog = QDialog(self)
         dialog.setWindowTitle(self.tm.get("report", "new_transaction"))
         dialog.setMinimumWidth(400)
@@ -477,8 +481,10 @@ class ReportView(BaseView):
         update_categories()
         layout.addRow(f"{self.tm.get('common', 'category')}*:", category_combo)
 
+        # 🆕 Input con tooltip
         amount_input = QLineEdit()
-        amount_input.setPlaceholderText("100.50")
+        amount_input.setPlaceholderText("Es: 100,50 oppure 100.50")
+        amount_input.setToolTip("Puoi usare sia la virgola (100,50) che il punto (100.50)")
         layout.addRow(f"{self.tm.get("report", "amount")} €*:", amount_input)
 
         provider_input = QLineEdit()
@@ -505,16 +511,21 @@ class ReportView(BaseView):
 
         if dialog.exec():
             try:
-                amount = float(amount_input.text().strip().replace(',', '.'))
-                category = category_combo.currentText().strip()
+                # 🔥 VALIDAZIONE CON GESTIONE VIRGOLA/PUNTO
+                amount = parse_decimal(amount_input.text().strip(), "Importo")
+
+                # Valida categoria
+                category = validate_required_text(
+                    category_combo.currentText(),
+                    "Categoria",
+                    min_length=2,
+                    max_length=100
+                )
+
                 trans_type = type_combo.currentText()
-                provider = provider_input.text().strip() or "Manual"
+                provider = provider_input.text().strip() or "Manuale"
                 date_str = date_input.date().toString("dd/MM/yyyy")
                 property_id = property_combo.currentData() if properties else None
-
-                if not category:
-                    QMessageBox.warning(self, self.tm.get("common", "error"), "Inserta una categoría!")
-                    return
 
                 trans_id = self.transaction_service.create(
                     property_id=property_id,
@@ -526,10 +537,25 @@ class ReportView(BaseView):
                 )
 
                 if trans_id:
-                    QMessageBox.information(self, "Éxito", f"Transacción añadida!\n\nCategoría: {category}")
+                    QMessageBox.information(
+                        self,
+                        self.tm.get("common", "success"),
+                        f"✅ Transazione aggiunta!\n\n"
+                        f"Categoria: {category}\n"
+                        f"Importo: {amount:,.2f}€"
+                    )
                     self.update_report()
                 else:
-                    QMessageBox.warning(self, self.tm.get("common", "error"), "No se pudo guardar la transacción.")
+                    QMessageBox.warning(
+                        self,
+                        self.tm.get("common", "error"),
+                        "❌ Impossibile salvare la transazione."
+                    )
 
-            except ValueError:
-                QMessageBox.warning(self, self.tm.get("common", "error"), "Importe inválido!")
+            except ValidationError as e:
+                # 🆕 Messaggio di errore più chiaro
+                QMessageBox.warning(
+                    self,
+                    "⚠️ Validazione fallita",
+                    str(e)
+                )
