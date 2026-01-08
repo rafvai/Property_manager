@@ -44,7 +44,7 @@ class TransactionService:
                 })
             return transactions
         except Exception as e:
-            print(f"Errore recupero transazioni: {e}")
+            self.logger.error(f"TransactionService:Errore recupero transazioni: {e}")
             return []
 
     def get_monthly_summary(self, year, property_id=None):
@@ -74,7 +74,7 @@ class TransactionService:
             self.cursor.execute(query, params)
             return self.cursor.fetchall()
         except Exception as e:
-            print(f"Errore recupero riepilogo mensile: {e}")
+            self.logger.error(f"TransactionService:Errore recupero riepilogo mensile: {e}")
             return []
 
     def create(self, property_id, date, trans_type, amount, provider, service):
@@ -87,7 +87,7 @@ class TransactionService:
             self.conn.commit()
             return self.cursor.lastrowid
         except Exception as e:
-            print(f"Errore creazione transazione: {e}")
+            self.logger.error(f"TransactionService:Errore creazione transazione: {e}")
             return None
 
     def update(self, transaction_id, **kwargs):
@@ -112,7 +112,7 @@ class TransactionService:
             self.conn.commit()
             return True
         except Exception as e:
-            print(f"Errore aggiornamento transazione: {e}")
+            self.logger.error(f"TransactionService:Errore aggiornamento transazione: {e}")
             return False
 
     def delete(self, transaction_id):
@@ -122,7 +122,7 @@ class TransactionService:
             self.conn.commit()
             return True
         except Exception as e:
-            print(f"Errore eliminazione transazione: {e}")
+            self.logger.error(f"TransactionService:Errore eliminazione transazione: {e}")
             return False
 
     def get_balance(self, property_id=None, end_date=None):
@@ -151,5 +151,5 @@ class TransactionService:
             uscite = row[1] if row else 0
             return entrate - uscite
         except Exception as e:
-            print(f"Errore calcolo saldo: {e}")
+            self.logger.error(f"TransactionService:Errore calcolo saldo: {e}")
             return 0

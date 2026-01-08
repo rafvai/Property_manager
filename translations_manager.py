@@ -105,10 +105,12 @@ class TranslationManager:
                 },
                 "calendar": {
                     "title": "Calendario",
-                    "new_deadline": "Nuova Scadenza"
+                    "new_deadline": "Nuova Scadenza",
+                    "click_add_deadline" : "Clicca qui per aggiungere una scadenza"
                 },
                 "settings": {
-                    "title": "Impostazioni"
+                    "title": "Impostazioni",
+                    "backup_db": "Backup Database"
                 },
                 "months": {
                     "short": ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"],
@@ -210,10 +212,12 @@ class TranslationManager:
                 },
                 "calendar": {
                     "title": "Calendario",
-                    "new_deadline" : "Nueva fecha limite"
+                    "new_deadline" : "Nueva fecha limite",
+                    "click_add_deadline" : "Haz clic aquí para añadir un vencimiento"
                 },
                 "settings": {
-                    "title": "Configuración"
+                    "title": "Configuración",
+                    "backup_db": "Copia de seguridad de la base de datos",
                 },
                 "months": {
                     "short": ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"],
@@ -317,9 +321,11 @@ class TranslationManager:
                 "calendar": {
                     "title": "Calendar",
                     "new_deadline": "New deadline",
+                    "click_add_deadline": "Click here to add a deadline"
                 },
                 "settings": {
-                    "title": "Settings"
+                    "title": "Settings",
+                    "backup_db": "Backup Database"
                 },
                 "months": {
                     "short": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],

@@ -115,9 +115,10 @@ class DocumentMetadataDialog(QDialog):
 class AddDeadlineDialog(QDialog):
     """Dialog per inserire una nuova scadenza CON VALIDAZIONE"""
 
-    def __init__(self, properties=None, parent=None):
+    def __init__(self, tm, properties=None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Nuova Scadenza")
+        self.tm = tm
+        self.setWindowTitle(self.tm.get("calendar", "new_deadline"))
         self.setMinimumSize(400, 300)
 
         layout = QFormLayout(self)
@@ -461,12 +462,13 @@ class CustomTitleBar(QWidget):
 class ClickableDayCell(QFrame):
     """Cella giorno cliccabile per aggiungere scadenze"""
 
-    def __init__(self, day, date_str, deadlines, parent_calendar):
+    def __init__(self, day, date_str, deadlines, parent_calendar, tm):
         super().__init__()
         self.day = day
         self.date_str = date_str
         self.deadlines = deadlines
         self.parent_calendar = parent_calendar
+        self.tm = tm
 
         self.setStyleSheet(f"""
             QFrame {{
@@ -479,6 +481,8 @@ class ClickableDayCell(QFrame):
             }}
         """)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        self.setToolTip(self.tm.get("calendar", "click_add_deadline"))
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(6, 4, 6, 4)
@@ -504,15 +508,6 @@ class ClickableDayCell(QFrame):
                 """)
                 deadline_label.setWordWrap(True)
                 layout.addWidget(deadline_label)
-        else:
-            # Indicatore per aggiungere scadenza
-            add_hint = QLabel("+ Aggiungi")
-            add_hint.setStyleSheet("""
-                font-size: 9px; 
-                color: rgba(255, 255, 255, 0.5);
-            """)
-            add_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            layout.addWidget(add_hint)
 
         layout.addStretch()
 
@@ -581,7 +576,7 @@ class PlannerCalendarWidget(QWidget):
     def add_deadline(self, preset_date=None):
         """Apre dialog per aggiungere scadenza (con data opzionale preimpostata)"""
         properties = self.property_service.get_all()
-        dialog = AddDeadlineDialog(properties, self)
+        dialog = AddDeadlineDialog(self.tm, properties, self)
 
         # Se viene passata una data, preimpostala nel dialog
         if preset_date:
@@ -629,7 +624,7 @@ class PlannerCalendarWidget(QWidget):
             deadlines = self.deadline_service.get_by_date(date_str)
 
             # Usa la nuova cella cliccabile
-            cell = ClickableDayCell(day, date_str, deadlines, self)
+            cell = ClickableDayCell(day, date_str, deadlines, self, self.tm)
 
             self.grid.addWidget(cell, row, col)
             col += 1

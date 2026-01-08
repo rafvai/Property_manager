@@ -22,7 +22,7 @@ class PropertyService:
                 })
             return properties
         except Exception as e:
-            print(f"Errore recupero proprietà: {e}")
+            self.logger.error(f"PropertyService:Errore recupero proprietà: {e}")
             return []
 
     def get_by_id(self, property_id):
@@ -43,7 +43,7 @@ class PropertyService:
                 }
             return None
         except Exception as e:
-            print(f"Errore recupero proprietà: {e}")
+            self.logger.error(f"PropertyService:Errore recupero proprietà: {e}")
             return None
 
     def create(self, name, address, owner):
@@ -54,9 +54,10 @@ class PropertyService:
                 (name, address, owner)
             )
             self.conn.commit()
+            self.logger.info(f"PropertyService: Proprietà creata correttamente: {self.cursor.lastrowid}")
             return self.cursor.lastrowid
         except Exception as e:
-            print(f"Errore creazione proprietà: {e}")
+            self.logger.error(f"PropertyService:Errore creazione proprietà: {e}")
             return None
 
     def update(self, property_id, name=None, address=None, owner=None):
@@ -83,9 +84,10 @@ class PropertyService:
 
             self.cursor.execute(query, params)
             self.conn.commit()
+            self.logger.info(f"PropertyService: Proprietà modificata correttamente: {property_id}")
             return True
         except Exception as e:
-            print(f"Errore aggiornamento proprietà: {e}")
+            self.logger.error(f"PropertyService:Errore aggiornamento proprietà: {e}")
             return False
 
     def delete(self, property_id):
@@ -93,7 +95,8 @@ class PropertyService:
         try:
             self.cursor.execute("DELETE FROM properties WHERE id = ?", (property_id,))
             self.conn.commit()
+            self.logger.info(f"PropertyService: Proprietà eliminata correttamente: {property_id}")
             return True
         except Exception as e:
-            print(f"Errore eliminazione proprietà: {e}")
+            self.logger.error(f"PropertyService:Errore eliminazione proprietà: {e}")
             return False

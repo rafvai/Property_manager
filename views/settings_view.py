@@ -45,7 +45,7 @@ class SettingsView(BaseView):
         # Database
         self.add_setting_item(
             settings_layout,
-            "💾 Backup Database",
+            f"💾 {self.tm.get("settings", "backup_db")}",
             "Crea una copia di sicurezza dei tuoi dati",
             self.backup_database
         )
