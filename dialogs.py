@@ -183,68 +183,6 @@ class AddDeadlineDialog(QDialog):
         }
 
 
-# ... (resto del codice rimane identico, aggiungo solo i commenti dove serve validazione)
-
-class AddDocumentDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Aggiungi documento")
-        self.setMinimumSize(400, 300)
-        self.setAcceptDrops(True)
-
-        self.selected_files = []
-
-        layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("Trascina qui i documenti oppure premi il pulsante:"))
-
-        self.docs_list = QListWidget()
-        layout.addWidget(self.docs_list)
-
-        self.browse_btn = QPushButton("Sfoglia...")
-        layout.addWidget(self.browse_btn, alignment=Qt.AlignRight)
-        self.browse_btn.clicked.connect(self.browse_files)
-
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-
-    def dropEvent(self, event):
-        for url in event.mimeData().urls():
-            file_path = url.toLocalFile()
-            self.add_file(file_path)
-
-    def browse_files(self):
-        """Apre dialog per selezionare file"""
-        file_paths, _ = QFileDialog.getOpenFileNames(self, "Seleziona documenti")
-        for path in file_paths:
-            self.add_file(path)
-
-    def add_file(self, file_path):
-        if not os.path.exists(DOCS_DIR):
-            os.makedirs(DOCS_DIR)
-
-        filename = os.path.basename(file_path)
-        dest_path = os.path.join(DOCS_DIR, filename)
-
-        try:
-            shutil.copy(file_path, dest_path)
-            self.docs_list.addItem(filename)
-            self.selected_files.append(dest_path)
-
-            self.docs_list.hide()
-            self.browse_btn.hide()
-
-            meta_dialog = DocumentMetadataDialog(filename, self)
-            if meta_dialog.exec():
-                data = meta_dialog.get_data()
-                print("Metadati salvati:", data)
-
-            self.accept()
-
-        except Exception as e:
-            print(f"Errore copiando {filename}: {e}")
-
-
 # Dialog per aggiungere scadenze
 class AddDeadlineDialog(QDialog):
     """Dialog per inserire una nuova scadenza"""
@@ -825,7 +763,7 @@ class ExportDialog(QDialog):
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
 
-        cancel_btn = QPushButton("❌ Annulla")
+        cancel_btn = QPushButton(f"❌ {self.tm.get("common", "cancel")}")
         cancel_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e74c3c;

@@ -47,7 +47,7 @@ class DocumentsView(BaseView):
         header_layout.addStretch()
 
         # 🆕 Bottone aggiungi spostato qui
-        add_doc_btn = QPushButton(self.tm.get("documents", "add_document"))
+        add_doc_btn = QPushButton(f"+ {self.tm.get("documents", "add_document")}")
         add_doc_btn.setStyleSheet(default_aggiungi_button)
         add_doc_btn.setFixedHeight(36)
         add_doc_btn.clicked.connect(self.add_document)

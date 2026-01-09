@@ -78,7 +78,7 @@ class TranslationManager:
                 },
                 "documents": {
                     "title": "Documenti",
-                    "add_document": "+ Aggiungi documento"
+                    "add_document": "Aggiungi documento"
                 },
                 "accounting": {
                     "title": "Contabilità - Andamento annuale",
@@ -185,7 +185,7 @@ class TranslationManager:
                 },
                 "documents": {
                     "title": "Documentos",
-                    "add_document": "+ Añadir documento"
+                    "add_document": "Añadir documento"
                 },
                 "accounting": {
                     "title": "Contabilidad - Evolución anual",
@@ -292,7 +292,7 @@ class TranslationManager:
                 },
                 "documents": {
                     "title": "Documents",
-                    "add_document": "+ Add document"
+                    "add_document": "Add document"
                 },
                 "accounting": {
                     "title": "Accounting - Annual Overview",
