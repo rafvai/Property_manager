@@ -74,7 +74,8 @@ class TranslationManager:
                     "no_properties": "📭 Nessuna proprietà trovata",
                     "balance": "Saldo",
                     "documents_short": "doc",
-                    "deadlines": "scadenze"
+                    "deadlines": "scadenze",
+                    "new_property": "Nuova proprietà"
                 },
                 "documents": {
                     "title": "Documenti",
@@ -181,7 +182,8 @@ class TranslationManager:
                     "no_properties": "📭 No se encontraron propiedades",
                     "balance": "Saldo",
                     "documents_short": "docs",
-                    "deadlines": "vencimientos"
+                    "deadlines": "vencimientos",
+                    "new_property": "Nueva propiedad"
                 },
                 "documents": {
                     "title": "Documentos",
@@ -288,7 +290,8 @@ class TranslationManager:
                     "no_properties": "📭 No properties found",
                     "balance": "Balance",
                     "documents_short": "docs",
-                    "deadlines": "Deadlines"
+                    "deadlines": "deadlines",
+                    "new_property": "New property"
                 },
                 "documents": {
                     "title": "Documents",

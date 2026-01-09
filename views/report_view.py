@@ -105,7 +105,7 @@ class ReportView(BaseView):
         gastos_layout = QVBoxLayout(gastos_frame)
 
         gastos_title = QLabel(f"● {self.tm.get('report', 'expenses')}")
-        gastos_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #e74c3c;")
+        gastos_title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {COLORE_ERROR};")
         gastos_layout.addWidget(gastos_title)
 
         self.gastos_table = QTableWidget()
@@ -253,7 +253,7 @@ class ReportView(BaseView):
             date_item.setForeground(QColor("white"))
             self.transactions_table.setItem(i, 0, date_item)
 
-            amount_color = "#e74c3c" if trans['type'] == 'Uscita' else "#2ecc71"
+            amount_color = COLORE_ERROR if trans['type'] == 'Uscita' else COLORE_SUCCESS
             amount_item = QTableWidgetItem(f"{trans['amount']:,.2f} €")
             amount_item.setForeground(QColor(amount_color))
             amount_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
@@ -274,17 +274,17 @@ class ReportView(BaseView):
             self.transactions_table.setItem(i, 4, tipo_item)
 
             delete_btn = QPushButton("🗑️")
-            delete_btn.setStyleSheet("""
-                QPushButton {
-                    background-color: #e74c3c;
+            delete_btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {COLORE_ERROR};
                     color: white;
                     border: none;
                     border-radius: 0px;
                     padding: 4px 8px;
-                }
-                QPushButton:hover {
+                }}
+                QPushButton:hover {{
                     background-color: #c0392b;
-                }
+                }}
             """)
             delete_btn.clicked.connect(lambda checked=False, t=trans: self.delete_transaction(t))
             self.transactions_table.setCellWidget(i, 5, delete_btn)
@@ -344,8 +344,8 @@ class ReportView(BaseView):
                 ganancias[category] += amount
                 self.categories_ganancias.add(category)
 
-        self.update_category_table(self.gastos_table, gastos, "#e74c3c")
-        self.update_category_table(self.ganancias_table, ganancias, "#2ecc71")
+        self.update_category_table(self.gastos_table, gastos, COLORE_ERROR)
+        self.update_category_table(self.ganancias_table, ganancias, COLORE_SUCCESS)
 
         # Aggiorna filtro e tabella transazioni
         self.populate_category_filter()

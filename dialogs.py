@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from styles import COLORE_SECONDARIO, COLORE_WIDGET_2, COLORE_RIGA_1, COLORE_ITEM_HOVER, default_button_main_header, \
-    default_aggiungi_button, default_selector_date_export, default_export_button
+    default_aggiungi_button, default_selector_date_export, default_export_button, COLORE_ERROR
 from validation_utils import parse_decimal, validate_required_text, validate_date, ValidationError
 
 
@@ -764,18 +764,18 @@ class ExportDialog(QDialog):
         buttons_layout.addStretch()
 
         cancel_btn = QPushButton(f"❌ {self.tm.get("common", "cancel")}")
-        cancel_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c;
+        cancel_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {COLORE_ERROR};
                 color: white;
                 font-weight: bold;
                 padding: 10px 20px;
                 border-radius: 8px;
                 font-size: 13px;
-            }
-            QPushButton:hover {
+            }}
+            QPushButton:hover {{
                 background-color: #c0392b;
-            }
+            }}
         """)
         cancel_btn.clicked.connect(self.reject)
         buttons_layout.addWidget(cancel_btn)

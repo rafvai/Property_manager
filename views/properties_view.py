@@ -271,13 +271,14 @@ class PropertiesView(BaseView):
         # Indirizzo
         address_label = QLabel(f"{self.tm.get("common", "address")}: {prop['address']}")
         address_label.setStyleSheet("color: #bdc3c7; font-size: 12px;")
-        info_row.addWidget(address_label, stretch=2)
+        info_row.addWidget(address_label)
 
         # Proprietario
         owner_label = QLabel(f"{self.tm.get("common", "owner")}: {prop['owner']}")
         owner_label.setStyleSheet("color: #bdc3c7; font-size: 12px;")
-        info_row.addWidget(owner_label, stretch=1)
+        info_row.addWidget(owner_label)
 
+        info_row.addStretch()
         main_layout.addLayout(info_row)
 
         # --- RIGA 3: STATISTICHE ---
@@ -293,22 +294,6 @@ class PropertiesView(BaseView):
             managed_label.setStyleSheet("color: #95a5a6; font-size: 11px;")
             stats_row.addWidget(managed_label)
 
-        # Saldo
-        saldo_color = "#2ecc71" if stats['saldo'] >= 0 else "#e74c3c"
-        saldo_label = QLabel(f"Saldo: {stats['saldo']:,.2f}€")
-        saldo_label.setStyleSheet(f"color: {saldo_color}; font-size: 12px; font-weight: bold;")
-        stats_row.addWidget(saldo_label)
-
-        # Transazioni
-        trans_label = QLabel(f"{self.tm.get("report", "transactions")}: {stats['num_entrate']} entrate, {stats['num_uscite']} uscite")
-        trans_label.setStyleSheet("color: #95a5a6; font-size: 11px;")
-        stats_row.addWidget(trans_label)
-
-        # Documenti
-        docs_label = QLabel(f"{self.tm.get("documents", "title")}: {stats['num_docs']}")
-        docs_label.setStyleSheet("color: #3498db; font-size: 11px;")
-        stats_row.addWidget(docs_label)
-
         # Scadenze
         deadline_color = "#e74c3c" if stats['num_deadlines_active'] > 0 else "#95a5a6"
         deadline_label = QLabel(f"{self.tm.get("properties", "deadlines")}: {stats['num_deadlines_active']} attive")
@@ -321,6 +306,12 @@ class PropertiesView(BaseView):
             avg_label.setStyleSheet("color: #95a5a6; font-size: 11px;")
             stats_row.addWidget(avg_label)
 
+        # Saldo
+        saldo_color = COLORE_SUCCESS if stats['saldo'] >= 0 else "#e74c3c"
+        saldo_label = QLabel(f"{self.tm.get("properties", "balance")}: {stats['saldo']:,.2f}€")
+        saldo_label.setStyleSheet(f"color: {saldo_color}; font-size: 12px; font-weight: bold;")
+        stats_row.addWidget(saldo_label)
+
         stats_row.addStretch()
         main_layout.addLayout(stats_row)
 
@@ -329,7 +320,7 @@ class PropertiesView(BaseView):
     def add_property(self):
         """Dialog per aggiungere una nuova proprietà"""
         dialog = QDialog(self)
-        dialog.setWindowTitle("Nuova Proprietà")
+        dialog.setWindowTitle(self.tm.get("properties", "new_property"))
         dialog.setMinimumWidth(400)
 
         layout = QFormLayout(dialog)

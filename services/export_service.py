@@ -10,6 +10,8 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 
+from styles import COLORE_ERROR
+
 
 class ExportService:
     """Gestisce l'export di transazioni in PDF e Excel"""
@@ -144,7 +146,7 @@ class ExportService:
             if trans['type'] == 'Entrata':
                 table_style.append(('TEXTCOLOR', (4, i), (4, i), colors.HexColor('#2ecc71')))
             else:
-                table_style.append(('TEXTCOLOR', (4, i), (4, i), colors.HexColor('#e74c3c')))
+                table_style.append(('TEXTCOLOR', (4, i), (4, i), colors.HexColor(COLORE_ERROR)))
 
         transactions_table.setStyle(TableStyle(table_style))
         elements.append(transactions_table)

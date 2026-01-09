@@ -166,22 +166,22 @@ class AccountingView(BaseView):
             return
 
         self.ax.plot(mesi, entrate,
-                     color='#2ecc71',
+                     color=COLORE_SUCCESS,
                      linewidth=1,
                      marker='o',
                      markersize=10,
                      label=self.tm.get("dashboard", "income_label"),
-                     markerfacecolor='#2ecc71',
+                     markerfacecolor=COLORE_SUCCESS,
                      markeredgecolor='white',
                      markeredgewidth=2)
 
         self.ax.plot(mesi, spese,
-                     color='#e74c3c',
+                     color=COLORE_ERROR,
                      linewidth=1,
                      marker='o',
                      markersize=10,
                      label=self.tm.get("dashboard", "expense_label"),
-                     markerfacecolor='#e74c3c',
+                     markerfacecolor=COLORE_ERROR,
                      markeredgecolor='white',
                      markeredgewidth=2)
 
@@ -230,19 +230,19 @@ class AccountingView(BaseView):
         """Aggiorna la tabella in formato orizzontale"""
         for i in range(12):
             entrate_item = QTableWidgetItem(f"{entrate[i]:,.2f}")
-            entrate_item.setForeground(QColor("#2ecc71"))
+            entrate_item.setForeground(QColor(COLORE_SUCCESS))
             entrate_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.accounting_table.setItem(0, i, entrate_item)
 
             uscite_item = QTableWidgetItem(f"{spese[i]:,.2f}")
-            uscite_item.setForeground(QColor("#e74c3c"))
+            uscite_item.setForeground(QColor(COLORE_ERROR))
             uscite_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.accounting_table.setItem(1, i, uscite_item)
 
             saldo_item = QTableWidgetItem(f"{saldo[i]:,.2f}")
             if saldo[i] < 0:
-                saldo_item.setForeground(QColor("#e74c3c"))
+                saldo_item.setForeground(QColor(COLORE_ERROR))
             else:
-                saldo_item.setForeground(QColor("#2ecc71"))
+                saldo_item.setForeground(QColor(COLORE_SUCCESS))
             saldo_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self.accounting_table.setItem(2, i, saldo_item)
