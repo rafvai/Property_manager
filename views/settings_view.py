@@ -2,10 +2,11 @@ import os
 import shutil
 from datetime import datetime
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Property
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFrame, QMessageBox, QFileDialog, QWidget
+    QFrame, QMessageBox, QFileDialog, QWidget, QGraphicsDropShadowEffect, QDialog
 )
 
 from views.base_view import BaseView
@@ -13,8 +14,200 @@ from styles import *
 from translations_manager import get_translation_manager
 
 
+class SettingItem(QFrame):
+    """Widget personalizzato per ogni elemento delle impostazioni con animazioni"""
+
+    def __init__(self, icon, title, description, action, parent=None):
+        super().__init__(parent)
+        self.action = action
+        self.is_hovered = False
+
+        # Stile base
+        self.setStyleSheet(f"""
+            SettingItem {{
+                background-color: {COLORE_WIDGET_2};
+                border-radius: 10px;
+                border: 2px solid transparent;
+            }}
+        """)
+
+        # Ombra
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(15)
+        shadow.setColor(QColor(0, 0, 0, 60))
+        shadow.setOffset(0, 3)
+        self.setGraphicsEffect(shadow)
+
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        # Layout principale
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(15)
+
+        # Icona container
+        icon_container = QFrame()
+        icon_container.setFixedSize(50, 50)
+        icon_container.setStyleSheet(f"""
+            QFrame {{
+                background-color: {COLORE_ITEM_SELEZIONATO};
+                border-radius: 25px;
+            }}
+        """)
+        icon_container_layout = QVBoxLayout(icon_container)
+        icon_container_layout.setContentsMargins(0, 0, 0, 0)
+
+        icon_label = QLabel(icon)
+        icon_label.setStyleSheet("font-size: 24px; background: transparent;")
+        icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        icon_container_layout.addWidget(icon_label)
+
+        layout.addWidget(icon_container)
+
+        # Testo container
+        text_container = QWidget()
+        text_layout = QVBoxLayout(text_container)
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.setSpacing(4)
+
+        # Titolo
+        self.title_label = QLabel(title)
+        self.title_label.setStyleSheet("""
+            color: white; 
+            font-size: 15px; 
+            font-weight: 600;
+            background: transparent;
+        """)
+        text_layout.addWidget(self.title_label)
+
+        # Descrizione
+        self.desc_label = QLabel(description)
+        self.desc_label.setStyleSheet("""
+            color: #95a5a6; 
+            font-size: 12px;
+            background: transparent;
+        """)
+        self.desc_label.setWordWrap(True)
+        text_layout.addWidget(self.desc_label)
+
+        layout.addWidget(text_container, stretch=1)
+
+        # Freccia
+        self.arrow_label = QLabel("›")
+        self.arrow_label.setStyleSheet("""
+            color: #95a5a6; 
+            font-size: 28px; 
+            font-weight: bold;
+            background: transparent;
+        """)
+        layout.addWidget(self.arrow_label)
+
+        # Animazione per la freccia
+        self.arrow_animation = QPropertyAnimation(self.arrow_label, b"pos")
+        self.arrow_animation.setDuration(200)
+        self.arrow_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+
+    def enterEvent(self, event):
+        """Hover in"""
+        self.is_hovered = True
+        self.setStyleSheet(f"""
+            SettingItem {{
+                background-color: {COLORE_ITEM_HOVER};
+                border-radius: 10px;
+                border: 2px solid {COLORE_ITEM_SELEZIONATO};
+            }}
+        """)
+
+        # Anima freccia verso destra
+        current_pos = self.arrow_label.pos()
+        self.arrow_animation.setStartValue(current_pos)
+        self.arrow_animation.setEndValue(current_pos + Qt.QPoint(5, 0))
+        self.arrow_animation.start()
+
+        # Cambia colore freccia
+        self.arrow_label.setStyleSheet(f"""
+            color: {COLORE_ITEM_SELEZIONATO}; 
+            font-size: 28px; 
+            font-weight: bold;
+            background: transparent;
+        """)
+
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        """Hover out"""
+        self.is_hovered = False
+        self.setStyleSheet(f"""
+            SettingItem {{
+                background-color: {COLORE_WIDGET_2};
+                border-radius: 10px;
+                border: 2px solid transparent;
+            }}
+        """)
+
+        # Riporta freccia alla posizione originale
+        current_pos = self.arrow_label.pos()
+        self.arrow_animation.setStartValue(current_pos)
+        self.arrow_animation.setEndValue(current_pos - Qt.QPoint(5, 0))
+        self.arrow_animation.start()
+
+        # Ripristina colore freccia
+        self.arrow_label.setStyleSheet("""
+            color: #95a5a6; 
+            font-size: 28px; 
+            font-weight: bold;
+            background: transparent;
+        """)
+
+        super().leaveEvent(event)
+
+    def mousePressEvent(self, event):
+        """Click handler"""
+        if event.button() == Qt.MouseButton.LeftButton:
+            # Effetto click
+            self.setStyleSheet(f"""
+                SettingItem {{
+                    background-color: {COLORE_ITEM_SELEZIONATO};
+                    border-radius: 10px;
+                    border: 2px solid {COLORE_ITEM_SELEZIONATO};
+                }}
+            """)
+
+            # Esegui azione dopo breve delay (per mostrare l'effetto)
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(100, self.action)
+
+        super().mousePressEvent(event)
+
+
+class SettingsSection(QWidget):
+    """Sezione raggruppata di impostazioni"""
+
+    def __init__(self, title, parent=None):
+        super().__init__(parent)
+
+        self.layout = QVBoxLayout(self)
+        self.layout.setContentsMargins(0, 0, 0, 0)
+        self.layout.setSpacing(12)
+
+        # Titolo sezione
+        title_label = QLabel(title)
+        title_label.setStyleSheet(f"""
+            color: {COLORE_BIANCO};
+            font-size: 16px;
+            font-weight: bold;
+            padding: 10px 5px;
+            background: transparent;
+        """)
+        self.layout.addWidget(title_label)
+
+    def add_item(self, item):
+        """Aggiungi elemento alla sezione"""
+        self.layout.addWidget(item)
+
+
 class SettingsView(BaseView):
-    """View per le impostazioni dell'applicazione"""
+    """View per le impostazioni dell'applicazione - Versione migliorata"""
 
     def __init__(self, property_service, transaction_service, parent=None):
         self.tm = get_translation_manager()
@@ -26,168 +219,275 @@ class SettingsView(BaseView):
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(20)
 
-        # --- HEADER ---
-        header_layout = QHBoxLayout()
-
-        title = QLabel(self.tm.get("settings", "title"))
+        # --- HEADER SEMPLICE ---
+        title = QLabel(self.tm.get('settings', 'title'))
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
-        header_layout.addWidget(title)
-        header_layout.addStretch()
+        main_layout.addWidget(title)
 
-        main_layout.addLayout(header_layout)
+        # --- SCROLL AREA ---
+        from PySide6.QtWidgets import QScrollArea
 
-        # --- LISTA IMPOSTAZIONI ---
-        settings_container = QWidget()
-        settings_layout = QVBoxLayout(settings_container)
-        settings_layout.setSpacing(8)
-        settings_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Database
-        self.add_setting_item(
-            settings_layout,
-            f"💾 {self.tm.get("settings", "backup_db")}",
-            "Crea una copia di sicurezza dei tuoi dati",
-            self.backup_database
-        )
-
-        self.add_setting_item(
-            settings_layout,
-            "📥 Ripristina Database",
-            "Ripristina i dati da un backup precedente",
-            self.restore_database
-        )
-
-        # Documenti
-        """self.add_setting_item(
-            settings_layout,
-            "📂 Apri Cartella Documenti",
-            "Visualizza tutti i documenti salvati",
-            self.open_documents_folder
-        )"""
-
-        # Export
-        self.add_setting_item(
-            settings_layout,
-            "📊 Apri Cartella Export",
-            "Visualizza tutti i report esportati",
-            self.open_exports_folder
-        )
-
-        self.add_setting_item(
-            settings_layout,
-            "🗑️ Pulisci Export Vecchi",
-            "Elimina automaticamente i report più vecchi di 30 giorni",
-            self.clean_old_exports
-        )
-
-        self.add_setting_item(
-            settings_layout,
-            "🗂️ Pulisci Cartelle Documenti Orfane",
-            "Elimina cartelle documenti di proprietà non più esistenti",
-            self.clean_orphaned_folders
-        )
-
-        # Info
-        self.add_info_section(settings_layout)
-
-        settings_layout.addStretch()
-        main_layout.addWidget(settings_container)
-
-    def add_setting_item(self, parent_layout, title, description, action):
-        """Crea una riga di impostazioni cliccabile"""
-        # Alterna colori
-        index = parent_layout.count()
-        bg_color = COLORE_RIGA_1 if index % 2 == 0 else COLORE_RIGA_2
-
-        item = QFrame()
-        item.setStyleSheet(f"""
-            QFrame {{
-                background-color: {bg_color};
-                border-radius: 8px;
-                padding: 15px 20px;
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setStyleSheet(f"""
+            QScrollArea {{
+                border: none;
+                background-color: transparent;
             }}
-            QFrame:hover {{
+            QScrollBar:vertical {{
+                background-color: {COLORE_BACKGROUND};
+                width: 10px;
+                border-radius: 5px;
+                margin: 0px;
+            }}
+            QScrollBar::handle:vertical {{
+                background-color: {COLORE_SECONDARIO};
+                border-radius: 5px;
+                min-height: 30px;
+            }}
+            QScrollBar::handle:vertical:hover {{
                 background-color: {COLORE_ITEM_HOVER};
             }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                height: 0px;
+            }}
         """)
-        item.setCursor(Qt.CursorShape.PointingHandCursor)
 
-        layout = QHBoxLayout(item)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(15)
+        scroll_content = QWidget()
+        scroll_layout = QVBoxLayout(scroll_content)
+        scroll_layout.setSpacing(25)
+        scroll_layout.setContentsMargins(0, 0, 10, 0)
 
-        # Testo
-        text_layout = QVBoxLayout()
-        text_layout.setSpacing(4)
+        # === SEZIONE LINGUA ===
+        lang_section = SettingsSection(self.tm.get("settings", "language_section"))
 
-        title_label = QLabel(title)
-        title_label.setStyleSheet("color: white; font-size: 15px; font-weight: 600;")
-        text_layout.addWidget(title_label)
+        lang_section.add_item(SettingItem(
+            "🌐",
+            self.tm.get("settings", "change_language"),
+            self.tm.get("settings", "change_language_desc"),
+            self.change_language
+        ))
 
-        desc_label = QLabel(description)
-        desc_label.setStyleSheet("color: #95a5a6; font-size: 12px;")
-        desc_label.setWordWrap(True)
-        text_layout.addWidget(desc_label)
+        scroll_layout.addWidget(lang_section)
 
-        layout.addLayout(text_layout)
-        layout.addStretch()
+        # === SEZIONE DATABASE ===
+        db_section = SettingsSection(self.tm.get("settings", "database_section"))
 
-        # Freccia
-        arrow_label = QLabel("›")
-        arrow_label.setStyleSheet("color: #95a5a6; font-size: 24px; font-weight: bold;")
-        layout.addWidget(arrow_label)
+        db_section.add_item(SettingItem(
+            "💾",
+            self.tm.get("settings", "backup_db"),
+            self.tm.get("settings", "backup_db_desc"),
+            self.backup_database
+        ))
 
-        # Click handler
-        def mousePressEvent(event):
-            if event.button() == Qt.MouseButton.LeftButton:
-                action()
+        db_section.add_item(SettingItem(
+            "📥",
+            self.tm.get("settings", "restore_db"),
+            self.tm.get("settings", "restore_db_desc"),
+            self.restore_database
+        ))
 
-        item.mousePressEvent = mousePressEvent
+        scroll_layout.addWidget(db_section)
 
-        parent_layout.addWidget(item)
+        # === SEZIONE GESTIONE FILE ===
+        files_section = SettingsSection(self.tm.get("settings", "files_section"))
 
-    def add_info_section(self, parent_layout):
-        """Aggiunge sezione informazioni app"""
-        # Separator
-        separator = QFrame()
-        separator.setFrameShape(QFrame.Shape.HLine)
-        separator.setStyleSheet(f"background-color: {COLORE_SECONDARIO}; margin: 20px 0px; max-height: 2px;")
-        parent_layout.addWidget(separator)
+        files_section.add_item(SettingItem(
+            "📊",
+            self.tm.get("settings", "open_exports"),
+            self.tm.get("settings", "open_exports_desc"),
+            self.open_exports_folder
+        ))
 
-        # Info compatta
+        files_section.add_item(SettingItem(
+            "🗑️",
+            self.tm.get("settings", "clean_exports"),
+            self.tm.get("settings", "clean_exports_desc"),
+            self.clean_old_exports
+        ))
+
+        files_section.add_item(SettingItem(
+            "🗂️",
+            self.tm.get("settings", "clean_orphaned"),
+            self.tm.get("settings", "clean_orphaned_desc"),
+            self.clean_orphaned_folders
+        ))
+
+        scroll_layout.addWidget(files_section)
+
+        # === SEZIONE INFO ===
+        scroll_layout.addStretch()
+
         info_frame = QFrame()
         info_frame.setStyleSheet(f"""
             QFrame {{
                 background-color: {COLORE_WIDGET_2};
-                border-radius: 8px;
-                padding: 20px;
+                border-radius: 10px;
+                padding: 15px;
+                border: 1px solid {COLORE_SECONDARIO};
             }}
         """)
 
-        info_layout = QVBoxLayout(info_frame)
-        info_layout.setSpacing(8)
+        info_layout = QHBoxLayout(info_frame)
+        info_layout.setSpacing(15)
 
-        app_name = QLabel("🏠 Property Manager")
-        app_name.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
-        app_name.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        info_layout.addWidget(app_name)
+        app_icon = QLabel("🏠")
+        app_icon.setStyleSheet("font-size: 32px; background: transparent;")
+        info_layout.addWidget(app_icon)
 
-        version = QLabel("Versione 1.0.0")
-        version.setStyleSheet("color: #95a5a6; font-size: 12px;")
-        version.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        info_layout.addWidget(version)
+        text_container = QWidget()
+        text_layout = QVBoxLayout(text_container)
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.setSpacing(2)
 
-        parent_layout.addWidget(info_frame)
+        app_name = QLabel("Property Manager")
+        app_name.setStyleSheet("""
+            color: white; 
+            font-size: 14px; 
+            font-weight: bold;
+            background: transparent;
+        """)
+        text_layout.addWidget(app_name)
+
+        version = QLabel(self.tm.get("settings", "version"))
+        version.setStyleSheet("""
+            color: #95a5a6; 
+            font-size: 11px;
+            background: transparent;
+        """)
+        text_layout.addWidget(version)
+
+        info_layout.addWidget(text_container)
+        info_layout.addStretch()
+
+        scroll_layout.addWidget(info_frame)
+
+        scroll.setWidget(scroll_content)
+        main_layout.addWidget(scroll)
+
+    def change_language(self):
+        """Dialog per cambiare lingua"""
+        from PySide6.QtWidgets import QButtonGroup, QRadioButton
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(self.tm.get("settings", "change_language"))
+        dialog.setMinimumWidth(350)
+        dialog.setStyleSheet(f"QDialog {{ background-color: {COLORE_BACKGROUND}; }}")
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(20)
+
+        # Titolo
+        title = QLabel(self.tm.get("settings", "select_language"))
+        title.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
+        layout.addWidget(title)
+
+        # Radio buttons per lingue
+        lang_group = QButtonGroup(dialog)
+
+        languages = [
+            ("it", "🇮🇹 Italiano"),
+            ("es", "🇪🇸 Español"),
+            ("en", "🇬🇧 English")
+        ]
+
+        current_lang = self.tm.current_language
+
+        for lang_code, lang_name in languages:
+            radio = QRadioButton(lang_name)
+            radio.setStyleSheet("""
+                QRadioButton {
+                    color: white;
+                    font-size: 14px;
+                    padding: 8px;
+                }
+                QRadioButton::indicator {
+                    width: 18px;
+                    height: 18px;
+                }
+            """)
+            radio.setProperty("lang_code", lang_code)
+
+            if lang_code == current_lang:
+                radio.setChecked(True)
+
+            lang_group.addButton(radio)
+            layout.addWidget(radio)
+
+        # Bottoni
+        buttons_layout = QHBoxLayout()
+        buttons_layout.addStretch()
+
+        cancel_btn = QPushButton(self.tm.get("common", "cancel"))
+        cancel_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {COLORE_SECONDARIO};
+                color: white;
+                padding: 8px 20px;
+                border-radius: 6px;
+                font-size: 13px;
+            }}
+            QPushButton:hover {{
+                background-color: {COLORE_ITEM_HOVER};
+            }}
+        """)
+        cancel_btn.clicked.connect(dialog.reject)
+        buttons_layout.addWidget(cancel_btn)
+
+        save_btn = QPushButton(self.tm.get("common", "save"))
+        save_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {COLORE_ITEM_SELEZIONATO};
+                color: white;
+                padding: 8px 20px;
+                border-radius: 6px;
+                font-size: 13px;
+            }}
+            QPushButton:hover {{
+                background-color: {COLORE_ITEM_HOVER};
+            }}
+        """)
+        save_btn.clicked.connect(dialog.accept)
+        buttons_layout.addWidget(save_btn)
+
+        layout.addLayout(buttons_layout)
+
+        if dialog.exec():
+            # Trova il radio button selezionato
+            selected_lang = None
+            for button in lang_group.buttons():
+                if button.isChecked():
+                    selected_lang = button.property("lang_code")
+                    break
+
+            if selected_lang and selected_lang != current_lang:
+                # Salva la preferenza
+                from services.preferences_service import PreferencesService
+                prefs = PreferencesService()
+                prefs.set_language(selected_lang)
+
+                # Mostra messaggio
+                QMessageBox.information(
+                    self,
+                    self.tm.get("common", "success"),
+                    self.tm.get("settings", "language_changed")
+                )
+
+                # Ricarica l'app (necessario per applicare le traduzioni)
+                QMessageBox.information(
+                    self,
+                    self.tm.get("settings", "restart_required"),
+                    self.tm.get("settings", "restart_required_desc")
+                )
 
     def backup_database(self):
         """Crea backup del database"""
         try:
             db_path = "property_manager.db"
             if not os.path.exists(db_path):
-                QMessageBox.warning(self, "Errore", "Database non trovato!")
+                QMessageBox.warning(self, self.tm.get("common", "error"), "Database non trovato!")
                 return
 
-            # Chiedi dove salvare
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             default_name = f"backup_property_manager_{timestamp}.db"
 
@@ -207,7 +507,7 @@ class SettingsView(BaseView):
                 )
 
         except Exception as e:
-            QMessageBox.critical(self, "Errore", f"Errore durante il backup:\n{str(e)}")
+            QMessageBox.critical(self, self.tm.get("common", "error"), f"Errore durante il backup:\n{str(e)}")
 
     def restore_database(self):
         """Ripristina database da backup"""
@@ -243,15 +543,7 @@ class SettingsView(BaseView):
                     )
 
             except Exception as e:
-                QMessageBox.critical(self, "Errore", f"Errore durante il ripristino:\n{str(e)}")
-
-    def open_documents_folder(self):
-        """Apri cartella documenti"""
-        docs_dir = "docs"
-        if not os.path.exists(docs_dir):
-            os.makedirs(docs_dir)
-
-        os.startfile(os.path.abspath(docs_dir))
+                QMessageBox.critical(self, self.tm.get("common", "error"), f"Errore durante il ripristino:\n{str(e)}")
 
     def open_exports_folder(self):
         """Apri cartella export"""
@@ -294,7 +586,7 @@ class SettingsView(BaseView):
                 )
 
         except Exception as e:
-            QMessageBox.critical(self, "Errore", f"Errore durante la pulizia:\n{str(e)}")
+            QMessageBox.critical(self, self.tm.get("common", "error"), f"Errore durante la pulizia:\n{str(e)}")
 
     def clean_orphaned_folders(self):
         """Pulisce cartelle documenti senza proprietà associate"""
@@ -304,29 +596,23 @@ class SettingsView(BaseView):
                 QMessageBox.information(self, "Info", "Nessuna cartella documenti trovata.")
                 return
 
-            # Ottieni tutti gli ID proprietà esistenti
             properties = self.property_service.get_all()
             valid_property_ids = {prop['id'] for prop in properties}
 
-            # Scansiona cartelle in docs/
             orphaned_folders = []
             total_size = 0
 
             for folder_name in os.listdir(docs_dir):
                 folder_path = os.path.join(docs_dir, folder_name)
 
-                # Salta se non è una cartella
                 if not os.path.isdir(folder_path):
                     continue
 
-                # Verifica se è una cartella proprietà (formato: property_123)
                 if folder_name.startswith("property_"):
                     try:
                         property_id = int(folder_name.split("_")[1])
 
-                        # Se l'ID non esiste più nel DB, è orfana
                         if property_id not in valid_property_ids:
-                            # Calcola dimensione
                             folder_size = 0
                             for root, dirs, files in os.walk(folder_path):
                                 for file in files:
@@ -343,20 +629,17 @@ class SettingsView(BaseView):
                             total_size += folder_size
 
                     except (ValueError, IndexError):
-                        # Nome cartella non valido, ignora
                         continue
 
-            # Se non ci sono cartelle orfane
             if not orphaned_folders:
                 QMessageBox.information(
                     self,
-                    "✅ Tutto OK",
+                    f"✅ {self.tm.get("common", "success")}",
                     "Non sono state trovate cartelle documenti orfane.\n\n"
                     "Tutte le cartelle corrispondono a proprietà esistenti."
                 )
                 return
 
-            # Mostra dialog di conferma
             def format_size(size_bytes):
                 if size_bytes == 0:
                     return "0 B"
@@ -396,12 +679,9 @@ class SettingsView(BaseView):
                         shutil.rmtree(folder_info['path'])
                         deleted_count += 1
                         deleted_size += folder_info['size']
-                        print(f"🗑️ Eliminata: {folder_info['name']}")
                     except Exception as e:
                         errors.append(f"{folder_info['name']}: {str(e)}")
-                        print(f"❌ Errore eliminazione {folder_info['name']}: {e}")
 
-                # Messaggio risultato
                 result_message = (
                     f"✅ Pulizia completata!\n\n"
                     f"Cartelle eliminate: {deleted_count}/{len(orphaned_folders)}\n"
@@ -416,6 +696,6 @@ class SettingsView(BaseView):
         except Exception as e:
             QMessageBox.critical(
                 self,
-                "❌ Errore",
+                f"❌ {self.tm.get("common", "error")}",
                 f"Errore durante la pulizia:\n\n{str(e)}"
             )
