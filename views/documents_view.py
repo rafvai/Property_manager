@@ -46,7 +46,7 @@ class DocumentsView(BaseView):
         header_layout.addWidget(title)
         header_layout.addStretch()
 
-        # 🆕 Bottone aggiungi spostato qui
+        # Bottone aggiungi spostato qui
         add_doc_btn = QPushButton(f"+ {self.tm.get("documents", "add_document")}")
         add_doc_btn.setStyleSheet(default_aggiungi_button)
         add_doc_btn.setFixedHeight(36)
@@ -136,7 +136,7 @@ class DocumentsView(BaseView):
                 open_btn.clicked.connect(lambda _, sub_dir=new_path: self.load_documents(sub_dir))
                 layout.addWidget(open_btn)
             else:
-                # 🆕 Bottone per APRIRE il file
+                # Bottone per APRIRE il file
                 open_file_btn = QPushButton()
                 open_file_btn.setIcon(self.file_icon)
                 open_file_btn.setIconSize(QSize(18, 18))
@@ -198,7 +198,7 @@ class DocumentsView(BaseView):
             metadata = meta_dialog.get_data()
 
             try:
-                # 🔥 CONVERTI IMPORTO GESTENDO SIA VIRGOLA CHE PUNTO
+                # converti importo
                 importo_float = parse_decimal(metadata["importo"], "Importo")
 
                 # Salva transazione
@@ -230,7 +230,7 @@ class DocumentsView(BaseView):
                 else:
                     QMessageBox.warning(
                         self,
-                        "⚠️ Errore",
+                        f"⚠️ {self.tm.get("common", "error")}",
                         "Impossibile salvare la transazione nel database"
                     )
 
@@ -244,7 +244,7 @@ class DocumentsView(BaseView):
             except Exception as e:
                 QMessageBox.critical(
                     self,
-                    "❌ Errore",
+                    f"❌ {self.tm.get("common", "error")}",
                     f"Errore durante il salvataggio:\n\n{str(e)}"
                 )
                 continue

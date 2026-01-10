@@ -181,7 +181,7 @@ class DashboardView(BaseView):
             QFrame {{
                 background: {COLORE_WIDGET_2}; 
                 border-radius: 12px; 
-                padding: 15px;
+                padding: 12px;
             }}
         """)
         info_layout = QVBoxLayout(info_frame)

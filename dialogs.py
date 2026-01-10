@@ -183,67 +183,6 @@ class AddDeadlineDialog(QDialog):
         }
 
 
-# Dialog per aggiungere scadenze
-class AddDeadlineDialog(QDialog):
-    """Dialog per inserire una nuova scadenza"""
-
-    def __init__(self, properties=None, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Nuova Scadenza")
-        self.setMinimumSize(400, 300)
-
-        layout = QFormLayout(self)
-
-        # Titolo
-        self.title_input = QLineEdit()
-        self.title_input.setPlaceholderText("Es: Pagamento IMU")
-        layout.addRow("Titolo*:", self.title_input)
-
-        # Descrizione
-        self.description_input = QTextEdit()
-        self.description_input.setPlaceholderText("Dettagli aggiuntivi (opzionale)")
-        self.description_input.setMaximumHeight(80)
-        layout.addRow("Descrizione:", self.description_input)
-
-        # Data scadenza
-        self.due_date = QDateEdit()
-        self.due_date.setDisplayFormat("dd/MM/yyyy")
-        self.due_date.setCalendarPopup(True)
-        self.due_date.setDate(QDate.currentDate())
-        layout.addRow("Data scadenza*:", self.due_date)
-
-        # Proprietà (opzionale)
-        self.property_combo = QComboBox()
-        self.property_combo.addItem("Nessuna proprietà", None)
-        if properties:
-            for prop in properties:
-                self.property_combo.addItem(prop["name"], prop["id"])
-        layout.addRow("Proprietà:", self.property_combo)
-
-        # Pulsanti
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        layout.addWidget(buttons)
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-
-    def accept(self):
-        if not self.title_input.text().strip():
-            QMessageBox.warning(self, "Campo obbligatorio", "Inserisci il titolo della scadenza.")
-            return
-        if not self.due_date.date().isValid():
-            QMessageBox.warning(self, "Campo obbligatorio", "Inserisci una data valida.")
-            return
-        super().accept()
-
-    def get_data(self):
-        return {
-            "title": self.title_input.text().strip(),
-            "description": self.description_input.toPlainText().strip() or None,
-            "due_date": self.due_date.date().toString("yyyy-MM-dd"),
-            "property_id": self.property_combo.currentData()
-        }
-
-
 class AddDocumentDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -514,7 +453,7 @@ class PlannerCalendarWidget(QWidget):
     def add_deadline(self, preset_date=None):
         """Apre dialog per aggiungere scadenza (con data opzionale preimpostata)"""
         properties = self.property_service.get_all()
-        dialog = AddDeadlineDialog(self.tm, properties, self)
+        dialog = AddDeadlineDialog(self.tm, properties=properties, parent=self)
 
         # Se viene passata una data, preimpostala nel dialog
         if preset_date:
