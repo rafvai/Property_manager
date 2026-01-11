@@ -206,7 +206,7 @@ class DocumentsView(BaseView):
                     property_id=self.selected_property["id"],
                     date=metadata["data_fattura"],
                     trans_type=metadata["tipo"],
-                    amount=importo_float,  # 🆕 Usa il float validato
+                    amount=importo_float,
                     provider=metadata['provider'],
                     service=metadata['service']
                 )

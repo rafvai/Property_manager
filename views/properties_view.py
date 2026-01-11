@@ -322,17 +322,18 @@ class PropertiesView(BaseView):
         dialog = QDialog(self)
         dialog.setWindowTitle(self.tm.get("properties", "new_property"))
         dialog.setMinimumWidth(400)
+        dialog.setStyleSheet(default_dialog_style)
 
         layout = QFormLayout(dialog)
 
         name_input = QLineEdit()
-        name_input.setPlaceholderText("Es: Casa Via Roma")
+        name_input.setPlaceholderText(f"{self.tm.get("common", "example_abbr")}: {self.tm.get("properties", "example_name")}")
         address_input = QLineEdit()
-        address_input.setPlaceholderText("Es: Via Roma 10, Milano")
+        address_input.setPlaceholderText(f"{self.tm.get("common", "example_abbr")}: {self.tm.get("properties", "example_address")}")
         owner_input = QLineEdit()
-        owner_input.setPlaceholderText("Es: Mario Rossi")
+        owner_input.setPlaceholderText(f"{self.tm.get("common", "example_abbr")}: {self.tm.get("properties", "example_owner")}")
 
-        layout.addRow("Nome*:", name_input)
+        layout.addRow(f"{self.tm.get("properties", "property_name")}*:", name_input)
         layout.addRow(f"{self.tm.get("common", "address")}*:", address_input)
         layout.addRow(f"{self.tm.get("common", "owner")}*:", owner_input)
 

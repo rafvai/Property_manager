@@ -455,6 +455,7 @@ class ReportView(BaseView):
         dialog = QDialog(self)
         dialog.setWindowTitle(self.tm.get("report", "new_transaction"))
         dialog.setMinimumWidth(400)
+        dialog.setStyleSheet(default_dialog_style)
 
         layout = QFormLayout(dialog)
 

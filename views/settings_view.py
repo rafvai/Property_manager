@@ -2,7 +2,7 @@ import os
 import shutil
 from datetime import datetime
 
-from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Property
+from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Property, QPoint
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -121,7 +121,7 @@ class SettingItem(QFrame):
         # Anima freccia verso destra
         current_pos = self.arrow_label.pos()
         self.arrow_animation.setStartValue(current_pos)
-        self.arrow_animation.setEndValue(current_pos + Qt.QPoint(5, 0))
+        self.arrow_animation.setEndValue(current_pos + QPoint(5, 0))
         self.arrow_animation.start()
 
         # Cambia colore freccia
@@ -148,7 +148,7 @@ class SettingItem(QFrame):
         # Riporta freccia alla posizione originale
         current_pos = self.arrow_label.pos()
         self.arrow_animation.setStartValue(current_pos)
-        self.arrow_animation.setEndValue(current_pos - Qt.QPoint(5, 0))
+        self.arrow_animation.setEndValue(current_pos - QPoint(5, 0))
         self.arrow_animation.start()
 
         # Ripristina colore freccia

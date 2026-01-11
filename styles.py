@@ -148,3 +148,78 @@ default_export_button = f"""
     }}
 """
 
+default_dialog_style = f"""
+            QDialog {{
+                background-color: {COLORE_BACKGROUND};
+            }}
+            QLabel {{
+                color: white;
+                font-size: 13px;
+                background-color: transparent;
+            }}
+            QLineEdit, QTextEdit {{
+                background-color: {COLORE_WIDGET_2};
+                color: #94a3b8;
+                border: 2px solid #334155;
+                border-radius: 6px;
+                padding: 10px 12px;
+                font-size: 14px;
+                selection-background-color: {COLORE_ITEM_SELEZIONATO};
+            }}
+            QLineEdit:focus, QTextEdit:focus {{
+                border: 2px solid {COLORE_ITEM_SELEZIONATO};
+                color: white;
+            }}
+            QDateEdit, QComboBox {{
+                background-color: {COLORE_WIDGET_2};
+                color: #94a3b8;
+                border: 2px solid #334155;
+                border-radius: 6px;
+                padding: 8px 12px;
+                font-size: 14px;
+            }}
+            QDateEdit:focus, QComboBox:focus {{
+                border: 2px solid {COLORE_ITEM_SELEZIONATO};
+                color: white;
+            }}
+            QComboBox::drop-down {{
+                border: none;
+                width: 30px;
+            }}
+            QComboBox::down-arrow {{
+                image: url(icons/down-arrow.png);
+                width: 12px;
+                height: 12px;
+            }}
+            QComboBox QAbstractItemView {{
+                background-color: {COLORE_WIDGET_2};
+                color: white;
+                selection-background-color: {COLORE_ITEM_SELEZIONATO};
+                border: 1px solid #334155;
+            }}
+            QPushButton {{
+                background-color: {COLORE_ITEM_SELEZIONATO};
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px 24px;
+                font-size: 14px;
+                font-weight: 600;
+                min-width: 80px;
+            }}
+            QPushButton:hover {{
+                background-color: {COLORE_ITEM_HOVER};
+            }}
+            QPushButton:pressed {{
+                background-color: #1d4ed8;
+            }}
+            QPushButton[text="Cancel"], QPushButton[text="Annulla"], QPushButton[text="Cancelar"] {{
+                background-color: transparent;
+                border: 1px solid #334155;
+            }}
+            QPushButton[text="Cancel"]:hover, QPushButton[text="Annulla"]:hover, QPushButton[text="Cancelar"]:hover {{
+                background-color: {COLORE_WIDGET_2};
+                border: 1px solid {COLORE_ITEM_SELEZIONATO};
+            }}
+        """
+
