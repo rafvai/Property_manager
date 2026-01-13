@@ -71,9 +71,9 @@ class AccountingView(BaseView):
         main_layout.addLayout(header_layout)
 
         # --- GRAFICO CON MATPLOTLIB ---
-        self.fig = Figure(figsize=(10, 3.5), facecolor=COLORE_WIDGET_2)
+        self.fig = Figure(figsize=(10, 3.5), facecolor=COLORE_SECONDARIO)
         self.canvas = FigureCanvas(self.fig)
-        self.ax = self.fig.add_subplot(111, facecolor=COLORE_WIDGET_2)
+        self.ax = self.fig.add_subplot(111, facecolor=COLORE_SECONDARIO)
 
         # Stile grafico
         self.ax.set_xlabel(self.tm.get("accounting", "month"), color='white', fontsize=12)
@@ -85,9 +85,8 @@ class AccountingView(BaseView):
         self.ax.spines['right'].set_color('white')
         self.ax.grid(True, alpha=0.3, color='white')
 
-        # 🔧 FIX: Riduci altezza minima e massima del grafico
-        self.canvas.setMinimumHeight(250)
-        self.canvas.setMaximumHeight(350)
+        self.canvas.setMinimumHeight(300)
+        self.canvas.setMaximumHeight(600)
 
         main_layout.addWidget(self.canvas, stretch=0)
 
@@ -106,19 +105,18 @@ class AccountingView(BaseView):
 
         self.accounting_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
-        # 🔧 FIX: Rendi la tabella NON editabile
+        # tabella non editabile
         self.accounting_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-
+        row_height = 80
         for i in range(3):
-            self.accounting_table.setRowHeight(i, 45)
+            self.accounting_table.setRowHeight(i, row_height)
 
-        header_height = self.accounting_table.horizontalHeader().height()
-        row_height = 45 * 3
-        self.accounting_table.setMaximumHeight(header_height + row_height + 15)
+        table_height = self.accounting_table.horizontalHeader().height() + row_height * 3
+        self.accounting_table.setMaximumHeight(table_height + 25)
 
-        self.accounting_table.setStyleSheet("""
-            QHeaderView::section { background-color: #34495e; color: white; font-weight: bold; padding: 8px; }
-            QTableWidget { color: white; background-color: #2c3e50; font-size: 13px; gridline-color: #7f8c8d; }
+        self.accounting_table.setStyleSheet(f"""
+            QHeaderView::section {{ background-color: {COLORE_SECONDARIO}; color: white; font-size: 14px; font-weight: bold; padding: 8px;border: 1px solid {COLORE_GRIGIO}; }}
+            QTableWidget {{ color: white; background-color: {COLORE_SECONDARIO}; font-size: 15px; gridline-color: {COLORE_GRIGIO}; }}
         """)
 
         main_layout.addWidget(self.accounting_table, stretch=0)
@@ -219,7 +217,7 @@ class AccountingView(BaseView):
 
         if len(all_values) > 0:
             min_value = min(0, np.min(saldo))
-            max_value = np.max(all_values)
+            max_value = np.max(all_values * 1.2)
             padding_val = max(max_value * 0.15, 100)
             self.ax.set_ylim(min_value - padding_val * 0.1, max_value + padding_val)
 

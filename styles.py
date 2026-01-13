@@ -10,6 +10,7 @@ COLORE_WIDGET_2 = "#1e293b"             # Slate scuro
 COLORE_RIGA_1 = "#334155"               # Slate
 COLORE_RIGA_2 = "#475569"               # Slate chiaro
 COLORE_BIANCO = "#f8fafc"               # Off-white
+COLORE_GRIGIO = "#7f8c8d"
 
 # Colori semantici
 COLORE_SUCCESS = "#10b981"              # Verde

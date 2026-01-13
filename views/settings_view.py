@@ -219,7 +219,7 @@ class SettingsView(BaseView):
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(20)
 
-        # --- HEADER SEMPLICE ---
+        # --- HEADER ---
         title = QLabel(self.tm.get('settings', 'title'))
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         main_layout.addWidget(title)
@@ -321,7 +321,7 @@ class SettingsView(BaseView):
         info_frame = QFrame()
         info_frame.setStyleSheet(f"""
             QFrame {{
-                background-color: {COLORE_WIDGET_2};
+                background-color: {COLORE_BACKGROUND};
                 border-radius: 10px;
                 padding: 15px;
                 border: 1px solid {COLORE_SECONDARIO};
