@@ -376,7 +376,7 @@ class ReportView(BaseView):
                 header_item = QTableWidgetItem(text)
                 header_item.setForeground(QColor("white"))
                 header_item.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-                header_item.setBackground(QColor("#34495e"))
+                header_item.setBackground(QColor(COLORE_WIDGET_2))
                 header_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 table.setItem(0, col, header_item)
 
@@ -398,7 +398,7 @@ class ReportView(BaseView):
             header_item = QTableWidgetItem(text)
             header_item.setForeground(QColor("white"))
             header_item.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-            header_item.setBackground(QColor("#34495e"))
+            header_item.setBackground(QColor(COLORE_WIDGET_2))
             header_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             table.setItem(0, col, header_item)
 
@@ -426,7 +426,7 @@ class ReportView(BaseView):
         total_cat = QTableWidgetItem(self.tm.get("common", "total"))
         total_cat.setForeground(QColor("white"))
         total_cat.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-        total_cat.setBackground(QColor("#1a2530"))
+        total_cat.setBackground(QColor(COLORE_WIDGET_2))
         table.setItem(total_row, 0, total_cat)
 
         total_amount = QTableWidgetItem(f"{total:,.2f} €")

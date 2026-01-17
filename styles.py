@@ -1,21 +1,21 @@
 ########### COLORS ####################
 # Schema colori professionale: Dark Blue Corporate
-COLORE_BACKGROUND = "#0f1419"           # Nero-blu molto scuro
-COLORE_SECONDARIO = "#1a2332"           # Blu scuro
+COLORE_BACKGROUND = "#0f1419"  # Nero-blu molto scuro
+COLORE_SECONDARIO = "#1a2332"  # Blu scuro
 COLORE_TERZIARIO = "#2c3e50"
-COLORE_ITEM_SELEZIONATO = "#2563eb"     # Blu corporate
-COLORE_ITEM_HOVER = "#3b82f6"           # Blu più chiaro per hover
-COLORE_WIDGET_1 = "#ffffff"             # Bianco
-COLORE_WIDGET_2 = "#1e293b"             # Slate scuro
-COLORE_RIGA_1 = "#334155"               # Slate
-COLORE_RIGA_2 = "#475569"               # Slate chiaro
-COLORE_BIANCO = "#f8fafc"               # Off-white
+COLORE_ITEM_SELEZIONATO = "#2563eb"  # Blu corporate
+COLORE_ITEM_HOVER = "#3b82f6"  # Blu più chiaro per hover
+COLORE_WIDGET_1 = "#ffffff"  # Bianco
+COLORE_WIDGET_2 = "#1e293b"  # Slate scuro
+COLORE_RIGA_1 = "#334155"  # Slate
+COLORE_RIGA_2 = "#475569"  # Slate chiaro
+COLORE_BIANCO = "#f8fafc"  # Off-white
 COLORE_GRIGIO = "#7f8c8d"
 
 # Colori semantici
-COLORE_SUCCESS = "#10b981"              # Verde
-COLORE_ERROR = "#ef4444"                # Rosso
-COLORE_WARNING = "#f59e0b"              # Arancione
+COLORE_SUCCESS = "#10b981"  # Verde
+COLORE_ERROR = "#ef4444"  # Rosso
+COLORE_WARNING = "#f59e0b"  # Arancione
 COLORE_INFO = "#3b82f6"
 
 ########### DIMENSIONS ##################
@@ -104,9 +104,17 @@ custom_title_style = f"""
 """
 
 default_report_table = f"""
+    QHeaderView::section {{ 
+        background-color: {COLORE_WIDGET_2}; 
+        color: white; 
+        font-size: 14px; 
+        font-weight: bold; 
+        padding: 8px;
+        border: 1px solid {COLORE_GRIGIO}; 
+    }} 
     QTableWidget {{
         color: {COLORE_BIANCO}; 
-        background-color: {COLORE_TERZIARIO}; 
+        background-color: {COLORE_WIDGET_2}; 
         font-size: 13px; 
         gridline-color: #7f8c8d; 
     }}
@@ -223,4 +231,3 @@ default_dialog_style = f"""
                 border: 1px solid {COLORE_ITEM_SELEZIONATO};
             }}
         """
-
