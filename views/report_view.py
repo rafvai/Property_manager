@@ -104,9 +104,18 @@ class ReportView(BaseView):
         gastos_frame.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
         gastos_layout = QVBoxLayout(gastos_frame)
 
+        # Header con totale
+        gastos_header = QHBoxLayout()
         gastos_title = QLabel(f"● {self.tm.get('report', 'expenses')}")
         gastos_title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {COLORE_ERROR};")
-        gastos_layout.addWidget(gastos_title)
+        gastos_header.addWidget(gastos_title)
+
+        self.gastos_total_label = QLabel("€ 0.00")
+        self.gastos_total_label.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {COLORE_ERROR};")
+        gastos_header.addWidget(self.gastos_total_label)
+        gastos_header.addStretch()
+
+        gastos_layout.addLayout(gastos_header)
 
         self.gastos_table = QTableWidget()
         self.gastos_table.setColumnCount(3)
@@ -121,9 +130,18 @@ class ReportView(BaseView):
         ganancias_frame.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
         ganancias_layout = QVBoxLayout(ganancias_frame)
 
+        # Header con totale
+        ganancias_header = QHBoxLayout()
         ganancias_title = QLabel(f"● {self.tm.get('report', 'income')}")
         ganancias_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #2ecc71;")
-        ganancias_layout.addWidget(ganancias_title)
+        ganancias_header.addWidget(ganancias_title)
+
+        self.ganancias_total_label = QLabel("€ 0.00")
+        self.ganancias_total_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #2ecc71;")
+        ganancias_header.addWidget(self.ganancias_total_label)
+        ganancias_header.addStretch()
+
+        ganancias_layout.addLayout(ganancias_header)
 
         self.ganancias_table = QTableWidget()
         self.ganancias_table.setColumnCount(3)
@@ -162,7 +180,7 @@ class ReportView(BaseView):
         # Tabella transazioni
         self.transactions_table = QTableWidget()
         self.transactions_table.setColumnCount(6)
-        self.transactions_table.horizontalHeader().setVisible(False)  # Nascondi header Qt
+        self.transactions_table.horizontalHeader().setVisible(False)
         self.transactions_table.verticalHeader().setVisible(False)
         self.transactions_table.setStyleSheet("""
             QTableWidget { color: white; background-color: #2c3e50; font-size: 13px; gridline-color: #7f8c8d; }
@@ -344,6 +362,14 @@ class ReportView(BaseView):
                 ganancias[category] += amount
                 self.categories_ganancias.add(category)
 
+        # Calcola totali
+        total_gastos = sum(gastos.values())
+        total_ganancias = sum(ganancias.values())
+
+        # Aggiorna label totali
+        self.gastos_total_label.setText(f"€ {total_gastos:,.2f}")
+        self.ganancias_total_label.setText(f"€ {total_ganancias:,.2f}")
+
         self.update_category_table(self.gastos_table, gastos, COLORE_ERROR)
         self.update_category_table(self.ganancias_table, ganancias, COLORE_SUCCESS)
 
@@ -363,7 +389,7 @@ class ReportView(BaseView):
         dialog.exec()
 
     def update_category_table(self, table, data, color):
-        """Aggiorna tabella categorie"""
+        """Aggiorna tabella categorie SENZA riga totale"""
         table.setRowCount(0)
 
         if not data:
@@ -372,7 +398,8 @@ class ReportView(BaseView):
 
             # Header personalizzato
             for col, text in enumerate(
-                    [self.tm.get("common", "category"), f"{self.tm.get("report", "amount")} €", f"% {self.tm.get('common', 'total')}"]):
+                    [self.tm.get("common", "category"), f"{self.tm.get("report", "amount")} €",
+                     f"% {self.tm.get('common', 'total')}"]):
                 header_item = QTableWidgetItem(text)
                 header_item.setForeground(QColor("white"))
                 header_item.setFont(QFont("Arial", 12, QFont.Weight.Bold))
@@ -389,12 +416,13 @@ class ReportView(BaseView):
         total = sum(data.values())
         sorted_data = sorted(data.items(), key=lambda x: x[1], reverse=True)
 
-        # +2 righe: 1 per header, 1 per totale
-        table.setRowCount(len(sorted_data) + 2)
+        # +1 riga solo per header (rimossa riga totale)
+        table.setRowCount(len(sorted_data) + 1)
 
         # RIGA 0: Header personalizzato
         for col, text in enumerate(
-                [self.tm.get("common", "category"), f"{self.tm.get("report", "amount")} €", f"% {self.tm.get('common', 'total')}"]):
+                [self.tm.get("common", "category"), f"{self.tm.get("report", "amount")} €",
+                 f"% {self.tm.get('common', 'total')}"]):
             header_item = QTableWidgetItem(text)
             header_item.setForeground(QColor("white"))
             header_item.setFont(QFont("Arial", 12, QFont.Weight.Bold))
@@ -420,33 +448,10 @@ class ReportView(BaseView):
             perc_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             table.setItem(i, 2, perc_item)
 
-        # RIGA TOTALE (ultima riga)
-        total_row = len(sorted_data) + 1
-
-        total_cat = QTableWidgetItem(self.tm.get("common", "total"))
-        total_cat.setForeground(QColor("white"))
-        total_cat.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-        total_cat.setBackground(QColor(COLORE_WIDGET_2))
-        table.setItem(total_row, 0, total_cat)
-
-        total_amount = QTableWidgetItem(f"{total:,.2f} €")
-        total_amount.setForeground(QColor(color))
-        total_amount.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-        total_amount.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        total_amount.setBackground(QColor("#1a2530"))
-        table.setItem(total_row, 1, total_amount)
-
-        total_perc = QTableWidgetItem("100%")
-        total_perc.setForeground(QColor("#bdc3c7"))
-        total_perc.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-        total_perc.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        total_perc.setBackground(QColor("#1a2530"))
-        table.setItem(total_row, 2, total_perc)
-
-        # Imposta larghezze colonne
-        table.setColumnWidth(0, 200)
-        table.setColumnWidth(1, 120)
-        table.setColumnWidth(2, 100)
+        # Imposta resize mode per adattare le colonne al widget
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
 
     def add_transaction(self):
         """Dialog per aggiungere transazione manuale CON VALIDAZIONE"""

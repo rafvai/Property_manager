@@ -116,7 +116,7 @@ default_report_table = f"""
         color: {COLORE_BIANCO}; 
         background-color: {COLORE_WIDGET_2}; 
         font-size: 13px; 
-        gridline-color: #7f8c8d; 
+        gridline-color: {COLORE_GRIGIO}; 
     }}
 """
 
