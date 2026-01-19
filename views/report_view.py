@@ -104,14 +104,10 @@ class ReportView(BaseView):
         gastos_frame.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; border-radius: 12px; padding: 15px;")
         gastos_layout = QVBoxLayout(gastos_frame)
 
-        # Header con totale
+        # Header con totale e linea verticale rossa
         gastos_header = QHBoxLayout()
-        gastos_title = QLabel(f"● {self.tm.get('report', 'expenses')}")
-        gastos_title.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {COLORE_ERROR};")
-        gastos_header.addWidget(gastos_title)
-
-        self.gastos_total_label = QLabel("€ 0.00")
-        self.gastos_total_label.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {COLORE_ERROR};")
+        self.gastos_total_label = QLabel(f"{self.tm.get('report', 'expenses').upper()} € 0.00")
+        self.gastos_total_label.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {COLORE_BIANCO};border-left: 6px solid {COLORE_ERROR};padding: 15px;border-radius: 0px;")
         gastos_header.addWidget(self.gastos_total_label)
         gastos_header.addStretch()
 
@@ -132,12 +128,8 @@ class ReportView(BaseView):
 
         # Header con totale
         ganancias_header = QHBoxLayout()
-        ganancias_title = QLabel(f"● {self.tm.get('report', 'income')}")
-        ganancias_title.setStyleSheet("font-size: 16px; font-weight: bold; color: #2ecc71;")
-        ganancias_header.addWidget(ganancias_title)
-
-        self.ganancias_total_label = QLabel("€ 0.00")
-        self.ganancias_total_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #2ecc71;")
+        self.ganancias_total_label = QLabel(f"{self.tm.get('report', 'income')} € 0.00")
+        self.ganancias_total_label.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {COLORE_BIANCO};border-left: 6px solid {COLORE_SUCCESS};padding: 15px;border-radius: 0px;")
         ganancias_header.addWidget(self.ganancias_total_label)
         ganancias_header.addStretch()
 
@@ -182,9 +174,7 @@ class ReportView(BaseView):
         self.transactions_table.setColumnCount(6)
         self.transactions_table.horizontalHeader().setVisible(False)
         self.transactions_table.verticalHeader().setVisible(False)
-        self.transactions_table.setStyleSheet("""
-            QTableWidget { color: white; background-color: #2c3e50; font-size: 13px; gridline-color: #7f8c8d; }
-        """)
+        self.transactions_table.setStyleSheet(default_report_table)
 
         # Imposta resize mode per colonna descrizione (indice 2)
         self.transactions_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
@@ -257,7 +247,7 @@ class ReportView(BaseView):
             header_item = QTableWidgetItem(header_text)
             header_item.setForeground(QColor("white"))
             header_item.setFont(QFont("Arial", 12, QFont.Weight.Bold))
-            header_item.setBackground(QColor("#34495e"))
+            header_item.setBackground(QColor(COLORE_WIDGET_2))
             header_item.setTextAlignment(
                 Qt.AlignmentFlag.AlignCenter if col != 2 else Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             self.transactions_table.setItem(0, col, header_item)
@@ -367,8 +357,8 @@ class ReportView(BaseView):
         total_ganancias = sum(ganancias.values())
 
         # Aggiorna label totali
-        self.gastos_total_label.setText(f"€ {total_gastos:,.2f}")
-        self.ganancias_total_label.setText(f"€ {total_ganancias:,.2f}")
+        self.gastos_total_label.setText(f"{self.tm.get('report', 'expenses').upper()} € {total_gastos:,.2f}")
+        self.ganancias_total_label.setText(f"{self.tm.get('report', 'income')} € {total_ganancias:,.2f}")
 
         self.update_category_table(self.gastos_table, gastos, COLORE_ERROR)
         self.update_category_table(self.ganancias_table, ganancias, COLORE_SUCCESS)
@@ -447,6 +437,21 @@ class ReportView(BaseView):
             perc_item.setForeground(QColor("#bdc3c7"))
             perc_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             table.setItem(i, 2, perc_item)
+
+        # Imposta showGrid e gridline color
+        table.setShowGrid(True)
+        table.setStyleSheet(f"""
+            QTableWidget {{ 
+                color: white; 
+                background-color: {COLORE_WIDGET_2}; 
+                font-size: 14px; 
+                gridline-color: {COLORE_GRIGIO};
+            }}
+            QTableWidget::item {{
+                border: 1px solid {COLORE_GRIGIO};
+                padding: 8px;
+            }}
+        """)
 
         # Imposta resize mode per adattare le colonne al widget
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
