@@ -128,7 +128,7 @@ class ReportView(BaseView):
 
         # Header con totale
         ganancias_header = QHBoxLayout()
-        self.ganancias_total_label = QLabel(f"{self.tm.get('report', 'income')} € 0.00")
+        self.ganancias_total_label = QLabel(f"{self.tm.get('report', 'income').upper()} € 0.00")
         self.ganancias_total_label.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {COLORE_BIANCO};border-left: 6px solid {COLORE_SUCCESS};padding: 15px;border-radius: 0px;")
         ganancias_header.addWidget(self.ganancias_total_label)
         ganancias_header.addStretch()
@@ -358,7 +358,7 @@ class ReportView(BaseView):
 
         # Aggiorna label totali
         self.gastos_total_label.setText(f"{self.tm.get('report', 'expenses').upper()} € {total_gastos:,.2f}")
-        self.ganancias_total_label.setText(f"{self.tm.get('report', 'income')} € {total_ganancias:,.2f}")
+        self.ganancias_total_label.setText(f"{self.tm.get('report', 'income').upper()} € {total_ganancias:,.2f}")
 
         self.update_category_table(self.gastos_table, gastos, COLORE_ERROR)
         self.update_category_table(self.ganancias_table, ganancias, COLORE_SUCCESS)
