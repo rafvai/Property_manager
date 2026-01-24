@@ -431,7 +431,7 @@ class PlannerCalendarWidget(QWidget):
 
         month = self.current_date.month()
         year = self.current_date.year()
-        self.month_label.setText(f"{self.current_date.toString('MMMM yyyy')}")
+        self.month_label.setText(self.tm.get("months", "full")[month - 1])
         first_day = QDate(year, month, 1)
         start_col = first_day.dayOfWeek() - 1
         days_in_month = first_day.daysInMonth()
@@ -441,7 +441,7 @@ class PlannerCalendarWidget(QWidget):
             date_str = f"{year:04d}-{month:02d}-{day:02d}"
             deadlines = self.deadline_service.get_by_date(date_str)
 
-            # Usa la nuova cella cliccabile
+            # Cella cliccabile
             cell = ClickableDayCell(day, date_str, deadlines, self, self.tm)
 
             self.grid.addWidget(cell, row, col)
