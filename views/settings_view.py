@@ -235,18 +235,18 @@ class SettingsView(BaseView):
                 background-color: transparent;
             }}
             QScrollBar:vertical {{
-                background-color: {COLORE_BACKGROUND};
+                background-color: {COLORE_GRIGIO};
                 width: 10px;
                 border-radius: 5px;
                 margin: 0px;
             }}
             QScrollBar::handle:vertical {{
-                background-color: {COLORE_SECONDARIO};
+                background-color: {COLORE_WIDGET_2};
                 border-radius: 5px;
                 min-height: 30px;
             }}
             QScrollBar::handle:vertical:hover {{
-                background-color: {COLORE_ITEM_HOVER};
+                background-color: {COLORE_GRIGIO};
             }}
             QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
                 height: 0px;

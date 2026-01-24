@@ -107,7 +107,7 @@ class ReportView(BaseView):
         # Header con totale e linea verticale rossa
         gastos_header = QHBoxLayout()
         self.gastos_total_label = QLabel(f"{self.tm.get('report', 'expenses').upper()} € 0.00")
-        self.gastos_total_label.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {COLORE_BIANCO};border-left: 6px solid {COLORE_ERROR};padding: 15px;border-radius: 0px;")
+        self.gastos_total_label.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {COLORE_BIANCO};border-left: 6px solid {COLORE_ERROR};padding-left: 20px;margin-left: 20px;border-radius: 0px;")
         gastos_header.addWidget(self.gastos_total_label)
         gastos_header.addStretch()
 
@@ -129,7 +129,7 @@ class ReportView(BaseView):
         # Header con totale
         ganancias_header = QHBoxLayout()
         self.ganancias_total_label = QLabel(f"{self.tm.get('report', 'income').upper()} € 0.00")
-        self.ganancias_total_label.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {COLORE_BIANCO};border-left: 6px solid {COLORE_SUCCESS};padding: 15px;border-radius: 0px;")
+        self.ganancias_total_label.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {COLORE_BIANCO};border-left: 6px solid {COLORE_SUCCESS};padding-left: 20px;margin-left: 20px;border-radius: 0px;")
         ganancias_header.addWidget(self.ganancias_total_label)
         ganancias_header.addStretch()
 
