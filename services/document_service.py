@@ -1,33 +1,38 @@
 import os
 import shutil
+from pathlib import Path
 
-DOCS_DIR = "docs"
+
+# Usa config centralizzata per DOCS_DIR
+def get_docs_dir():
+    """Ottiene directory documenti basata su environment"""
+    from config import Config
+    if Config.DOCS_DIR:
+        return Config.DOCS_DIR
+    # Fallback
+    return Path("docs")
 
 
 class DocumentService:
     """Gestisce le operazioni sui documenti"""
 
-    def __init__(self, conn, logger):
-        self.conn = conn
-        self.cursor = conn.cursor()
+    def __init__(self, logger):
         self.logger = logger
+        self.docs_dir = get_docs_dir()
 
         # Crea cartella documenti se non esiste
-        if not os.path.exists(DOCS_DIR):
-            os.makedirs(DOCS_DIR)
+        if not os.path.exists(self.docs_dir):
+            os.makedirs(self.docs_dir)
 
     def get_property_folder(self, property_id, sub_directory=None):
         """Ottiene il percorso della cartella di una proprietà usando l'ID"""
-
-        # Usa property_id per associare cartella a quella proprietà
-        base_path = os.path.join(DOCS_DIR, f"property_{property_id}")
+        base_path = os.path.join(self.docs_dir, f"property_{property_id}")
         if sub_directory:
             return os.path.join(base_path, sub_directory)
         return base_path
 
     def list_documents(self, property_id, sub_directory=None):
         """Lista i documenti di una proprietà usando l'ID"""
-
         folder = self.get_property_folder(property_id, sub_directory)
 
         if not os.path.exists(folder):
@@ -50,7 +55,6 @@ class DocumentService:
 
     def save_document(self, source_path, property_id, metadata):
         """Salva un documento nella cartella della proprietà con rinomina automatica"""
-
         # Estrai data fattura e servizio dai metadati
         data_fattura = metadata['data_fattura']  # Formato: dd/MM/yyyy
         service = metadata['service']
@@ -89,11 +93,10 @@ class DocumentService:
 
         try:
             shutil.copy(source_path, dest_path)
-
-            self.logger.info(f"Document_service: Documento salvato come: {new_filename}")
+            self.logger.info(f"DocumentService: Documento salvato come: {new_filename}")
             return dest_path
         except Exception as e:
-            self.logger.error(f"Document_service:Errore salvataggio documento: {e}")
+            self.logger.error(f"DocumentService: Errore salvataggio documento: {e}")
             return None
 
     def delete_document(self, file_path):
@@ -103,10 +106,10 @@ class DocumentService:
                 os.remove(file_path)
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
-            self.logger.info(f"Document_service: Documento eliminato correttamente: {file_path}")
+            self.logger.info(f"DocumentService: Documento eliminato: {file_path}")
             return True
         except Exception as e:
-            self.logger.error(f"Document_service:Errore eliminazione documento: {e}")
+            self.logger.error(f"DocumentService: Errore eliminazione documento: {e}")
             return False
 
     def create_folder(self, property_id, folder_name, sub_directory=None):
@@ -116,15 +119,14 @@ class DocumentService:
 
         try:
             os.makedirs(new_folder, exist_ok=True)
-            self.logger.info(f"Document_service: Cartella creata con successo: {new_folder}")
+            self.logger.info(f"DocumentService: Cartella creata: {new_folder}")
             return new_folder
         except Exception as e:
-            self.logger.error(f"Document_service:Errore creazione cartella: {e}")
+            self.logger.error(f"DocumentService: Errore creazione cartella: {e}")
             return None
 
     def delete_property_folder(self, property_id):
         """Elimina la cartella documenti di una proprietà"""
-
         folder_path = self.get_property_folder(property_id)
 
         result = {
@@ -150,9 +152,9 @@ class DocumentService:
             shutil.rmtree(folder_path)
             result['success'] = True
 
-            self.logger.info(f"️DocumentService:Cartella eliminata: {folder_path}")
-            self.logger.info(f"️DocumentService:File eliminati: {result['files_deleted']}")
-            self.logger.info(f"️DocumentService:Cartelle eliminate: {result['folders_deleted']}")
+            self.logger.info(f"DocumentService: Cartella eliminata: {folder_path}")
+            self.logger.info(f"DocumentService: File eliminati: {result['files_deleted']}")
+            self.logger.info(f"DocumentService: Cartelle eliminate: {result['folders_deleted']}")
 
         except PermissionError as e:
             result['error'] = f"Permessi insufficienti: {str(e)}"
@@ -178,7 +180,7 @@ class DocumentService:
                     if os.path.exists(file_path):
                         total_size += os.path.getsize(file_path)
         except Exception as e:
-            self.logger.error(f"DocumentService:Errore calcolo dimensione: {e}")
+            self.logger.error(f"DocumentService: Errore calcolo dimensione: {e}")
 
         return total_size
 

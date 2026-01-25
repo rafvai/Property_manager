@@ -1,102 +1,99 @@
-class PropertyService:
-    """Gestisce le operazioni sulle proprietà"""
+from database.models import Property
+from database.connection import DatabaseConnection
 
-    def __init__(self, conn, logger):
-        self.conn = conn
-        self.cursor = conn.cursor()
+
+class PropertyService:
+    """Gestisce operazioni sulle proprietà - ORM based"""
+
+    def __init__(self, logger):
         self.logger = logger
+        self.db = DatabaseConnection()
 
     def get_all(self):
         """Recupera tutte le proprietà"""
+        session = self.db.get_session()
         try:
-            self.cursor.execute("SELECT id, name, address, owner FROM properties")
-            rows = self.cursor.fetchall()
-
-            properties = []
-            for row in rows:
-                properties.append({
-                    "id": row[0],
-                    "name": row[1],
-                    "address": row[2],
-                    "owner": row[3]
-                })
-            return properties
+            properties = session.query(Property).all()
+            return [prop.to_dict() for prop in properties]
         except Exception as e:
-            self.logger.error(f"PropertyService:Errore recupero proprietà: {e}")
+            self.logger.error(f"PropertyService: Errore recupero proprietà: {e}")
             return []
+        finally:
+            self.db.close_session(session)
 
     def get_by_id(self, property_id):
         """Recupera una proprietà per ID"""
+        session = self.db.get_session()
         try:
-            self.cursor.execute(
-                "SELECT id, name, address, owner FROM properties WHERE id = ?",
-                (property_id,)
-            )
-            row = self.cursor.fetchone()
-
-            if row:
-                return {
-                    "id": row[0],
-                    "name": row[1],
-                    "address": row[2],
-                    "owner": row[3]
-                }
-            return None
+            prop = session.query(Property).filter(Property.id == property_id).first()
+            return prop.to_dict() if prop else None
         except Exception as e:
-            self.logger.error(f"PropertyService:Errore recupero proprietà: {e}")
+            self.logger.error(f"PropertyService: Errore recupero proprietà: {e}")
             return None
+        finally:
+            self.db.close_session(session)
 
     def create(self, name, address, owner):
         """Crea una nuova proprietà"""
+        session = self.db.get_session()
         try:
-            self.cursor.execute(
-                "INSERT INTO properties (name, address, owner) VALUES (?, ?, ?)",
-                (name, address, owner)
-            )
-            self.conn.commit()
-            self.logger.info(f"PropertyService: Proprietà creata correttamente: {self.cursor.lastrowid}")
-            return self.cursor.lastrowid
+            new_property = Property(name=name, address=address, owner=owner)
+            session.add(new_property)
+            session.commit()
+
+            property_id = new_property.id
+            self.logger.info(f"PropertyService: Proprietà creata: {property_id}")
+            return property_id
+
         except Exception as e:
-            self.logger.error(f"PropertyService:Errore creazione proprietà: {e}")
+            session.rollback()
+            self.logger.error(f"PropertyService: Errore creazione proprietà: {e}")
             return None
+        finally:
+            self.db.close_session(session)
 
     def update(self, property_id, name=None, address=None, owner=None):
         """Aggiorna una proprietà esistente"""
+        session = self.db.get_session()
         try:
-            updates = []
-            params = []
-
-            if name:
-                updates.append("name = ?")
-                params.append(name)
-            if address:
-                updates.append("address = ?")
-                params.append(address)
-            if owner:
-                updates.append("owner = ?")
-                params.append(owner)
-
-            if not updates:
+            prop = session.query(Property).filter(Property.id == property_id).first()
+            if not prop:
                 return False
 
-            params.append(property_id)
-            query = f"UPDATE properties SET {', '.join(updates)} WHERE id = ?"
+            if name:
+                prop.name = name
+            if address:
+                prop.address = address
+            if owner:
+                prop.owner = owner
 
-            self.cursor.execute(query, params)
-            self.conn.commit()
-            self.logger.info(f"PropertyService: Proprietà modificata correttamente: {property_id}")
+            session.commit()
+            self.logger.info(f"PropertyService: Proprietà aggiornata: {property_id}")
             return True
+
         except Exception as e:
-            self.logger.error(f"PropertyService:Errore aggiornamento proprietà: {e}")
+            session.rollback()
+            self.logger.error(f"PropertyService: Errore aggiornamento: {e}")
             return False
+        finally:
+            self.db.close_session(session)
 
     def delete(self, property_id):
-        """Elimina una proprietà"""
+        """Elimina una proprietà (CASCADE elimina anche transactions/deadlines)"""
+        session = self.db.get_session()
         try:
-            self.cursor.execute("DELETE FROM properties WHERE id = ?", (property_id,))
-            self.conn.commit()
-            self.logger.info(f"PropertyService: Proprietà eliminata correttamente: {property_id}")
+            prop = session.query(Property).filter(Property.id == property_id).first()
+            if not prop:
+                return False
+
+            session.delete(prop)
+            session.commit()
+            self.logger.info(f"PropertyService: Proprietà eliminata: {property_id}")
             return True
+
         except Exception as e:
-            self.logger.error(f"PropertyService:Errore eliminazione proprietà: {e}")
+            session.rollback()
+            self.logger.error(f"PropertyService: Errore eliminazione: {e}")
             return False
+        finally:
+            self.db.close_session(session)

@@ -1,155 +1,211 @@
-class TransactionService:
-    """Gestisce le operazioni sulle transazioni"""
+from database.models import Transaction
+from database.connection import DatabaseConnection
+from sqlalchemy import and_, func, cast, Integer
+from datetime import datetime
 
-    def __init__(self, conn, logger):
-        self.conn = conn
-        self.cursor = conn.cursor()
+
+class TransactionService:
+    """Gestisce le operazioni sulle transazioni - ORM based"""
+
+    def __init__(self, logger):
         self.logger = logger
+        self.db = DatabaseConnection()
+
+    def _parse_date_for_filter(self, date_field):
+        """
+        Converte formato dd/MM/yyyy in yyyy-MM-dd per confronto
+        Usa funzioni SQLAlchemy compatibili con tutti i DB
+        """
+        # Estrai anno, mese, giorno dalla stringa dd/MM/yyyy
+        year = func.substr(date_field, 7, 4)
+        month = func.substr(date_field, 4, 2)
+        day = func.substr(date_field, 1, 2)
+
+        # Concatena in formato yyyy-MM-dd usando concat di SQLAlchemy
+        return func.date(func.concat(year, '-', month, '-', day))
 
     def get_all(self, property_id=None, start_date=None, end_date=None):
         """Recupera tutte le transazioni con filtri opzionali"""
-        query = """
-            SELECT id, property_id, date, type, amount, provider, service
-            FROM transactions
-            WHERE 1=1
-        """
-        params = []
-
-        if property_id:
-            query += " AND property_id = ?"
-            params.append(property_id)
-
-        if start_date and end_date:
-            query += """ AND date(substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2))
-                        BETWEEN date(?) AND date(?)"""
-            params.append(start_date)
-            params.append(end_date)
-
-        query += " ORDER BY date DESC"
-
+        session = self.db.get_session()
         try:
-            self.cursor.execute(query, params)
-            rows = self.cursor.fetchall()
+            query = session.query(Transaction)
 
-            transactions = []
-            for row in rows:
-                transactions.append({
-                    "id": row[0],
-                    "property_id": row[1],
-                    "date": row[2],
-                    "type": row[3],
-                    "amount": row[4],
-                    "provider": row[5],
-                    "service": row[6]
-                })
-            return transactions
+            # Filtro per proprietà
+            if property_id:
+                query = query.filter(Transaction.property_id == property_id)
+
+            # Filtro per date
+            if start_date and end_date:
+                parsed_date = self._parse_date_for_filter(Transaction.date)
+                query = query.filter(
+                    and_(
+                        parsed_date >= start_date,
+                        parsed_date <= end_date
+                    )
+                )
+
+            # Ordina per data decrescente
+            transactions = query.order_by(Transaction.date.desc()).all()
+
+            return [trans.to_dict() for trans in transactions]
+
         except Exception as e:
-            self.logger.error(f"TransactionService:Errore recupero transazioni: {e}")
+            self.logger.error(f"TransactionService: Errore recupero transazioni: {e}")
             return []
+        finally:
+            self.db.close_session(session)
 
     def get_monthly_summary(self, year, property_id=None):
         """Recupera il riepilogo mensile per un anno"""
-        start_date = f"{year}-01-01"
-        end_date = f"{year}-12-31"
-
-        query = """
-            SELECT 
-                CAST(substr(date, 4, 2) AS INTEGER) as month,
-                type,
-                SUM(amount) as total
-            FROM transactions
-            WHERE 
-                date(substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2))
-                BETWEEN date(?) AND date(?)
-        """
-        params = [start_date, end_date]
-
-        if property_id:
-            query += " AND property_id = ?"
-            params.append(property_id)
-
-        query += " GROUP BY month, type ORDER BY month ASC"
-
+        session = self.db.get_session()
         try:
-            self.cursor.execute(query, params)
-            return self.cursor.fetchall()
+            start_date = f"{year}-01-01"
+            end_date = f"{year}-12-31"
+
+            # Estrai mese dalla data dd/MM/yyyy
+            month_expr = cast(func.substr(Transaction.date, 4, 2), Integer)
+
+            # Query per raggruppare per mese e tipo
+            query = session.query(
+                month_expr.label('month'),
+                Transaction.type,
+                func.sum(Transaction.amount).label('total')
+            )
+
+            # Filtro per anno
+            parsed_date = self._parse_date_for_filter(Transaction.date)
+            query = query.filter(
+                and_(
+                    parsed_date >= start_date,
+                    parsed_date <= end_date
+                )
+            )
+
+            if property_id:
+                query = query.filter(Transaction.property_id == property_id)
+
+            results = query.group_by('month', Transaction.type).order_by('month').all()
+
+            return results
+
         except Exception as e:
-            self.logger.error(f"TransactionService:Errore recupero riepilogo mensile: {e}")
+            self.logger.error(f"TransactionService: Errore riepilogo mensile: {e}")
             return []
+        finally:
+            self.db.close_session(session)
 
     def create(self, property_id, date, trans_type, amount, provider, service):
         """Crea una nuova transazione"""
+        session = self.db.get_session()
         try:
-            self.cursor.execute("""
-                INSERT INTO transactions (property_id, date, type, amount, provider, service)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (property_id, date, trans_type, amount, provider, service))
-            self.conn.commit()
-            return self.cursor.lastrowid
+            new_transaction = Transaction(
+                property_id=property_id,
+                date=date,
+                type=trans_type,
+                amount=amount,
+                provider=provider,
+                service=service
+            )
+            session.add(new_transaction)
+            session.commit()
+
+            transaction_id = new_transaction.id
+            self.logger.info(f"TransactionService: Transazione creata: {transaction_id}")
+            return transaction_id
+
         except Exception as e:
-            self.logger.error(f"TransactionService:Errore creazione transazione: {e}")
+            session.rollback()
+            self.logger.error(f"TransactionService: Errore creazione transazione: {e}")
             return None
+        finally:
+            self.db.close_session(session)
 
     def update(self, transaction_id, **kwargs):
         """Aggiorna una transazione"""
-        allowed_fields = ['property_id', 'date', 'type', 'amount', 'provider', 'service']
-        updates = []
-        params = []
-
-        for field, value in kwargs.items():
-            if field in allowed_fields and value is not None:
-                updates.append(f"{field} = ?")
-                params.append(value)
-
-        if not updates:
-            return False
-
-        params.append(transaction_id)
-        query = f"UPDATE transactions SET {', '.join(updates)} WHERE id = ?"
-
+        session = self.db.get_session()
         try:
-            self.cursor.execute(query, params)
-            self.conn.commit()
+            transaction = session.query(Transaction).filter(
+                Transaction.id == transaction_id
+            ).first()
+
+            if not transaction:
+                return False
+
+            # Campi aggiornabili
+            allowed_fields = ['property_id', 'date', 'type', 'amount', 'provider', 'service']
+
+            for field, value in kwargs.items():
+                if field in allowed_fields and value is not None:
+                    setattr(transaction, field, value)
+
+            session.commit()
+            self.logger.info(f"TransactionService: Transazione aggiornata: {transaction_id}")
             return True
+
         except Exception as e:
-            self.logger.error(f"TransactionService:Errore aggiornamento transazione: {e}")
+            session.rollback()
+            self.logger.error(f"TransactionService: Errore aggiornamento: {e}")
             return False
+        finally:
+            self.db.close_session(session)
 
     def delete(self, transaction_id):
         """Elimina una transazione"""
+        session = self.db.get_session()
         try:
-            self.cursor.execute("DELETE FROM transactions WHERE id = ?", (transaction_id,))
-            self.conn.commit()
+            transaction = session.query(Transaction).filter(
+                Transaction.id == transaction_id
+            ).first()
+
+            if not transaction:
+                return False
+
+            session.delete(transaction)
+            session.commit()
+            self.logger.info(f"TransactionService: Transazione eliminata: {transaction_id}")
             return True
+
         except Exception as e:
-            self.logger.error(f"TransactionService:Errore eliminazione transazione: {e}")
+            session.rollback()
+            self.logger.error(f"TransactionService: Errore eliminazione: {e}")
             return False
+        finally:
+            self.db.close_session(session)
 
     def get_balance(self, property_id=None, end_date=None):
         """Calcola il saldo totale"""
-        query = """
-            SELECT 
-                COALESCE(SUM(CASE WHEN type = 'Entrata' THEN amount ELSE 0 END), 0) as entrate,
-                COALESCE(SUM(CASE WHEN type = 'Uscita' THEN amount ELSE 0 END), 0) as uscite
-            FROM transactions
-            WHERE 1=1
-        """
-        params = []
-
-        if property_id:
-            query += " AND property_id = ?"
-            params.append(property_id)
-
-        if end_date:
-            query += """ AND date(substr(date, 7, 4) || '-' || substr(date, 4, 2) || '-' || substr(date, 1, 2)) <= date(?)"""
-            params.append(end_date)
-
+        session = self.db.get_session()
         try:
-            self.cursor.execute(query, params)
-            row = self.cursor.fetchone()
-            entrate = row[0] if row else 0
-            uscite = row[1] if row else 0
+            # Query per entrate
+            entrate_query = session.query(
+                func.coalesce(func.sum(Transaction.amount), 0)
+            ).filter(Transaction.type == 'Entrata')
+
+            # Query per uscite
+            uscite_query = session.query(
+                func.coalesce(func.sum(Transaction.amount), 0)
+            ).filter(Transaction.type == 'Uscita')
+
+            # Filtro per proprietà
+            if property_id:
+                entrate_query = entrate_query.filter(Transaction.property_id == property_id)
+                uscite_query = uscite_query.filter(Transaction.property_id == property_id)
+
+            # Filtro per data fine
+            if end_date:
+                parsed_date = self._parse_date_for_filter(Transaction.date)
+                date_filter = parsed_date <= end_date
+
+                entrate_query = entrate_query.filter(date_filter)
+                uscite_query = uscite_query.filter(date_filter)
+
+            entrate = entrate_query.scalar() or 0
+            uscite = uscite_query.scalar() or 0
+
             return entrate - uscite
+
         except Exception as e:
-            self.logger.error(f"TransactionService:Errore calcolo saldo: {e}")
+            self.logger.error(f"TransactionService: Errore calcolo saldo: {e}")
             return 0
+        finally:
+            self.db.close_session(session)

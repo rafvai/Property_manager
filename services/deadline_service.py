@@ -1,167 +1,159 @@
+from database.models import Deadline
+from database.connection import DatabaseConnection
 from datetime import datetime
 
 
 class DeadlineService:
-    """Gestisce le operazioni sulle scadenze"""
+    """Gestisce le operazioni sulle scadenze - ORM based"""
 
-    def __init__(self, conn, logger):
-        self.conn = conn
-        self.cursor = conn.cursor()
+    def __init__(self, logger):
         self.logger = logger
+        self.db = DatabaseConnection()
 
     def get_all(self, property_id=None, include_completed=False):
         """Recupera tutte le scadenze con filtri opzionali"""
-
-        query = """
-            SELECT id, property_id, title, description, due_date, completed, created_at
-            FROM deadlines
-            WHERE 1=1
-        """
-        params = []
-
-        if property_id:
-            query += " AND property_id = ?"
-            params.append(property_id)
-
-        if not include_completed:
-            query += " AND completed = 0"
-
-        query += " ORDER BY due_date ASC"
-
+        session = self.db.get_session()
         try:
-            self.cursor.execute(query, params)
-            rows = self.cursor.fetchall()
+            query = session.query(Deadline)
 
-            deadlines = []
-            for row in rows:
-                deadlines.append({
-                    "id": row[0],
-                    "property_id": row[1],
-                    "title": row[2],
-                    "description": row[3],
-                    "due_date": row[4],
-                    "completed": row[5],
-                    "created_at": row[6]
-                })
-            return deadlines
+            # Filtro per proprietà
+            if property_id:
+                query = query.filter(Deadline.property_id == property_id)
+
+            # Filtro per completate
+            if not include_completed:
+                query = query.filter(Deadline.completed == False)
+
+            # Ordina per data scadenza
+            deadlines = query.order_by(Deadline.due_date.asc()).all()
+
+            return [deadline.to_dict() for deadline in deadlines]
+
         except Exception as e:
-            self.logger.error(f"DeadlineService:Errore recupero scadenze: {e}")
+            self.logger.error(f"DeadlineService: Errore recupero scadenze: {e}")
             return []
+        finally:
+            self.db.close_session(session)
 
     def get_next_deadline(self, property_id=None):
         """Recupera la prossima scadenza non completata"""
-
-        query = """
-            SELECT id, property_id, title, description, due_date, completed
-            FROM deadlines
-            WHERE completed = 0
-        """
-        params = []
-
-        if property_id:
-            query += " AND property_id = ?"
-            params.append(property_id)
-
-        query += " AND date(due_date) >= date('now') ORDER BY due_date ASC LIMIT 1"
-
+        session = self.db.get_session()
         try:
-            self.cursor.execute(query, params)
-            row = self.cursor.fetchone()
+            query = session.query(Deadline).filter(
+                Deadline.completed == False
+            )
 
-            if row:
-                return {
-                    "id": row[0],
-                    "property_id": row[1],
-                    "title": row[2],
-                    "description": row[3],
-                    "due_date": row[4],
-                    "completed": row[5]
-                }
-            return None
+            if property_id:
+                query = query.filter(Deadline.property_id == property_id)
+
+            # Solo scadenze future o di oggi
+            today = datetime.now().strftime('%Y-%m-%d')
+            query = query.filter(Deadline.due_date >= today)
+
+            # Prima scadenza
+            deadline = query.order_by(Deadline.due_date.asc()).first()
+
+            return deadline.to_dict() if deadline else None
+
         except Exception as e:
-            self.logger.error(f"DeadlineService:Errore recupero prossima scadenza: {e}")
+            self.logger.error(f"DeadlineService: Errore recupero prossima scadenza: {e}")
             return None
+        finally:
+            self.db.close_session(session)
 
     def get_by_date(self, date_str):
         """Recupera scadenze per una data specifica (formato: YYYY-MM-DD)"""
-
+        session = self.db.get_session()
         try:
-            self.cursor.execute("""
-                SELECT id, property_id, title, description, completed
-                FROM deadlines
-                WHERE due_date = ?
-                ORDER BY title ASC
-            """, (date_str,))
+            deadlines = session.query(Deadline).filter(
+                Deadline.due_date == date_str
+            ).order_by(Deadline.title.asc()).all()
 
-            rows = self.cursor.fetchall()
-            deadlines = []
-            for row in rows:
-                deadlines.append({
-                    "id": row[0],
-                    "property_id": row[1],
-                    "title": row[2],
-                    "description": row[3],
-                    "completed": row[4]
-                })
-            return deadlines
+            return [deadline.to_dict() for deadline in deadlines]
+
         except Exception as e:
-            self.logger.error(f"DeadlineService:Errore recupero scadenze per data: {e}")
+            self.logger.error(f"DeadlineService: Errore recupero scadenze per data: {e}")
             return []
+        finally:
+            self.db.close_session(session)
 
     def create(self, title, due_date, description=None, property_id=None):
         """Crea una nuova scadenza"""
-
+        session = self.db.get_session()
         try:
-            self.cursor.execute("""
-                INSERT INTO deadlines (property_id, title, description, due_date, completed)
-                VALUES (?, ?, ?, ?, 0)
-            """, (property_id, title, description, due_date))
-            self.conn.commit()
-            self.logger.info("DeadlineService: Scadenza aggiunta correttamente")
-            return self.cursor.lastrowid
+            new_deadline = Deadline(
+                property_id=property_id,
+                title=title,
+                description=description,
+                due_date=due_date,
+                completed=False
+            )
+            session.add(new_deadline)
+            session.commit()
+
+            deadline_id = new_deadline.id
+            self.logger.info(f"DeadlineService: Scadenza creata: {deadline_id}")
+            return deadline_id
+
         except Exception as e:
-            self.logger.error(f"DeadlineService:Errore creazione scadenza: {e}")
+            session.rollback()
+            self.logger.error(f"DeadlineService: Errore creazione scadenza: {e}")
             return None
+        finally:
+            self.db.close_session(session)
 
     def update(self, deadline_id, **kwargs):
         """Aggiorna una scadenza"""
-
-        allowed_fields = ['title', 'description', 'due_date', 'completed', 'property_id']
-        updates = []
-        params = []
-
-        for field, value in kwargs.items():
-            if field in allowed_fields and value is not None:
-                updates.append(f"{field} = ?")
-                params.append(value)
-
-        if not updates:
-            return False
-
-        params.append(deadline_id)
-        query = f"UPDATE deadlines SET {', '.join(updates)} WHERE id = ?"
-
+        session = self.db.get_session()
         try:
-            self.cursor.execute(query, params)
-            self.conn.commit()
-            self.logger.info(f"DeadlineService:Scadenza modificata correttamente")
+            deadline = session.query(Deadline).filter(
+                Deadline.id == deadline_id
+            ).first()
+
+            if not deadline:
+                return False
+
+            # Campi aggiornabili
+            allowed_fields = ['title', 'description', 'due_date', 'completed', 'property_id']
+
+            for field, value in kwargs.items():
+                if field in allowed_fields and value is not None:
+                    setattr(deadline, field, value)
+
+            session.commit()
+            self.logger.info(f"DeadlineService: Scadenza aggiornata: {deadline_id}")
             return True
+
         except Exception as e:
-            self.logger.error(f"DeadlineService:Errore aggiornamento scadenza: {e}")
+            session.rollback()
+            self.logger.error(f"DeadlineService: Errore aggiornamento scadenza: {e}")
             return False
+        finally:
+            self.db.close_session(session)
 
     def mark_completed(self, deadline_id):
         """Segna una scadenza come completata"""
-        return self.update(deadline_id, completed=1)
+        return self.update(deadline_id, completed=True)
 
     def delete(self, deadline_id):
         """Elimina una scadenza"""
-
+        session = self.db.get_session()
         try:
-            self.cursor.execute("DELETE FROM deadlines WHERE id = ?", (deadline_id,))
-            self.conn.commit()
-            self.logger.info(f"DeadlineService:Scadenza eliminata correttamente")
+            deadline = session.query(Deadline).filter(
+                Deadline.id == deadline_id
+            ).first()
+
+            if not deadline:
+                return False
+
+            session.delete(deadline)
+            session.commit()
+            self.logger.info(f"DeadlineService: Scadenza eliminata: {deadline_id}")
             return True
+
         except Exception as e:
-            self.logger.error(f"DeadlineService:Errore eliminazione scadenza: {e}")
+            session.rollback()
+            self.logger.error(f"DeadlineService: Errore eliminazione scadenza: {e}")
             return False
+        finally:
+            self.db.close_session(session)

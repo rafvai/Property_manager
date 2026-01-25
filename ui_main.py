@@ -39,17 +39,21 @@ class DashboardWindow(QMainWindow):
         self.preferences_service = preferences_service
         self.tm = get_translation_manager()
 
-        # Inizializza i services
-        conn = db_service.conn
-        self.property_service = PropertyService(conn, self.logger)
-        self.transaction_service = TransactionService(conn, self.logger)
-        self.document_service = DocumentService(conn, self.logger)
-        self.deadline_service = DeadlineService(conn, self.logger)
+        # Inizializza i services INTERNAMENTE (non li riceve più come parametri)
+        from services.property_service import PropertyService
+        from services.transaction_service import TransactionService
+        from services.document_service import DocumentService
+        from services.deadline_service import DeadlineService
+
+        self.property_service = PropertyService(self.logger)
+        self.transaction_service = TransactionService(self.logger)
+        self.document_service = DocumentService(self.logger)
+        self.deadline_service = DeadlineService(self.logger)
 
         # Finestra principale
         self.setWindowTitle("Property Manager MVP")
-        self.setGeometry(200, 200, 1200, 700)  # Dimensioni iniziali
-        self.setMinimumSize(800, 600)  # Imposta dimensioni minime
+        self.setGeometry(200, 200, 1200, 700)
+        self.setMinimumSize(800, 600)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
 
         # Container principale
