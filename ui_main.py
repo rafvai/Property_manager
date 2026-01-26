@@ -8,7 +8,6 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from dialogs import CustomTitleBar
-import Functions
 import logging
 from styles import *
 from translations_manager import get_translation_manager
