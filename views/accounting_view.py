@@ -20,8 +20,9 @@ from translations_manager import get_translation_manager
 class AccountingView(BaseView):
     """View per la sezione Contabilità"""
 
-    def __init__(self, property_service, transaction_service, parent=None):
+    def __init__(self, property_service, transaction_service, logger, parent=None):
         self.tm = get_translation_manager()
+        self.logger = logger
         super().__init__(property_service, transaction_service, None, parent)
 
     def setup_ui(self):

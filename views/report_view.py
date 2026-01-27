@@ -21,11 +21,12 @@ from translations_manager import get_translation_manager
 class ReportView(BaseView):
     """View per la sezione Report con categorie"""
 
-    def __init__(self, property_service, transaction_service, parent=None):
+    def __init__(self, property_service, transaction_service, logger, parent=None):
         # Cache per le categorie dinamiche
         self.categories_gastos = set()
         self.categories_ganancias = set()
         self.tm = get_translation_manager()
+        self.logger = logger
 
         # Export service
         self.export_service = ExportService()

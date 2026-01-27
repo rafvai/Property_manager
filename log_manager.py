@@ -1,12 +1,7 @@
-"""
-Sistema di gestione log con rotazione automatica e archiviazione in zip
-"""
-import os
 import logging
 import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
-import shutil
 
 
 class LogManager:

@@ -32,7 +32,7 @@ if __name__ == "__main__":
     deadline_service = DeadlineService(logger)
     document_service = DocumentService(logger)
 
-    prefs_service = PreferencesService()
+    prefs_service = PreferencesService(logger)
     tm = get_translation_manager()
     tm.set_language(prefs_service.get_language())
 

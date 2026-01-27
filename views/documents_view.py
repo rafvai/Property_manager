@@ -20,10 +20,11 @@ DOCS_DIR = "docs"
 class DocumentsView(BaseView):
     """View per la gestione documenti"""
 
-    def __init__(self, property_service, transaction_service, document_service, parent=None):
+    def __init__(self, property_service, transaction_service, document_service, logger, parent=None):
         self.proprieta = property_service.get_all()
         self.selected_property = self.proprieta[0] if self.proprieta else None
         self.tm = get_translation_manager()
+        self.logger = logger
         # Icone
         icon_path = os.path.join(os.path.dirname(__file__), "..", "icons", "folder.png")
         self.folder_icon = QIcon(icon_path) if os.path.exists(icon_path) else QIcon()
@@ -219,7 +220,7 @@ class DocumentsView(BaseView):
                     )
 
                     if dest_path:
-                        print(f"✅ Documento salvato: {dest_path}")
+                        self.logger.info(f"Documento salvato: {dest_path}")
                         QMessageBox.information(
                             self,
                             "✅ Successo",
@@ -228,6 +229,7 @@ class DocumentsView(BaseView):
                             f"💰 {importo_float:,.2f}€"
                         )
                 else:
+                    self.logger.error(f"Impossibile salvare la transazione nel database")
                     QMessageBox.warning(
                         self,
                         f"⚠️ {self.tm.get("common", "error")}",
@@ -235,6 +237,7 @@ class DocumentsView(BaseView):
                     )
 
             except ValidationError as e:
+                self.logger.exception(f"Errore nell'importo del documento '{filename} {str(e)}")
                 QMessageBox.warning(
                     self,
                     "⚠️ Validazione fallita",
@@ -242,6 +245,7 @@ class DocumentsView(BaseView):
                 )
                 continue
             except Exception as e:
+                self.logger.exception(f"Errore durante il salvataggio {str(e)}")
                 QMessageBox.critical(
                     self,
                     f"❌ {self.tm.get("common", "error")}",
@@ -252,17 +256,17 @@ class DocumentsView(BaseView):
         self.load_documents()
 
     def open_file(self, path):
-        """🆕 Apre il file con l'applicazione predefinita del sistema"""
+        """ Apre il file con l'applicazione predefinita del sistema"""
         try:
             QDesktopServices.openUrl(QUrl.fromLocalFile(path))
-            print(f"📄 Apertura file: {path}")
+            self.logger.info(f"Apertura file: {path}")
         except Exception as e:
-            print(f"❌ Errore apertura file: {e}")
+            self.logger.exception(f"Errore apertura file: {str(e)}")
 
     def open_file_location(self, path):
         """Apre la cartella contenente il file"""
         try:
             QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.dirname(path)))
-            print(f"📂 Apertura cartella: {os.path.dirname(path)}")
+            self.logger.info(f"Apertura cartella: {os.path.dirname(path)}")
         except Exception as e:
-            print(f"❌ Errore apertura cartella: {e}")
+            self.logger.exception(f"Errore apertura cartella: {str(e)}")

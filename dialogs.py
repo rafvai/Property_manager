@@ -337,12 +337,13 @@ class ClickableDayCell(QFrame):
 
 
 class PlannerCalendarWidget(QWidget):
-    def __init__(self, deadline_service, property_service, tm):
+    def __init__(self, deadline_service, property_service, tm, logger):
         super().__init__()
         self.deadline_service = deadline_service
         self.property_service = property_service
         self.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; color: white;")
         self.tm = tm
+        self.logger = logger
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(10, 10, 10, 10)
@@ -412,10 +413,12 @@ class PlannerCalendarWidget(QWidget):
             )
 
             if deadline_id:
-                QMessageBox.information(self, self.tm.get("common", "success"), "Scadenza aggiunta correttamente!")
+                QMessageBox.information(self, self.tm.get("common", "success"), self.tm.get("calendar","deadline_addded_succesfully"))
+                self.logger.info(f"Scadenza aggiunta correttamente! {data['title']}")
                 self.populate_month()  # Ricarica il calendario
             else:
                 QMessageBox.warning(self, self.tm.get("common", "error"), "Impossibile salvare la scadenza.")
+                self.logger.error(f"Impossibile salvare la scadenza. {data['title']}")
 
     def add_deadline_for_date(self, date_str):
         """ Aggiunge scadenza per una data specifica (chiamato dal click sulla cella)"""

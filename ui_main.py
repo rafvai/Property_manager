@@ -102,6 +102,7 @@ class DashboardWindow(QMainWindow):
             self.transaction_service,
             self.deadline_service,
             self.preferences_service,
+            self.logger,
             self
         ))
 
@@ -144,6 +145,7 @@ class DashboardWindow(QMainWindow):
                 self.transaction_service,
                 self.deadline_service,
                 self.preferences_service,
+                self.logger,
                 self
             ))
         elif index == 1:  # Properties
@@ -152,6 +154,7 @@ class DashboardWindow(QMainWindow):
                 self.transaction_service,
                 self.document_service,
                 self.deadline_service,
+                self.logger,
                 self
             ))
         elif index == 2:  # Documents
@@ -159,18 +162,21 @@ class DashboardWindow(QMainWindow):
                 self.property_service,
                 self.transaction_service,
                 self.document_service,
+                self.logger,
                 self
             ))
         elif index == 3:  # Accounting
             self.show_view(AccountingView(
                 self.property_service,
                 self.transaction_service,
+                self.logger,
                 self
             ))
         elif index == 4:  # Report
             self.show_view(ReportView(
                 self.property_service,
                 self.transaction_service,
+                self.logger,
                 self
             ))
         elif index == 5:  # Calendar
@@ -178,12 +184,14 @@ class DashboardWindow(QMainWindow):
                 self.property_service,
                 self.transaction_service,
                 self.deadline_service,
+                self.logger,
                 self
             ))
         elif index == 6:  # Settings
             self.show_view(SettingsView(
                 self.property_service,
                 self.transaction_service,
+                self.logger,
                 self
             ))
 

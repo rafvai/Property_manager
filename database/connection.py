@@ -26,8 +26,8 @@ class DatabaseConnection:
         if self._engine is not None:
             return  # Già inizializzato
 
-        connection_string = self._get_connection_string()
-        logger.info(f"🔗 Connessione DB: {self._sanitize_connection_string(connection_string)}")
+        connection_string = self._get_connection_string(logger)
+        logger.info(f"Connessione DB: {self._sanitize_connection_string(connection_string)}")
 
         # Crea engine
         self._engine = create_engine(
@@ -39,14 +39,14 @@ class DatabaseConnection:
 
         # Crea tabelle se non esistono
         Base.metadata.create_all(self._engine)
-        logger.info("✅ Tabelle database verificate/create")
+        logger.info("Tabelle database verificate/create")
 
         # Session factory thread-safe
         self._session_factory = scoped_session(
             sessionmaker(bind=self._engine, expire_on_commit=False)
         )
 
-    def _get_connection_string(self):
+    def _get_connection_string(self, logger):
         """
         Ritorna stringa connessione basata su environment
 
@@ -60,15 +60,14 @@ class DatabaseConnection:
         env = os.getenv('APP_ENV', 'development')
 
         if env == 'development':
-            # 🆕 USA DB NELLA DIRECTORY CORRENTE (directory del progetto)
+            # USA DB NELLA DIRECTORY CORRENTE (directory del progetto)
             db_path = Path('property_manager.db').absolute()
 
-            print(f"🔍 Database path: {db_path}")
-            print(f"📁 DB esiste? {db_path.exists()}")
+            logger.info(f"Database path: {db_path}")
             if db_path.exists():
-                print(f"📊 Dimensione DB: {db_path.stat().st_size} bytes")
+                logger.info(f"Dimensione DB: {db_path.stat().st_size} bytes")
             else:
-                print(f"⚠️ DB non trovato, verrà creato nuovo")
+                logger.info(f"DB non trovato, verrà creato nuovo")
 
             return f'sqlite:///{db_path}'
 

@@ -8,7 +8,8 @@ from translations_manager import get_translation_manager
 class CalendarView(BaseView):
     """View per il calendario/scadenziario"""
 
-    def __init__(self, property_service, transaction_service, deadline_service, parent=None):
+    def __init__(self, property_service, transaction_service, deadline_service, logger, parent=None):
+        self.logger = logger
         self.deadline_service = deadline_service
         self.tm = get_translation_manager()
         super().__init__(property_service, transaction_service, None, parent)
@@ -23,7 +24,7 @@ class CalendarView(BaseView):
         frame_layout = QVBoxLayout(frame)
 
         # Passa i services al calendario
-        calendar_widget = PlannerCalendarWidget(self.deadline_service, self.property_service, self.tm)
+        calendar_widget = PlannerCalendarWidget(self.deadline_service, self.property_service, self.tm, self.logger)
         frame_layout.addWidget(calendar_widget)
 
         main_layout.addWidget(frame)

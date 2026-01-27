@@ -56,8 +56,9 @@ class LanguageButton(QPushButton):
 class DashboardView(BaseView):
     """View per la Dashboard principale"""
 
-    def __init__(self, property_service, transaction_service, deadline_service, preferences_service, main_window,
+    def __init__(self, property_service, transaction_service, deadline_service, preferences_service, main_window, logger,
                  parent=None):
+        self.logger = logger
         self.deadline_service = deadline_service
         self.main_window = main_window
         self.preferences_service = preferences_service

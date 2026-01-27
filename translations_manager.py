@@ -112,7 +112,8 @@ class TranslationManager:
                 "calendar": {
                     "title": "Calendario",
                     "new_deadline": "Nuova Scadenza",
-                    "click_add_deadline" : "Clicca qui per aggiungere una scadenza"
+                    "click_add_deadline" : "Clicca qui per aggiungere una scadenza",
+                    "deadline_addded_succesfully": "Scadenza aggiunta con successo"
                 },
                 "settings": {
                      "title": "Impostazioni",
@@ -244,7 +245,8 @@ class TranslationManager:
                 "calendar": {
                     "title": "Calendario",
                     "new_deadline" : "Nueva fecha limite",
-                    "click_add_deadline" : "Haz clic aquí para añadir un vencimiento"
+                    "click_add_deadline" : "Haz clic aquí para añadir un vencimiento",
+                    "deadline_addded_succesfully": "Vencimiento añadido con éxito"
                 },
                 "settings": {
                     "title": "Configuración",
@@ -377,7 +379,8 @@ class TranslationManager:
                 "calendar": {
                     "title": "Calendar",
                     "new_deadline": "New deadline",
-                    "click_add_deadline": "Click here to add a deadline"
+                    "click_add_deadline": "Click here to add a deadline",
+                    "deadline_addded_succesfully": "Deadline added successfully",
                 },
                 "settings": {
                     "title": "Settings",

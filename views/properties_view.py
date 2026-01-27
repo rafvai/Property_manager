@@ -16,10 +16,11 @@ from translations_manager import get_translation_manager
 class PropertiesView(BaseView):
     """View per la gestione delle proprietà"""
 
-    def __init__(self, property_service, transaction_service, document_service, deadline_service, parent=None):
+    def __init__(self, property_service, transaction_service, document_service, deadline_service, logger, parent=None):
         self.deadline_service = deadline_service
         self.document_service = document_service
         self.tm = get_translation_manager()
+        self.logger = logger
         super().__init__(property_service, transaction_service, document_service, parent)
 
     def setup_ui(self):

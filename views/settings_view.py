@@ -209,7 +209,8 @@ class SettingsSection(QWidget):
 class SettingsView(BaseView):
     """View per le impostazioni dell'applicazione - Versione migliorata"""
 
-    def __init__(self, property_service, transaction_service, parent=None):
+    def __init__(self, property_service, transaction_service, logger, parent=None):
+        self.logger = logger
         self.tm = get_translation_manager()
         super().__init__(property_service, transaction_service, None, parent)
 
@@ -463,7 +464,7 @@ class SettingsView(BaseView):
             if selected_lang and selected_lang != current_lang:
                 # Salva la preferenza
                 from services.preferences_service import PreferencesService
-                prefs = PreferencesService()
+                prefs = PreferencesService(logger=self.logger)
                 prefs.set_language(selected_lang)
 
                 # Mostra messaggio

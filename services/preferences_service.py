@@ -5,7 +5,8 @@ import os
 class PreferencesService:
     """Gestisce le preferenze utente (lingua, tema, ecc.)"""
 
-    def __init__(self):
+    def __init__(self, logger):
+        self.logger = logger
         self.prefs_file = "preferences.json"
         self.preferences = self.load_preferences()
 
@@ -16,7 +17,7 @@ class PreferencesService:
                 with open(self.prefs_file, 'r', encoding='utf-8') as f:
                     return json.load(f)
             except Exception as e:
-                print(f"Errore caricamento preferenze: {e}")
+                self.logger.exception(f"PreferencesService:Errore caricamento preferenze: {e}")
                 return self.get_default_preferences()
         return self.get_default_preferences()
 
@@ -33,7 +34,7 @@ class PreferencesService:
                 json.dump(self.preferences, f, indent=4, ensure_ascii=False)
             return True
         except Exception as e:
-            print(f"Errore salvataggio preferenze: {e}")
+            self.logger.exception(f"PreferencesService:save_preferences:Errore salvataggio preferenze: {e}")
             return False
 
     def get_language(self):
