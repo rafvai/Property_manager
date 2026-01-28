@@ -7,11 +7,13 @@ from PySide6.QtGui import QIcon, QDesktopServices
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QMessageBox,
     QFileDialog, QListWidget, QFormLayout, QLineEdit, QComboBox, QDialogButtonBox,
-    QDateEdit, QWidget, QHBoxLayout, QSizePolicy, QGridLayout, QFrame, QTextEdit, QRadioButton, QButtonGroup, QGroupBox
+    QDateEdit, QWidget, QHBoxLayout, QSizePolicy, QGridLayout, QFrame, QTextEdit, QRadioButton, QButtonGroup, QGroupBox,
+    QListWidgetItem
 )
 
 from styles import COLORE_SECONDARIO, COLORE_WIDGET_2, COLORE_RIGA_1, COLORE_ITEM_HOVER, default_button_main_header, \
-    default_aggiungi_button, default_selector_date_export, default_export_button, COLORE_ERROR, default_dialog_style
+    default_aggiungi_button, default_selector_date_export, default_export_button, COLORE_ERROR, default_dialog_style, \
+    COLORE_ITEM_SELEZIONATO
 from validation_utils import parse_decimal, validate_required_text, validate_date, ValidationError
 
 
@@ -738,3 +740,328 @@ class ExportDialog(QDialog):
 
         except Exception as e:
             QMessageBox.critical(self, "Errore", f"Errore durante l'export:\n{str(e)}")
+
+
+class TransactionDialogWithSuppliers(QDialog):
+    """Dialog transazione con suggerimenti fornitori intelligenti"""
+
+    def __init__(self, property_service, supplier_service, parent=None):
+        super().__init__(parent)
+        self.property_service = property_service
+        self.supplier_service = supplier_service
+        self.selected_supplier = None
+
+        self.setWindowTitle("Nuova Transazione")
+        self.setMinimumWidth(600)
+        self.setStyleSheet(default_dialog_style)
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        """Costruisce l'interfaccia"""
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+
+        # Tipo transazione
+        type_layout = QHBoxLayout()
+        type_label = QLabel("Tipo*:")
+        type_label.setStyleSheet("color: white; font-size: 13px;")
+        type_layout.addWidget(type_label)
+
+        self.type_box = QComboBox()
+        self.type_box.addItems(["Uscita", "Entrata"])
+        self.type_box.setStyleSheet(f"""
+            QComboBox {{
+                background-color: {COLORE_WIDGET_2};
+                color: white;
+                padding: 8px;
+                border-radius: 6px;
+                font-size: 13px;
+            }}
+        """)
+        type_layout.addWidget(self.type_box)
+        type_layout.addStretch()
+        layout.addLayout(type_layout)
+
+        # Proprietà
+        property_layout = QHBoxLayout()
+        property_label = QLabel("Proprietà*:")
+        property_label.setStyleSheet("color: white; font-size: 13px;")
+        property_layout.addWidget(property_label)
+
+        self.property_combo = QComboBox()
+        properties = self.property_service.get_all()
+        for prop in properties:
+            self.property_combo.addItem(prop['name'], prop['id'])
+
+        self.property_combo.setStyleSheet(f"""
+            QComboBox {{
+                background-color: {COLORE_WIDGET_2};
+                color: white;
+                padding: 8px;
+                border-radius: 6px;
+                font-size: 13px;
+            }}
+        """)
+        property_layout.addWidget(self.property_combo)
+        property_layout.addStretch()
+        layout.addLayout(property_layout)
+
+        # Categoria/Servizio
+        service_layout = QHBoxLayout()
+        service_label = QLabel("Categoria*:")
+        service_label.setStyleSheet("color: white; font-size: 13px;")
+        service_layout.addWidget(service_label)
+
+        self.service_combo = QComboBox()
+        self.service_combo.setEditable(True)
+        self.service_combo.setPlaceholderText("Es: Bolletta Luce")
+        self.service_combo.setStyleSheet(f"""
+            QComboBox {{
+                background-color: {COLORE_WIDGET_2};
+                color: white;
+                padding: 8px;
+                border-radius: 6px;
+                font-size: 13px;
+            }}
+        """)
+
+        # Popola categorie dai fornitori
+        categories = self.supplier_service.get_categories()
+        for cat in categories:
+            self.service_combo.addItem(cat)
+
+        # Quando cambia la categoria, mostra suggerimenti
+        self.service_combo.currentTextChanged.connect(self.show_supplier_suggestions)
+
+        service_layout.addWidget(self.service_combo)
+        service_layout.addStretch()
+        layout.addLayout(service_layout)
+
+        # SUGGERIMENTI FORNITORI
+        self.suggestions_group = QGroupBox("💡 Fornitori Suggeriti")
+        self.suggestions_group.setStyleSheet(f"""
+            QGroupBox {{
+                color: white;
+                font-weight: bold;
+                border: 2px solid {COLORE_ITEM_SELEZIONATO};
+                border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 15px;
+                background-color: {COLORE_WIDGET_2};
+            }}
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }}
+        """)
+        suggestions_layout = QVBoxLayout(self.suggestions_group)
+
+        self.suggestions_list = QListWidget()
+        self.suggestions_list.setMaximumHeight(150)
+        self.suggestions_list.setStyleSheet(f"""
+            QListWidget {{
+                background-color: {COLORE_RIGA_1};
+                border: none;
+                border-radius: 6px;
+            }}
+            QListWidget::item {{
+                padding: 8px;
+                border-radius: 4px;
+            }}
+            QListWidget::item:hover {{
+                background-color: {COLORE_ITEM_SELEZIONATO};
+            }}
+            QListWidget::item:selected {{
+                background-color: {COLORE_ITEM_SELEZIONATO};
+            }}
+        """)
+        self.suggestions_list.itemClicked.connect(self.select_supplier)
+        suggestions_layout.addWidget(self.suggestions_list)
+
+        self.suggestions_group.setVisible(False)  # Nascosto inizialmente
+        layout.addWidget(self.suggestions_group)
+
+        # Fornitore selezionato (badge)
+        self.selected_supplier_label = QLabel()
+        self.selected_supplier_label.setStyleSheet(f"""
+            background-color: {COLORE_ITEM_SELEZIONATO};
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: bold;
+        """)
+        self.selected_supplier_label.setVisible(False)
+        layout.addWidget(self.selected_supplier_label)
+
+        # Fornitore (manuale)
+        provider_layout = QHBoxLayout()
+        provider_label = QLabel("Fornitore*:")
+        provider_label.setStyleSheet("color: white; font-size: 13px;")
+        provider_layout.addWidget(provider_label)
+
+        self.provider_input = QLineEdit()
+        self.provider_input.setPlaceholderText("Es: ENEL Energia")
+        provider_layout.addWidget(self.provider_input)
+        provider_layout.addStretch()
+        layout.addLayout(provider_layout)
+
+        # Importo
+        amount_layout = QHBoxLayout()
+        amount_label = QLabel("Importo (€)*:")
+        amount_label.setStyleSheet("color: white; font-size: 13px;")
+        amount_layout.addWidget(amount_label)
+
+        self.amount_input = QLineEdit()
+        self.amount_input.setPlaceholderText("Es: 123,45")
+        amount_layout.addWidget(self.amount_input)
+        amount_layout.addStretch()
+        layout.addLayout(amount_layout)
+
+        # Data
+        date_layout = QHBoxLayout()
+        date_label = QLabel("Data*:")
+        date_label.setStyleSheet("color: white; font-size: 13px;")
+        date_layout.addWidget(date_label)
+
+        self.date_edit = QDateEdit()
+        self.date_edit.setDisplayFormat("dd/MM/yyyy")
+        self.date_edit.setCalendarPopup(True)
+        self.date_edit.setDate(QDate.currentDate())
+        self.date_edit.setStyleSheet(f"""
+            QDateEdit {{
+                background-color: {COLORE_WIDGET_2};
+                color: white;
+                padding: 8px;
+                border-radius: 6px;
+                font-size: 13px;
+            }}
+        """)
+        date_layout.addWidget(self.date_edit)
+        date_layout.addStretch()
+        layout.addLayout(date_layout)
+
+        # Bottoni
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        layout.addWidget(buttons)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+
+    def show_supplier_suggestions(self, category):
+        """Mostra suggerimenti fornitori per la categoria"""
+        if not category or len(category) < 2:
+            self.suggestions_group.setVisible(False)
+            return
+
+        property_id = self.property_combo.currentData()
+        suggestions = self.supplier_service.get_suggestions_for_transaction(
+            category,
+            property_id
+        )
+
+        self.suggestions_list.clear()
+
+        if not suggestions:
+            self.suggestions_group.setVisible(False)
+            return
+
+        for supplier in suggestions:
+            item_widget = self.create_suggestion_item(supplier)
+            item = QListWidgetItem()
+            item.setData(Qt.ItemDataRole.UserRole, supplier)  # Salva dati fornitore
+            item.setSizeHint(item_widget.sizeHint())
+            self.suggestions_list.addItem(item)
+            self.suggestions_list.setItemWidget(item, item_widget)
+
+        self.suggestions_group.setVisible(True)
+
+    def create_suggestion_item(self, supplier):
+        """Crea widget per suggerimento fornitore"""
+        widget = QWidget()
+        layout = QHBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+
+        # Nome fornitore
+        name = QLabel(f"🏢 {supplier['name']}")
+        name.setStyleSheet("color: white; font-size: 13px; font-weight: bold;")
+        layout.addWidget(name)
+
+        # Rating
+        if supplier.get('avg_rating', 0) > 0:
+            rating = QLabel(f"⭐ {supplier['avg_rating']}/5")
+            rating.setStyleSheet("color: #f39c12; font-size: 11px;")
+            layout.addWidget(rating)
+
+        # Statistiche
+        if supplier.get('service_count', 0) > 0:
+            services = QLabel(f"📊 {supplier['service_count']} servizi")
+            services.setStyleSheet("color: #95a5a6; font-size: 11px;")
+            layout.addWidget(services)
+
+        # Totale speso
+        if supplier.get('total_spent', 0) > 0:
+            spent = QLabel(f"💰 {supplier['total_spent']:,.0f}€")
+            spent.setStyleSheet("color: #2ecc71; font-size: 11px; font-weight: bold;")
+            layout.addWidget(spent)
+
+        layout.addStretch()
+        return widget
+
+    def select_supplier(self, item):
+        """Seleziona un fornitore suggerito"""
+        supplier = item.data(Qt.ItemDataRole.UserRole)
+        self.selected_supplier = supplier
+
+        # Compila automaticamente i campi
+        self.provider_input.setText(supplier['name'])
+        if supplier.get('phone'):
+            self.provider_input.setToolTip(f"📞 {supplier['phone']}")
+
+        # Mostra badge fornitore selezionato
+        self.selected_supplier_label.setText(
+            f"✅ Fornitore selezionato: {supplier['name']} "
+            f"(⭐ {supplier.get('avg_rating', 0)}/5)"
+        )
+        self.selected_supplier_label.setVisible(True)
+
+    def get_data(self):
+        """Ritorna i dati della transazione"""
+        return {
+            "tipo": self.type_box.currentText(),
+            "property_id": self.property_combo.currentData(),
+            "service": self.service_combo.currentText().strip(),
+            "provider": self.provider_input.text().strip(),
+            "amount": self.amount_input.text().strip(),
+            "date": self.date_edit.date().toString("dd/MM/yyyy"),
+            "supplier_id": self.selected_supplier['id'] if self.selected_supplier else None
+        }
+
+    def accept(self):
+        """Validazione prima di accettare"""
+        try:
+            # Valida categoria
+            validate_required_text(
+                self.service_combo.currentText(),
+                "Categoria",
+                min_length=2,
+                max_length=100
+            )
+
+            # Valida fornitore
+            validate_required_text(
+                self.provider_input.text(),
+                "Fornitore",
+                min_length=2,
+                max_length=100
+            )
+
+            # Valida importo
+            parse_decimal(self.amount_input.text(), "Importo")
+
+            super().accept()
+
+        except ValidationError as e:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "⚠️ Validazione fallita", str(e))

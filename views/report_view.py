@@ -11,9 +11,11 @@ from PySide6.QtWidgets import (
     QHeaderView
 )
 
-from dialogs import ExportDialog
+from dialogs import ExportDialog, TransactionDialogWithSuppliers
+from services import supplier_service
 from services.export_service import ExportService
 from styles import *
+from validation_utils import parse_decimal, ValidationError
 from views.base_view import BaseView
 from translations_manager import get_translation_manager
 
@@ -21,7 +23,7 @@ from translations_manager import get_translation_manager
 class ReportView(BaseView):
     """View per la sezione Report con categorie"""
 
-    def __init__(self, property_service, transaction_service, logger, parent=None):
+    def __init__(self, property_service, transaction_service, supplier_service, logger, parent=None):
         # Cache per le categorie dinamiche
         self.categories_gastos = set()
         self.categories_ganancias = set()
@@ -30,6 +32,7 @@ class ReportView(BaseView):
 
         # Export service
         self.export_service = ExportService()
+        self.supplier_service = supplier_service
 
         super().__init__(property_service, transaction_service, None, parent)
 
@@ -461,89 +464,30 @@ class ReportView(BaseView):
 
     def add_transaction(self):
         """Dialog per aggiungere transazione manuale CON VALIDAZIONE"""
-        from validation_utils import parse_decimal, validate_required_text, ValidationError
 
-        dialog = QDialog(self)
-        dialog.setWindowTitle(self.tm.get("report", "new_transaction"))
-        dialog.setMinimumWidth(400)
-        dialog.setStyleSheet(default_dialog_style)
+        # crea dialog con suggerimenti fornitori
+        dialog = TransactionDialogWithSuppliers(
+            self.property_service,
+            self.supplier_service,
+            self
+        )
 
-        layout = QFormLayout(dialog)
-
-        type_combo = QComboBox()
-        type_combo.addItems(["Uscita", "Entrata"])
-        layout.addRow("Tipo*:", type_combo)
-
-        category_combo = QComboBox()
-        category_combo.setEditable(True)
-        category_combo.setPlaceholderText("Scrivi o seleziona...")
-
-        def update_categories():
-            category_combo.clear()
-            if type_combo.currentText() == "Uscita":
-                for cat in sorted(self.categories_gastos):
-                    category_combo.addItem(cat)
-            else:
-                for cat in sorted(self.categories_ganancias):
-                    category_combo.addItem(cat)
-
-        type_combo.currentTextChanged.connect(update_categories)
-        update_categories()
-        layout.addRow(f"{self.tm.get('common', 'category')}*:", category_combo)
-
-        # Input con tooltip
-        amount_input = QLineEdit()
-        amount_input.setPlaceholderText("Es: 100,50 oppure 100.50")
-        amount_input.setToolTip("Puoi usare sia la virgola (100,50) che il punto (100.50)")
-        layout.addRow(f"{self.tm.get("report", "amount")} €*:", amount_input)
-
-        provider_input = QLineEdit()
-        provider_input.setPlaceholderText(self.tm.get("report", "supplier_name"))
-        layout.addRow(f"{self.tm.get("report", "supplier")}:", provider_input)
-
-        date_input = QDateEdit()
-        date_input.setDisplayFormat("dd/MM/yyyy")
-        date_input.setCalendarPopup(True)
-        date_input.setDate(QDate.currentDate())
-        layout.addRow(f"{self.tm.get('common', 'date')}*:", date_input)
-
-        property_combo = QComboBox()
-        properties = self.property_service.get_all()
-        for prop in properties:
-            property_combo.addItem(prop['name'], prop['id'])
-        if properties:
-            layout.addRow("Propiedad:", property_combo)
-
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        layout.addWidget(buttons)
-        buttons.accepted.connect(dialog.accept)
-        buttons.rejected.connect(dialog.reject)
-
+        # SOSTITUISCI tutto il codice di creazione dialog con:
         if dialog.exec():
             try:
-                # 🔥 VALIDAZIONE CON GESTIONE VIRGOLA/PUNTO
-                amount = parse_decimal(amount_input.text().strip(), "Importo")
+                data = dialog.get_data()
 
-                # Valida categoria
-                category = validate_required_text(
-                    category_combo.currentText(),
-                    "Categoria",
-                    min_length=2,
-                    max_length=100
-                )
+                # Valida importo
+                amount = parse_decimal(data["importo"], "Importo")
 
-                trans_type = type_combo.currentText()
-                provider = provider_input.text().strip() or "Manuale"
-                date_str = date_input.date().toString("dd/MM/yyyy")
-                property_id = property_combo.currentData() if properties else None
-
-                trans_id = self.transaction_service.create(
-                    property_id=property_id,
-                    date=date_str,
-                    trans_type=trans_type,
+                trans_id = self.transaction_service.create_with_supplier(  # <- USA create_with_supplier
+                    property_id=data["property_id"],
+                    date=data["data_fattura"],
+                    trans_type=data["tipo"],
                     amount=amount,
-                    provider=provider,
-                    service=category
+                    provider=data["provider"],
+                    service=data["service"],
+                    supplier_id=data.get("supplier_id")  # <- NUOVO: passa supplier_id
                 )
 
                 if trans_id:
@@ -551,7 +495,7 @@ class ReportView(BaseView):
                         self,
                         self.tm.get("common", "success"),
                         f"✅ Transazione aggiunta!\n\n"
-                        f"Categoria: {category}\n"
+                        f"Categoria: {data['service']}\n"
                         f"Importo: {amount:,.2f}€"
                     )
                     self.update_report()
@@ -563,7 +507,6 @@ class ReportView(BaseView):
                     )
 
             except ValidationError as e:
-                # 🆕 Messaggio di errore più chiaro
                 QMessageBox.warning(
                     self,
                     "⚠️ Validazione fallita",

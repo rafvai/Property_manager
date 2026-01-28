@@ -94,7 +94,7 @@ class TransactionService:
         finally:
             self.db.close_session(session)
 
-    def create(self, property_id, date, trans_type, amount, provider, service):
+    def create(self, property_id, date, trans_type, amount, provider, service, supplier_id=None):
         """Crea una nuova transazione"""
         session = self.db.get_session()
         try:
@@ -209,3 +209,75 @@ class TransactionService:
             return 0
         finally:
             self.db.close_session(session)
+
+    def create_with_supplier(self, property_id, date, trans_type, amount,
+                             provider, service, supplier_id=None):
+        """
+        Crea una nuova transazione con collegamento al fornitore
+
+        Args:
+            property_id: ID proprietà
+            date: Data transazione (dd/MM/yyyy)
+            trans_type: Tipo ('Entrata' o 'Uscita')
+            amount: Importo
+            provider: Nome fornitore
+            service: Servizio/categoria
+            supplier_id: ID fornitore (opzionale)
+
+        Returns:
+            ID transazione creata o None
+        """
+        session = self.db.get_session()
+        try:
+            new_transaction = Transaction(
+                property_id=property_id,
+                supplier_id=supplier_id,  # <- NUOVO campo
+                date=date,
+                type=trans_type,
+                amount=amount,
+                provider=provider,
+                service=service
+            )
+            session.add(new_transaction)
+            session.commit()
+
+            transaction_id = new_transaction.id
+
+            # AGGIORNA STATISTICHE FORNITORE se collegato
+            if supplier_id and trans_type == 'Uscita':
+                # Converti data da dd/MM/yyyy a yyyy-MM-dd
+                try:
+                    date_parts = date.split('/')
+                    service_date = f"{date_parts[2]}-{date_parts[1]}-{date_parts[0]}"
+
+                    # Importa SupplierService (oppure passa come parametro)
+                    from services.supplier_service import SupplierService
+                    supplier_service = SupplierService(self.logger)
+                    supplier_service.update_service_stats(
+                        supplier_id,
+                        service_date,
+                        amount
+                    )
+                except Exception as e:
+                    self.logger.warning(f"Impossibile aggiornare stats fornitore: {e}")
+
+            self.logger.info(f"TransactionService: Transazione creata: {transaction_id} (Fornitore: {supplier_id})")
+            return transaction_id
+
+        except Exception as e:
+            session.rollback()
+            self.logger.error(f"TransactionService: Errore creazione transazione: {e}")
+            return None
+        finally:
+            self.db.close_session(session)
+
+    # MODIFICA anche il metodo create esistente per supportare supplier_id:
+
+    def create(self, property_id, date, trans_type, amount, provider, service, supplier_id=None):
+        """
+        Crea una nuova transazione (versione base con supporto supplier_id)
+        """
+        return self.create_with_supplier(
+            property_id, date, trans_type, amount,
+            provider, service, supplier_id
+        )

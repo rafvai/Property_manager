@@ -11,6 +11,7 @@ from services.transaction_service import TransactionService
 from services.document_service import DocumentService
 from services.deadline_service import DeadlineService
 from services.preferences_service import PreferencesService
+from services.supplier_service import SupplierService
 from translations_manager import get_translation_manager
 from ui_main import DashboardWindow
 from log_manager import LogManager
@@ -31,6 +32,7 @@ if __name__ == "__main__":
     transaction_service = TransactionService(logger)
     deadline_service = DeadlineService(logger)
     document_service = DocumentService(logger)
+    supplier_service = SupplierService(logger)
 
     prefs_service = PreferencesService(logger)
     tm = get_translation_manager()
@@ -40,6 +42,7 @@ if __name__ == "__main__":
     window = DashboardWindow(
         db_service,  # db_service
         prefs_service,  # preferences_service
+        supplier_service,
         logger=logger  # logger (keyword argument)
     )
     window.show()

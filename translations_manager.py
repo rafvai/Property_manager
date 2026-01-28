@@ -144,7 +144,27 @@ class TranslationManager:
                 },
                 "weekdays": {
                     "short": ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"]
+                },
+                "suppliers": {
+                    "title": "Gestione Fornitori",
+                    "add_supplier": "Aggiungi Fornitore",
+                    "edit_supplier": "Modifica Fornitore",
+                    "new_supplier": "Nuovo Fornitore",
+                    "all_categories": "Tutte le categorie",
+                    "search_placeholder": "🔍 Cerca fornitore...",
+                    "no_suppliers": "📭 Nessun fornitore trovato",
+                    "name": "Nome",
+                    "category": "Categoria",
+                    "phone": "Telefono",
+                    "email": "Email",
+                    "address": "Indirizzo",
+                    "notes": "Note",
+                    "supplier_added": "Fornitore aggiunto con successo!",
+                    "supplier_updated": "Fornitore aggiornato con successo!",
+                    "supplier_deleted": "Fornitore eliminato con successo!",
+                    "confirm_delete": "Sei sicuro di voler eliminare questo fornitore?"
                 }
+
             },
             "es": {
                 "app_title": "Property Manager",
@@ -277,7 +297,27 @@ class TranslationManager:
                 },
                 "weekdays": {
                     "short": ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+                },
+                "suppliers": {
+                    "title": "Gestión de Proveedores",
+                    "add_supplier": "Añadir Proveedor",
+                    "edit_supplier": "Editar Proveedor",
+                    "new_supplier": "Nuevo Proveedor",
+                    "all_categories": "Todas las categorías",
+                    "search_placeholder": "🔍 Buscar proveedor...",
+                    "no_suppliers": "📭 No se encontraron proveedores",
+                    "name": "Nombre",
+                    "category": "Categoría",
+                    "phone": "Teléfono",
+                    "email": "Correo electrónico",
+                    "address": "Dirección",
+                    "notes": "Notas",
+                    "supplier_added": "¡Proveedor añadido con éxito!",
+                    "supplier_updated": "¡Proveedor actualizado con éxito!",
+                    "supplier_deleted": "¡Proveedor eliminado con éxito!",
+                    "confirm_delete": "¿Estás seguro de que quieres eliminar este proveedor?"
                 }
+
             },
             "en": {
                 "app_title": "Property Manager",
@@ -411,7 +451,27 @@ class TranslationManager:
                 },
                 "weekdays": {
                     "short": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+                },
+                "suppliers": {
+                    "title": "Supplier Management",
+                    "add_supplier": "Add Supplier",
+                    "edit_supplier": "Edit Supplier",
+                    "new_supplier": "New Supplier",
+                    "all_categories": "All categories",
+                    "search_placeholder": "🔍 Search supplier...",
+                    "no_suppliers": "📭 No suppliers found",
+                    "name": "Name",
+                    "category": "Category",
+                    "phone": "Phone",
+                    "email": "Email",
+                    "address": "Address",
+                    "notes": "Notes",
+                    "supplier_added": "Supplier added successfully!",
+                    "supplier_updated": "Supplier updated successfully!",
+                    "supplier_deleted": "Supplier deleted successfully!",
+                    "confirm_delete": "Are you sure you want to delete this supplier?"
                 }
+
             }
         }
 

@@ -25,10 +25,11 @@ from views.accounting_view import AccountingView
 from views.report_view import ReportView
 from views.calendar_view import CalendarView
 from views.settings_view import SettingsView
+from views.suppliers_view import SuppliersView
 
 
 class DashboardWindow(QMainWindow):
-    def __init__(self, db_service, preferences_service, logger):
+    def __init__(self, db_service, preferences_service, supplier_service, logger):
         super().__init__()
 
         # Logger
@@ -37,6 +38,7 @@ class DashboardWindow(QMainWindow):
         # Servizi
         self.preferences_service = preferences_service
         self.tm = get_translation_manager()
+        self.supplier_service = supplier_service
 
         # Inizializza i services INTERNAMENTE (non li riceve più come parametri)
         from services.property_service import PropertyService
@@ -120,7 +122,8 @@ class DashboardWindow(QMainWindow):
             ("icons/bar-chart.png", self.tm.get("menu", "accounting")),
             ("icons/pie-chart.png", self.tm.get("menu", "report")),
             ("icons/calendar.png", self.tm.get("menu", "calendar")),
-            ("icons/settings.png", self.tm.get("menu", "settings")),
+            ("icons/settings.png", self.tm.get("report", "supplier")),
+            ("icons/settings.png", self.tm.get("menu", "settings"))
         ]
 
         for icon_path, text in menu_items:
@@ -176,6 +179,7 @@ class DashboardWindow(QMainWindow):
             self.show_view(ReportView(
                 self.property_service,
                 self.transaction_service,
+                self.supplier_service,
                 self.logger,
                 self
             ))
@@ -187,7 +191,14 @@ class DashboardWindow(QMainWindow):
                 self.logger,
                 self
             ))
-        elif index == 6:  # Settings
+        elif index == 6:  # Fornitori
+            self.show_view(SuppliersView(
+                self.supplier_service,
+                self.property_service,
+                self.logger,
+                self
+            ))
+        elif index == 7:  # Settings
             self.show_view(SettingsView(
                 self.property_service,
                 self.transaction_service,
@@ -205,7 +216,8 @@ class DashboardWindow(QMainWindow):
             self.tm.get("menu", "accounting"): 3,
             self.tm.get("menu", "report"): 4,
             self.tm.get("menu", "calendar"): 5,
-            self.tm.get("menu", "settings"): 6
+            self.tm.get("report", "supplier"): 6,
+            self.tm.get("menu", "settings"): 7,
         }
 
         if section_name in section_indices:
