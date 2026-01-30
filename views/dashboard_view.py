@@ -11,8 +11,6 @@ import numpy as np
 
 from views.base_view import BaseView
 from styles import *
-from translations_manager import get_translation_manager
-
 
 class ClickableFrame(QFrame):
     """Frame cliccabile per navigazione"""
@@ -56,12 +54,13 @@ class LanguageButton(QPushButton):
 class DashboardView(BaseView):
     """View per la Dashboard principale"""
 
-    def __init__(self, property_service, transaction_service, deadline_service, preferences_service, main_window, logger,
+    def __init__(self, property_service, transaction_service, deadline_service, preferences_service, main_window, translation_manager, logger,
                  parent=None):
         self.logger = logger
         self.deadline_service = deadline_service
         self.main_window = main_window
         self.preferences_service = preferences_service
+        self.tm = translation_manager
 
         # Ricarica le proprietà
         self.proprieta = property_service.get_all()

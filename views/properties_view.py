@@ -10,16 +10,14 @@ from datetime import datetime
 
 from styles import *
 from views.base_view import BaseView
-from translations_manager import get_translation_manager
-
 
 class PropertiesView(BaseView):
     """View per la gestione delle proprietà"""
 
-    def __init__(self, property_service, transaction_service, document_service, deadline_service, logger, parent=None):
+    def __init__(self, property_service, transaction_service, document_service, deadline_service, translation_service, logger, parent=None):
         self.deadline_service = deadline_service
         self.document_service = document_service
-        self.tm = get_translation_manager()
+        self.tm = translation_service
         self.logger = logger
         super().__init__(property_service, transaction_service, document_service, parent)
 

@@ -17,17 +17,15 @@ from services.export_service import ExportService
 from styles import *
 from validation_utils import parse_decimal, ValidationError
 from views.base_view import BaseView
-from translations_manager import get_translation_manager
-
 
 class ReportView(BaseView):
     """View per la sezione Report con categorie"""
 
-    def __init__(self, property_service, transaction_service, supplier_service, logger, parent=None):
+    def __init__(self, property_service, transaction_service, supplier_service, translation_service,logger, parent=None):
         # Cache per le categorie dinamiche
         self.categories_gastos = set()
         self.categories_ganancias = set()
-        self.tm = get_translation_manager()
+        self.tm = translation_service
         self.logger = logger
 
         # Export service

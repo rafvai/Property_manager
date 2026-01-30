@@ -10,7 +10,6 @@ from PySide6.QtCore import Qt
 from dialogs import CustomTitleBar
 import logging
 from styles import *
-from translations_manager import get_translation_manager
 
 from services.database_service import DatabaseService
 from services.property_service import PropertyService
@@ -38,9 +37,8 @@ class DashboardWindow(QMainWindow):
         # Servizi
         self.db_service = db_service
         self.preferences_service = preferences_service
-        self.tm = get_translation_manager()
+        self.tm = translation_manager
         self.supplier_service = supplier_service
-        self.translation_manager = translation_manager
 
         # Inizializza i services INTERNAMENTE (non li riceve più come parametri)
         from services.property_service import PropertyService
@@ -102,12 +100,14 @@ class DashboardWindow(QMainWindow):
 
         # Mostra dashboard di default
         self.show_view(DashboardView(
-            self.property_service,
-            self.transaction_service,
-            self.deadline_service,
-            self.preferences_service,
-            self.logger,
-            self
+            property_service=self.property_service,
+            transaction_service=self.transaction_service,
+            deadline_service=self.deadline_service,
+            preferences_service=self.preferences_service,
+            main_window=self,
+            translation_manager=self.tm,
+            logger=self.logger,
+            parent=self
         ))
 
         # SCHERMO INTERO DI DEFAULT
@@ -118,15 +118,15 @@ class DashboardWindow(QMainWindow):
         self.menu.clear()
 
         menu_items = [
-            ("icons/homepage.png", self.tm.get("menu", "dashboard")),
-            ("icons/property.png", self.tm.get("menu", "properties")),
-            ("icons/document.png", self.tm.get("menu", "documents")),
-            ("icons/bar-chart.png", self.tm.get("menu", "accounting")),
-            ("icons/pie-chart.png", self.tm.get("menu", "report")),
-            ("icons/calendar.png", self.tm.get("menu", "calendar")),
-            ("icons/security.png", self.tm.get("menu", "suppliers")),
-            ("icons/settings.png", self.tm.get("menu", "settings")),
-            ("🌐", "Traduzioni")
+            ("icons/homepage.png", self.tm.get("ETICHETTE", "DASHBOARD")),
+            ("icons/property.png", self.tm.get("ETICHETTE", "PROPERTIES")),
+            ("icons/document.png", self.tm.get("ETICHETTE", "DOCUMENTS")),
+            ("icons/bar-chart.png", self.tm.get("ETICHETTE", "accounting")),
+            ("icons/pie-chart.png", self.tm.get("ETICHETTE", "report")),
+            ("icons/calendar.png", self.tm.get("ETICHETTE", "CALENDAR")),
+            ("icons/security.png", self.tm.get("ETICHETTE", "FORNITORI")),
+            ("icons/settings.png", self.tm.get("ETICHETTE", "settings")),
+            ("icons/settings.png", self.tm.get("ETICHETTE", "Traduzioni"))
         ]
 
         for icon_path, text in menu_items:
@@ -147,73 +147,82 @@ class DashboardWindow(QMainWindow):
         """Gestisce la navigazione del menu"""
         if index == 0:  # Dashboard
             self.show_view(DashboardView(
-                self.property_service,
-                self.transaction_service,
-                self.deadline_service,
-                self.preferences_service,
-                self.logger,
-                self
+                property_service=self.property_service,
+                transaction_service=self.transaction_service,
+                deadline_service=self.deadline_service,
+                preferences_service=self.preferences_service,
+                main_window=self,
+                translation_manager=self.tm,
+                logger=self.logger,
+                parent=self
             ))
         elif index == 1:  # Properties
             self.show_view(PropertiesView(
-                self.property_service,
-                self.transaction_service,
-                self.document_service,
-                self.deadline_service,
-                self.logger,
-                self
+                property_service=self.property_service,
+                transaction_service=self.transaction_service,
+                document_service=self.document_service,
+                deadline_service=self.deadline_service,
+                translation_service=self.tm,
+                logger=self.logger,
+                parent=self
             ))
         elif index == 2:  # Documents
             self.show_view(DocumentsView(
-                self.property_service,
-                self.transaction_service,
-                self.document_service,
-                self.logger,
-                self
+                property_service=self.property_service,
+                transaction_service=self.transaction_service,
+                document_service=self.document_service,
+                translation_service=self.tm,
+                logger=self.logger,
+                parent=self
             ))
         elif index == 3:  # Accounting
             self.show_view(AccountingView(
-                self.property_service,
-                self.transaction_service,
-                self.logger,
-                self
+                property_service=self.property_service,
+                transaction_service=self.transaction_service,
+                translation_service=self.tm,
+                logger=self.logger,
+                parent=self
             ))
         elif index == 4:  # Report
             self.show_view(ReportView(
-                self.property_service,
-                self.transaction_service,
-                self.supplier_service,
-                self.logger,
-                self
+                property_service=self.property_service,
+                transaction_service=self.transaction_service,
+                supplier_service=self.supplier_service,
+                translation_service=self.tm,
+                logger=self.logger,
+                parent=self
             ))
         elif index == 5:  # Calendar
             self.show_view(CalendarView(
-                self.property_service,
-                self.transaction_service,
-                self.deadline_service,
-                self.logger,
-                self
+                property_service=self.property_service,
+                transaction_service=self.transaction_service,
+                deadline_service=self.deadline_service,
+                translation_service=self.tm,
+                logger=self.logger,
+                parent=self
             ))
         elif index == 6:  # Fornitori
             self.show_view(SuppliersView(
-                self.supplier_service,
-                self.property_service,
-                self.logger,
-                self
+                supplier_service=self.supplier_service,
+                property_service=self.property_service,
+                translation_service=self.tm,
+                logger=self.logger,
+                parent=self
             ))
         elif index == 7:  # Settings
             self.show_view(SettingsView(
-                self.property_service,
-                self.transaction_service,
-                self.logger,
-                self
+                property_service=self.property_service,
+                transaction_service=self.transaction_service,
+                translation_service=self.tm,
+                logger=self.logger,
+                parent=self
             ))
         elif index == 8:  # Traduzioni
             from views.translations_admin_view_simple import TranslationsAdminView
             self.show_view(TranslationsAdminView(
-                self.translation_manager,
-                self.logger,
-                self
+                translation_manager=self.tm,
+                logger=self.logger,
+                parent=self
             ))
 
     def navigate_to_section(self, section_name):
@@ -228,7 +237,7 @@ class DashboardWindow(QMainWindow):
             self.tm.get("menu", "calendar"): 5,
             self.tm.get("report", "supplier"): 6,
             self.tm.get("menu", "settings"): 7,
-            "Traduzioni": 7,
+            self.tm.get("menu", "Traduzioni"): 8,
         }
 
         if section_name in section_indices:

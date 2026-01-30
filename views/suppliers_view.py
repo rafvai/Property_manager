@@ -9,7 +9,6 @@ from PySide6.QtGui import QColor, QDesktopServices, QIcon
 
 from views.base_view import BaseView
 from styles import *
-from translations_manager import get_translation_manager
 from validation_utils import validate_required_text, ValidationError
 import os
 from datetime import datetime
@@ -240,7 +239,6 @@ class SupplierDetailsDialog(QDialog):
         super().__init__(parent)
         self.supplier = supplier
         self.supplier_service = supplier_service
-        self.tm = get_translation_manager()
         
         self.setWindowTitle(f"Dettagli: {supplier['name']}")
         self.setMinimumSize(700, 600)
@@ -820,11 +818,11 @@ class SupplierDetailsDialog(QDialog):
 class SuppliersView(BaseView):
     """View completa per gestione fornitori"""
 
-    def __init__(self, supplier_service, property_service, logger, parent=None):
+    def __init__(self, supplier_service, property_service, translation_service, logger, parent=None):
         self.supplier_service = supplier_service
         self.property_service = property_service
+        self.tm = translation_service
         self.logger = logger
-        self.tm = get_translation_manager()
         self.current_category = None
         self.current_property_id = None
         self.current_min_rating = None

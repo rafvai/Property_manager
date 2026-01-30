@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
 from dialogs import DocumentMetadataDialog
 from styles import *
 from views.base_view import BaseView
-from translations_manager import get_translation_manager
 
 DOCS_DIR = "docs"
 
@@ -20,10 +19,10 @@ DOCS_DIR = "docs"
 class DocumentsView(BaseView):
     """View per la gestione documenti"""
 
-    def __init__(self, property_service, transaction_service, document_service, logger, parent=None):
+    def __init__(self, property_service, transaction_service, document_service, translation_service, logger, parent=None):
         self.proprieta = property_service.get_all()
         self.selected_property = self.proprieta[0] if self.proprieta else None
-        self.tm = get_translation_manager()
+        self.tm = translation_service
         self.logger = logger
         # Icone
         icon_path = os.path.join(os.path.dirname(__file__), "..", "icons", "folder.png")

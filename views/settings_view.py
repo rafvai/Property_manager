@@ -11,8 +11,6 @@ from PySide6.QtWidgets import (
 
 from views.base_view import BaseView
 from styles import *
-from translations_manager import get_translation_manager
-
 
 class SettingItem(QFrame):
     """Widget personalizzato per ogni elemento delle impostazioni con animazioni"""
@@ -209,9 +207,9 @@ class SettingsSection(QWidget):
 class SettingsView(BaseView):
     """View per le impostazioni dell'applicazione - Versione migliorata"""
 
-    def __init__(self, property_service, transaction_service, logger, parent=None):
+    def __init__(self, property_service, transaction_service, translation_service, logger, parent=None):
+        self.tm = translation_service
         self.logger = logger
-        self.tm = get_translation_manager()
         super().__init__(property_service, transaction_service, None, parent)
 
     def setup_ui(self):

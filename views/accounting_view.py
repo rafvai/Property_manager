@@ -14,14 +14,12 @@ from calendar import monthrange
 
 from views.base_view import BaseView
 from styles import *
-from translations_manager import get_translation_manager
-
 
 class AccountingView(BaseView):
     """View per la sezione Contabilità"""
 
-    def __init__(self, property_service, transaction_service, logger, parent=None):
-        self.tm = get_translation_manager()
+    def __init__(self, property_service, transaction_service, translation_service, logger, parent=None):
+        self.tm = translation_service
         self.logger = logger
         super().__init__(property_service, transaction_service, None, parent)
 
@@ -96,6 +94,7 @@ class AccountingView(BaseView):
         self.accounting_table.setColumnCount(12)
         self.accounting_table.setRowCount(3)
 
+        #todo: modificare qui
         month_labels = self.tm.get_month_labels(short=True)
         self.accounting_table.setHorizontalHeaderLabels(month_labels)
         self.accounting_table.setVerticalHeaderLabels([
