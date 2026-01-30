@@ -12,6 +12,7 @@ from services.document_service import DocumentService
 from services.deadline_service import DeadlineService
 from services.preferences_service import PreferencesService
 from services.supplier_service import SupplierService
+from services.translation_system_simple import TranslationManager, seed_translations_db
 from translations_manager import get_translation_manager
 from ui_main import DashboardWindow
 from log_manager import LogManager
@@ -34,6 +35,21 @@ if __name__ == "__main__":
     document_service = DocumentService(logger)
     supplier_service = SupplierService(logger)
 
+    # Inizializza sistema traduzioni
+    try:
+        logger.info("Inizializzazione sistema traduzioni...")
+        seed_translations_db('shared/translations.db')
+        logger.info("Database traduzioni popolato")
+    except Exception as e:
+        logger.warning(f"Database traduzioni già esistente: {e}")
+
+    # Crea Translation Manager
+    translation_manager = TranslationManager(
+        db_path='shared/translations.db',
+        default_language='it'
+    )
+    logger.info(f"Translation Manager inizializzato (lingua: {translation_manager.get_current_language()})")
+
     prefs_service = PreferencesService(logger)
     tm = get_translation_manager()
     tm.set_language(prefs_service.get_language())
@@ -43,6 +59,7 @@ if __name__ == "__main__":
         db_service,  # db_service
         prefs_service,  # preferences_service
         supplier_service,
+        translation_manager,
         logger=logger  # logger (keyword argument)
     )
     window.show()

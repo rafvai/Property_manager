@@ -840,14 +840,13 @@ class SuppliersView(BaseView):
         # HEADER
         header_layout = QHBoxLayout()
 
-        title = QLabel("🏢 Gestione Fornitori")
+        title = QLabel(self.tm.get("suppliers", "title"))
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
         header_layout.addWidget(title)
         header_layout.addStretch()
 
-        add_btn = QPushButton("+ Aggiungi Fornitore")
+        add_btn = QPushButton(f"+ {self.tm.get("suppliers", "add_supplier")}")
         add_btn.setStyleSheet(default_aggiungi_button)
-        add_btn.setFixedHeight(36)
         add_btn.clicked.connect(self.add_supplier)
         header_layout.addWidget(add_btn)
 
@@ -858,14 +857,14 @@ class SuppliersView(BaseView):
         filters_layout.setSpacing(15)
 
         # Proprietà
-        property_label = QLabel("Proprietà:")
+        property_label = QLabel(f"{self.tm.get('common', 'property')}:")
         property_label.setStyleSheet("color: white; font-size: 14px;")
         filters_layout.addWidget(property_label)
 
         self.property_selector = QComboBox()
         self.property_selector.setStyleSheet(default_combo_box_style)
         self.property_selector.setMinimumWidth(200)
-        self.property_selector.addItem("Tutte le proprietà", None)
+        self.property_selector.addItem(self.tm.get('common', 'all_properties'), None)
         
         properties = self.property_service.get_all()
         for prop in properties:
@@ -903,7 +902,7 @@ class SuppliersView(BaseView):
 
         # Barra ricerca
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Cerca fornitore...")
+        self.search_input.setPlaceholderText(self.tm.get("suppliers","search_placeholder"))
         self.search_input.setStyleSheet(f"""
             QLineEdit {{
                 background-color: {COLORE_WIDGET_2};
@@ -976,7 +975,7 @@ class SuppliersView(BaseView):
     def populate_categories(self):
         """Popola selettore categorie"""
         self.category_selector.clear()
-        self.category_selector.addItem("Tutte le categorie", None)
+        self.category_selector.addItem(self.tm.get("suppliers","all_categories"), None)
 
         categories = self.supplier_service.get_categories(self.current_property_id)
         for category in categories:
@@ -991,7 +990,7 @@ class SuppliersView(BaseView):
             filter_text.append(f"proprietà '{property_name}'")
         
         if self.current_category:
-            filter_text.append(f"categoria '{self.current_category}'")
+            filter_text.append(f"{self.tm.get("suppliers","category")} '{self.current_category}'")
         
         if self.current_min_rating:
             filter_text.append(f"rating ≥ {self.current_min_rating}⭐")
@@ -1031,7 +1030,7 @@ class SuppliersView(BaseView):
         self.update_stats(len(suppliers))
 
         if not suppliers:
-            no_data_label = QLabel("📭 Nessun fornitore trovato")
+            no_data_label = QLabel(self.tm.get("suppliers","no_suppliers"))
             no_data_label.setStyleSheet("color: #bdc3c7; font-size: 16px; padding: 40px;")
             no_data_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.cards_layout.addWidget(no_data_label)
@@ -1084,7 +1083,7 @@ class SuppliersView(BaseView):
     def add_supplier(self):
         """Dialog aggiungi fornitore"""
         dialog = QDialog(self)
-        dialog.setWindowTitle("Nuovo Fornitore")
+        dialog.setWindowTitle(self.tm.get("suppliers","new_supplier"))
         dialog.setMinimumWidth(500)
         dialog.setStyleSheet(default_dialog_style)
 
@@ -1092,7 +1091,7 @@ class SuppliersView(BaseView):
 
         name_input = QLineEdit()
         name_input.setPlaceholderText("Es: ENEL Energia")
-        layout.addRow("Nome*:", name_input)
+        layout.addRow(f"{self.tm.get("suppliers","name")}*:", name_input)
 
         category_combo = QComboBox()
         category_combo.setEditable(True)
@@ -1102,7 +1101,7 @@ class SuppliersView(BaseView):
         for cat in categories:
             category_combo.addItem(cat)
         
-        layout.addRow("Categoria*:", category_combo)
+        layout.addRow(f"{self.tm.get("suppliers","category")}*:", category_combo)
 
         property_combo = QComboBox()
         property_combo.addItem("Nessuna proprietà", None)

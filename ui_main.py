@@ -29,16 +29,18 @@ from views.suppliers_view import SuppliersView
 
 
 class DashboardWindow(QMainWindow):
-    def __init__(self, db_service, preferences_service, supplier_service, logger):
+    def __init__(self, db_service, preferences_service, supplier_service, translation_manager, logger):
         super().__init__()
 
         # Logger
         self.logger = logger
 
         # Servizi
+        self.db_service = db_service
         self.preferences_service = preferences_service
         self.tm = get_translation_manager()
         self.supplier_service = supplier_service
+        self.translation_manager = translation_manager
 
         # Inizializza i services INTERNAMENTE (non li riceve più come parametri)
         from services.property_service import PropertyService
@@ -122,8 +124,9 @@ class DashboardWindow(QMainWindow):
             ("icons/bar-chart.png", self.tm.get("menu", "accounting")),
             ("icons/pie-chart.png", self.tm.get("menu", "report")),
             ("icons/calendar.png", self.tm.get("menu", "calendar")),
-            ("icons/settings.png", self.tm.get("report", "supplier")),
-            ("icons/settings.png", self.tm.get("menu", "settings"))
+            ("icons/security.png", self.tm.get("menu", "suppliers")),
+            ("icons/settings.png", self.tm.get("menu", "settings")),
+            ("🌐", "Traduzioni")
         ]
 
         for icon_path, text in menu_items:
@@ -205,6 +208,13 @@ class DashboardWindow(QMainWindow):
                 self.logger,
                 self
             ))
+        elif index == 8:  # Traduzioni
+            from views.translations_admin_view_simple import TranslationsAdminView
+            self.show_view(TranslationsAdminView(
+                self.translation_manager,
+                self.logger,
+                self
+            ))
 
     def navigate_to_section(self, section_name):
         """Naviga a una sezione specifica tramite nome"""
@@ -218,6 +228,7 @@ class DashboardWindow(QMainWindow):
             self.tm.get("menu", "calendar"): 5,
             self.tm.get("report", "supplier"): 6,
             self.tm.get("menu", "settings"): 7,
+            "Traduzioni": 7,
         }
 
         if section_name in section_indices:

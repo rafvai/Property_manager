@@ -22,6 +22,7 @@ class TranslationManager:
                     "accounting": "Contabilità",
                     "report": "Report",
                     "calendar": "Calendario",
+                    "suppliers": "Fornitori",
                     "settings": "Impostazioni"
                 },
                 "common": {
@@ -175,6 +176,7 @@ class TranslationManager:
                     "accounting": "Contabilidad",
                     "report": "Informes",
                     "calendar": "Calendario",
+                    "suppliers": "Proveedores",
                     "settings": "Configuración"
                 },
                 "common": {
@@ -328,6 +330,7 @@ class TranslationManager:
                     "accounting": "Accounting",
                     "report": "Reports",
                     "calendar": "Calendar",
+                    "suppliers": "Suppliers",
                     "settings": "Settings"
                 },
                 "common": {
