@@ -54,7 +54,7 @@ class ReportView(BaseView):
         header_layout.addWidget(property_label)
 
         self.property_selector = QComboBox()
-        self.property_selector.addItem(self.tm.get("common", "all_properties"), None)
+        self.property_selector.addItem(self.tm.get("ETICHETTE", "ALL_PROPERTIES"), None)
 
         properties = self.property_service.get_all()
         for prop in properties:
@@ -212,7 +212,7 @@ class ReportView(BaseView):
     def populate_category_filter(self):
         """Popola il filtro categorie"""
         self.category_filter.clear()
-        self.category_filter.addItem("Todas las categorías", None)
+        self.category_filter.addItem(self.tm.get("ETICHETTE", "CATEGORY"), None)
 
         categories = set()
         for trans in self.current_transactions:
@@ -381,7 +381,7 @@ class ReportView(BaseView):
         dialog.exec()
 
     def update_category_table(self, table, data, color):
-        """Aggiorna tabella categorie SENZA riga totale"""
+        """Aggiorna tabella categorie """
         table.setRowCount(0)
 
         if not data:
@@ -470,13 +470,12 @@ class ReportView(BaseView):
             self
         )
 
-        # SOSTITUISCI tutto il codice di creazione dialog con:
         if dialog.exec():
             try:
                 data = dialog.get_data()
 
                 # Valida importo
-                amount = parse_decimal(data["importo"], "Importo")
+                amount = parse_decimal(data["importo"], self.tm.get("ETICHETTE", "IMPORTO"))
 
                 trans_id = self.transaction_service.create_with_supplier(  # <- USA create_with_supplier
                     property_id=data["property_id"],

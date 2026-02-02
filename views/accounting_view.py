@@ -94,8 +94,7 @@ class AccountingView(BaseView):
         self.accounting_table.setColumnCount(12)
         self.accounting_table.setRowCount(3)
 
-        #todo: modificare qui
-        month_labels = self.tm.get_month_labels(short=True)
+        month_labels = self.tm.get("LISTE", "MONTHS_SHORT").split(";")
         self.accounting_table.setHorizontalHeaderLabels(month_labels)
         self.accounting_table.setVerticalHeaderLabels([
             self.tm.get("accounting", "income_total"),
@@ -151,7 +150,7 @@ class AccountingView(BaseView):
     def update_chart(self, entrate, spese, saldo):
         """Aggiorna il grafico con matplotlib"""
         mesi = np.arange(1, 13)
-        month_labels = self.tm.get_month_labels(short=True)
+        month_labels = self.tm.get("LISTE", "MONTHS_SHORT").split(";")
 
         self.ax.clear()
 

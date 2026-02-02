@@ -97,12 +97,12 @@ class DashboardView(BaseView):
         prop_layout = QVBoxLayout(prop_widget)
         prop_layout.setContentsMargins(0, 0, 0, 0)
 
-        label_select = QLabel(self.tm.get("dashboard", "select_property"))
+        label_select = QLabel(self.tm.get("ETICHETTE", "select_property"))
         label_select.setStyleSheet("color: white; font-size: 14px;")
         prop_layout.addWidget(label_select)
 
         self.property_selector = QComboBox()
-        self.property_selector.addItem(self.tm.get("common", "all_properties"), None)
+        self.property_selector.addItem(self.tm.get("ETICHETTE", "ALL_PROPERTIES"), None)
         for p in self.proprieta:
             self.property_selector.addItem(p["name"], p["id"])
 
@@ -140,22 +140,22 @@ class DashboardView(BaseView):
         mid_row = QHBoxLayout()
         mid_row.setSpacing(10)
 
-        label_title = QLabel(self.tm.get("dashboard", "title"))
+        label_title = QLabel(self.tm.get("ETICHETTE", "title"))
         label_title.setStyleSheet("font-weight: 650; font-size: 20px; color: white;")
         mid_row.addWidget(label_title)
         mid_row.addStretch()
 
-        label_periodo = QLabel(self.tm.get("common", "period") + ":")
+        label_periodo = QLabel(self.tm.get("ETICHETTE", "period") + ":")
         label_periodo.setStyleSheet("color: white;")
         mid_row.addWidget(label_periodo)
 
         self.period_selector = QComboBox()
         self.period_selector.setStyleSheet(default_combo_box_style)
         self.period_selector.addItems([
-            self.tm.get("dashboard", "period_1_month"),
-            self.tm.get("dashboard", "period_6_months"),
-            self.tm.get("dashboard", "period_1_year"),
-            self.tm.get("dashboard", "period_3_years")
+            self.tm.get("ETICHETTE", "1_MONTH"),
+            self.tm.get("ETICHETTE", "6_MONTHS"),
+            self.tm.get("ETICHETTE", "1_YEAR"),
+            self.tm.get("ETICHETTE", "3_YEARS")
         ])
         self.period_selector.setCurrentIndex(self._saved_period_index)
         self.period_selector.currentIndexChanged.connect(self.update_chart)
