@@ -135,12 +135,12 @@ class TranslationsAdminView(BaseView):
         header_layout = QHBoxLayout()
         
         title = QLabel("🌐 Gestione Traduzioni")
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
+        title.setStyleSheet(default_title_style)
         header_layout.addWidget(title)
         header_layout.addStretch()
         
         # Bottone aggiungi
-        add_btn = QPushButton("➕ Nuova Traduzione")
+        add_btn = QPushButton(f"+ {self.tm.get("PULSANTI","AGGIUNGI")}")
         add_btn.setStyleSheet(default_aggiungi_button)
         add_btn.setFixedHeight(36)
         add_btn.clicked.connect(self.add_translation)
@@ -153,7 +153,7 @@ class TranslationsAdminView(BaseView):
         filters_layout.setSpacing(15)
         
         # Categoria
-        cat_label = QLabel("Categoria:")
+        cat_label = QLabel(f"{self.tm.get('ETICHETTE', 'CATEGORIA')}:")
         cat_label.setStyleSheet("color: white; font-size: 14px;")
         filters_layout.addWidget(cat_label)
         
@@ -167,7 +167,7 @@ class TranslationsAdminView(BaseView):
         
         # Ricerca
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Cerca...")
+        self.search_input.setPlaceholderText(self.tm.get('PLACEHOLDER', 'CERCA'))
         self.search_input.setStyleSheet(f"""
             QLineEdit {{
                 background-color: {COLORE_WIDGET_2};

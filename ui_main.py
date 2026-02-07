@@ -121,11 +121,11 @@ class DashboardWindow(QMainWindow):
             ("icons/homepage.png", self.tm.get("ETICHETTE", "DASHBOARD")),
             ("icons/property.png", self.tm.get("ETICHETTE", "PROPERTIES")),
             ("icons/document.png", self.tm.get("ETICHETTE", "DOCUMENTS")),
-            ("icons/bar-chart.png", self.tm.get("ETICHETTE", "accounting")),
-            ("icons/pie-chart.png", self.tm.get("ETICHETTE", "report")),
+            ("icons/bar-chart.png", self.tm.get("ETICHETTE", "FINANZE")),
+            ("icons/pie-chart.png", self.tm.get("ETICHETTE", "TRANSAZIONI")),
             ("icons/calendar.png", self.tm.get("ETICHETTE", "CALENDAR")),
             ("icons/security.png", self.tm.get("ETICHETTE", "FORNITORI")),
-            ("icons/settings.png", self.tm.get("ETICHETTE", "settings")),
+            ("icons/settings.png", self.tm.get("ETICHETTE", "IMPOSTAZIONI")),
             ("icons/settings.png", self.tm.get("ETICHETTE", "Traduzioni"))
         ]
 

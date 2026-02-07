@@ -30,13 +30,13 @@ class PropertiesView(BaseView):
         # --- HEADER ---
         header_layout = QHBoxLayout()
 
-        title = QLabel(self.tm.get("properties", "title"))
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
+        title = QLabel(self.tm.get("ETICHETTE", "LE_MIE_PROPRIETA"))
+        title.setStyleSheet(default_title_style)
         header_layout.addWidget(title)
         header_layout.addStretch()
 
         # Bottone aggiungi
-        add_btn = QPushButton(self.tm.get("properties", "add_property"))
+        add_btn = QPushButton(f"+ {self.tm.get("PULSANTI", "AGGIUNGI")}")
         add_btn.setStyleSheet(default_aggiungi_button)
         add_btn.setFixedHeight(36)
         add_btn.clicked.connect(self.add_property)
@@ -48,7 +48,7 @@ class PropertiesView(BaseView):
         search_layout = QHBoxLayout()
 
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText(self.tm.get("properties", "search_placeholder"))
+        self.search_input.setPlaceholderText(self.tm.get("PLACEHOLDER", "CERCA"))
         self.search_input.setStyleSheet(f"""
             QLineEdit {{
                 background-color: {COLORE_WIDGET_2};
@@ -123,7 +123,7 @@ class PropertiesView(BaseView):
 
         # Se non ci sono proprietà
         if not properties:
-            no_data_label = QLabel(self.tm.get("properties", "no_properties"))
+            no_data_label = QLabel(self.tm.get("ETICHETTE", "NESSUNA_PROPRIETA_TROVATA"))
             no_data_label.setStyleSheet("color: #bdc3c7; font-size: 16px; padding: 40px;")
             no_data_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.cards_layout.addWidget(no_data_label)
@@ -223,7 +223,7 @@ class PropertiesView(BaseView):
         top_row.addStretch()
 
         # Bottoni azioni
-        edit_btn = QPushButton(self.tm.get("common", "edit"))
+        edit_btn = QPushButton(self.tm.get("PULSANTI", "MODIFICA"))
         edit_btn.setFixedHeight(28)
         edit_btn.setStyleSheet("""
             QPushButton {
@@ -242,7 +242,7 @@ class PropertiesView(BaseView):
         edit_btn.clicked.connect(lambda: self.edit_property(prop))
         top_row.addWidget(edit_btn)
 
-        delete_btn = QPushButton(self.tm.get("common", "delete"))
+        delete_btn = QPushButton(self.tm.get("PULSANTI", "ELIMINA"))
         delete_btn.setFixedHeight(28)
         delete_btn.setStyleSheet("""
             QPushButton {
@@ -268,12 +268,12 @@ class PropertiesView(BaseView):
         info_row.setSpacing(20)
 
         # Indirizzo
-        address_label = QLabel(f"{self.tm.get("common", "address")}: {prop['address']}")
+        address_label = QLabel(f"{self.tm.get("ETICHETTE", "INDIRIZZO")}: {prop['address']}")
         address_label.setStyleSheet("color: #bdc3c7; font-size: 12px;")
         info_row.addWidget(address_label)
 
         # Proprietario
-        owner_label = QLabel(f"{self.tm.get("common", "owner")}: {prop['owner']}")
+        owner_label = QLabel(f"{self.tm.get("ETICHETTE", "PROPRIETARIO")}: {prop['owner']}")
         owner_label.setStyleSheet("color: #bdc3c7; font-size: 12px;")
         info_row.addWidget(owner_label)
 
@@ -295,7 +295,7 @@ class PropertiesView(BaseView):
 
         # Scadenze
         deadline_color = "#e74c3c" if stats['num_deadlines_active'] > 0 else "#95a5a6"
-        deadline_label = QLabel(f"{self.tm.get("properties", "deadlines")}: {stats['num_deadlines_active']} attive")
+        deadline_label = QLabel(f"{self.tm.get("ETICHETTE", "SCADENZE")}: {stats['num_deadlines_active']}")
         deadline_label.setStyleSheet(f"color: {deadline_color}; font-size: 11px;")
         stats_row.addWidget(deadline_label)
 
@@ -307,7 +307,7 @@ class PropertiesView(BaseView):
 
         # Saldo
         saldo_color = COLORE_SUCCESS if stats['saldo'] >= 0 else "#e74c3c"
-        saldo_label = QLabel(f"{self.tm.get("properties", "balance")}: {stats['saldo']:,.2f}€")
+        saldo_label = QLabel(f"{self.tm.get("ETICHETTE", "SALDO")}: {stats['saldo']:,.2f}€")
         saldo_label.setStyleSheet(f"color: {saldo_color}; font-size: 12px; font-weight: bold;")
         stats_row.addWidget(saldo_label)
 
@@ -319,22 +319,22 @@ class PropertiesView(BaseView):
     def add_property(self):
         """Dialog per aggiungere una nuova proprietà"""
         dialog = QDialog(self)
-        dialog.setWindowTitle(self.tm.get("properties", "new_property"))
+        dialog.setWindowTitle(self.tm.get("ETICHETTE", "NUOVA_PROPRIETA"))
         dialog.setMinimumWidth(400)
         dialog.setStyleSheet(default_dialog_style)
 
         layout = QFormLayout(dialog)
 
         name_input = QLineEdit()
-        name_input.setPlaceholderText(f"{self.tm.get("common", "example_abbr")}: {self.tm.get("properties", "example_name")}")
+        name_input.setPlaceholderText(self.tm.get("PLACEHOLDER", "55_BEATIFUL_APARTMENT"))
         address_input = QLineEdit()
-        address_input.setPlaceholderText(f"{self.tm.get("common", "example_abbr")}: {self.tm.get("properties", "example_address")}")
+        address_input.setPlaceholderText(self.tm.get("PLACEHOLDER", "VIA_APPARTAMENTO"))
         owner_input = QLineEdit()
-        owner_input.setPlaceholderText(f"{self.tm.get("common", "example_abbr")}: {self.tm.get("properties", "example_owner")}")
+        owner_input.setPlaceholderText(self.tm.get("PLACEHOLDER", "PROPRIETARIO_NOME"))
 
-        layout.addRow(f"{self.tm.get("properties", "property_name")}*:", name_input)
-        layout.addRow(f"{self.tm.get("common", "address")}*:", address_input)
-        layout.addRow(f"{self.tm.get("common", "owner")}*:", owner_input)
+        layout.addRow(f"{self.tm.get("ETICHETTE", "NOME_PROPRIETA")}*:", name_input)
+        layout.addRow(f"{self.tm.get("ETICHETTE", "INDIRIZZO")}*:", address_input)
+        layout.addRow(f"{self.tm.get("ETICHETTE", "PROPRIETARIO")}*:", owner_input)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)
@@ -363,6 +363,7 @@ class PropertiesView(BaseView):
         dialog = QDialog(self)
         dialog.setWindowTitle(f"Modifica Proprietà: {prop['name']}")
         dialog.setMinimumWidth(400)
+        dialog.setStyleSheet(default_dialog_style)
 
         layout = QFormLayout(dialog)
 
@@ -370,9 +371,9 @@ class PropertiesView(BaseView):
         address_input = QLineEdit(prop['address'])
         owner_input = QLineEdit(prop['owner'])
 
-        layout.addRow("Nome*:", name_input)
-        layout.addRow(f"{self.tm.get("common", "address")}*:", address_input)
-        layout.addRow(f"{self.tm.get("common", "owner")}*:", owner_input)
+        layout.addRow(f"{self.tm.get("ETICHETTE", "NOME_PROPRIETA")}*:", name_input)
+        layout.addRow(f"{self.tm.get("ETICHETTE", "INDIRIZZO")}*:", address_input)
+        layout.addRow(f"{self.tm.get("ETICHETTE", "PROPRIETARIO")}*:", owner_input)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)
@@ -464,7 +465,7 @@ class PropertiesView(BaseView):
                         f"⚠️ Solo {deleted_deadlines}/{len(deadlines)} scadenze eliminate"
                     )
 
-                # 3. 🆕 Elimina cartella documenti usando il service
+                # 3. Elimina cartella documenti usando il service
                 folder_result = self.document_service.delete_property_folder(prop['id'])
 
                 # 4. Elimina proprietà dal database

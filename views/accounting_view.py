@@ -32,18 +32,18 @@ class AccountingView(BaseView):
         # --- HEADER ---
         header_layout = QHBoxLayout()
 
-        title = QLabel(self.tm.get("accounting", "title"))
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        title = QLabel(self.tm.get("ETICHETTE", "ANDAMENTO_ANNUALE"))
+        title.setStyleSheet(default_title_style)
         header_layout.addWidget(title)
         header_layout.addStretch()
 
         # Selettore proprietà
-        property_label = QLabel(self.tm.get("common", "property") + ":")
-        property_label.setStyleSheet("color: white;")
+        property_label = QLabel(self.tm.get("ETICHETTE", "PROPRIETA") + ":")
+        property_label.setStyleSheet(f"color: {COLORE_BIANCO}")
         header_layout.addWidget(property_label)
 
         self.property_selector = QComboBox()
-        self.property_selector.addItem(self.tm.get("common", "all_properties"), None)
+        self.property_selector.addItem(self.tm.get("ETICHETTE", "ALL_PROPERTIES"), None)
 
         properties = self.property_service.get_all()
         for prop in properties:
@@ -54,8 +54,8 @@ class AccountingView(BaseView):
         header_layout.addWidget(self.property_selector)
 
         # Selettore anno
-        year_label = QLabel(self.tm.get("accounting", "year") + ":")
-        year_label.setStyleSheet("color: white;")
+        year_label = QLabel(self.tm.get("ETICHETTE", "ANNO") + ":")
+        year_label.setStyleSheet(f"color: {COLORE_BIANCO}")
         header_layout.addWidget(year_label)
 
         self.year_selector = QComboBox()
@@ -75,14 +75,14 @@ class AccountingView(BaseView):
         self.ax = self.fig.add_subplot(111, facecolor=COLORE_SECONDARIO)
 
         # Stile grafico
-        self.ax.set_xlabel(self.tm.get("accounting", "month"), color='white', fontsize=12)
-        self.ax.set_ylabel(self.tm.get("accounting", "quantity"), color='white', fontsize=12)
-        self.ax.tick_params(colors='white')
-        self.ax.spines['bottom'].set_color('white')
-        self.ax.spines['top'].set_color('white')
-        self.ax.spines['left'].set_color('white')
-        self.ax.spines['right'].set_color('white')
-        self.ax.grid(True, alpha=0.3, color='white')
+        self.ax.set_xlabel(self.tm.get("ETICHETTE", "MESE"), color=COLORE_BIANCO, fontsize=12)
+        self.ax.set_ylabel(self.tm.get("ETICHETTE", "QUANTITA"), color=COLORE_BIANCO, fontsize=12)
+        self.ax.tick_params(colors=COLORE_BIANCO)
+        self.ax.spines['bottom'].set_color(COLORE_BIANCO)
+        self.ax.spines['top'].set_color(COLORE_BIANCO)
+        self.ax.spines['left'].set_color(COLORE_BIANCO)
+        self.ax.spines['right'].set_color(COLORE_BIANCO)
+        self.ax.grid(True, alpha=0.3, color=COLORE_BIANCO)
 
         self.canvas.setMinimumHeight(300)
         self.canvas.setMaximumHeight(600)
@@ -97,9 +97,9 @@ class AccountingView(BaseView):
         month_labels = self.tm.get("LISTE", "MONTHS_SHORT").split(";")
         self.accounting_table.setHorizontalHeaderLabels(month_labels)
         self.accounting_table.setVerticalHeaderLabels([
-            self.tm.get("accounting", "income_total"),
-            self.tm.get("accounting", "expenses_total"),
-            self.tm.get("accounting", "balance")
+            self.tm.get("ETICHETTE", "GUADAGNI"),
+            self.tm.get("ETICHETTE", "SPESE"),
+            self.tm.get("ETICHETTE", "SALDO")
         ])
 
         self.accounting_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -167,7 +167,7 @@ class AccountingView(BaseView):
                      linewidth=1,
                      marker='o',
                      markersize=10,
-                     label=self.tm.get("dashboard", "income_label"),
+                     label=self.tm.get("ETICHETTE", "GUADAGNI"),
                      markerfacecolor=COLORE_SUCCESS,
                      markeredgecolor='white',
                      markeredgewidth=2)
@@ -177,7 +177,7 @@ class AccountingView(BaseView):
                      linewidth=1,
                      marker='o',
                      markersize=10,
-                     label=self.tm.get("dashboard", "expense_label"),
+                     label=self.tm.get("ETICHETTE", "SPESE"),
                      markerfacecolor=COLORE_ERROR,
                      markeredgecolor='white',
                      markeredgewidth=2)
@@ -187,27 +187,27 @@ class AccountingView(BaseView):
                      linewidth=1,
                      marker='s',
                      markersize=8,
-                     label=self.tm.get("accounting", "balance"),
+                     label=self.tm.get("ETICHETTE", "SALDO"),
                      linestyle='--',
                      markerfacecolor='#bdc3c7',
                      markeredgecolor='white',
                      markeredgewidth=2)
 
-        self.ax.set_xlabel(self.tm.get("accounting", "month"), color='white', fontsize=12)
-        self.ax.set_ylabel(self.tm.get("accounting", "quantity"), color='white', fontsize=12)
+        self.ax.set_xlabel(self.tm.get("ETICHETTE", "MESE"), color=COLORE_BIANCO, fontsize=12)
+        self.ax.set_ylabel(self.tm.get("ETICHETTE", "QUANTITA"), color=COLORE_BIANCO, fontsize=12)
         self.ax.set_xticks(mesi)
         self.ax.set_xticklabels(month_labels)
-        self.ax.tick_params(colors='white')
-        self.ax.spines['bottom'].set_color('white')
-        self.ax.spines['top'].set_color('white')
-        self.ax.spines['left'].set_color('white')
-        self.ax.spines['right'].set_color('white')
-        self.ax.grid(True, alpha=0.3, color='white')
+        self.ax.tick_params(colors=COLORE_BIANCO)
+        self.ax.spines['bottom'].set_color(COLORE_BIANCO)
+        self.ax.spines['top'].set_color(COLORE_BIANCO)
+        self.ax.spines['left'].set_color(COLORE_BIANCO)
+        self.ax.spines['right'].set_color(COLORE_BIANCO)
+        self.ax.grid(True, alpha=0.3, color=COLORE_BIANCO)
 
         legend = self.ax.legend(loc='upper left', facecolor=COLORE_WIDGET_2,
-                                edgecolor='white', fontsize=10)
+                                edgecolor=COLORE_BIANCO, fontsize=10)
         for text in legend.get_texts():
-            text.set_color('white')
+            text.set_color(COLORE_BIANCO)
 
         self.ax.set_xlim(0.5, 12.5)
 

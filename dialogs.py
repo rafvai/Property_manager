@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 
 from styles import COLORE_SECONDARIO, COLORE_WIDGET_2, COLORE_RIGA_1, COLORE_ITEM_HOVER, default_button_main_header, \
     default_aggiungi_button, default_selector_date_export, default_export_button, COLORE_ERROR, default_dialog_style, \
-    COLORE_ITEM_SELEZIONATO
+    COLORE_ITEM_SELEZIONATO, COLORE_BIANCO
 from validation_utils import parse_decimal, validate_required_text, validate_date, ValidationError
 
 
@@ -343,7 +343,7 @@ class PlannerCalendarWidget(QWidget):
         super().__init__()
         self.deadline_service = deadline_service
         self.property_service = property_service
-        self.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; color: white;")
+        self.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; color: {COLORE_BIANCO}")
         self.tm = tm
         self.logger = logger
 
@@ -359,7 +359,7 @@ class PlannerCalendarWidget(QWidget):
         header.addStretch()
 
         # Bottone per aggiungere scadenza generica
-        add_deadline_btn = QPushButton(f"+ {self.tm.get("calendar", "new_deadline")}")
+        add_deadline_btn = QPushButton(f"+ {self.tm.get("PULSANTI", "AGGIUNGI")}")
         add_deadline_btn.setStyleSheet(default_aggiungi_button)
         add_deadline_btn.clicked.connect(lambda: self.add_deadline())
         header.addWidget(add_deadline_btn)
@@ -374,7 +374,7 @@ class PlannerCalendarWidget(QWidget):
 
         # Giorni della settimana
         weekdays_layout = QHBoxLayout()
-        weekdays = tm.get("weekdays", "short")
+        weekdays = tm.get("LISTE", "WEEKDAYS_SHORT").split(";")
         for day in weekdays:
             day_label = QLabel(day)
             day_label.setStyleSheet("font-size: 12px; color: white; font-weight: bold;")
@@ -415,7 +415,7 @@ class PlannerCalendarWidget(QWidget):
             )
 
             if deadline_id:
-                QMessageBox.information(self, self.tm.get("common", "success"), self.tm.get("calendar","deadline_addded_succesfully"))
+                QMessageBox.information(self, self.tm.get("MESSAGGI", "SUCCESSO"), self.tm.get("calendar","deadline_addded_succesfully"))
                 self.logger.info(f"Scadenza aggiunta correttamente! {data['title']}")
                 self.populate_month()  # Ricarica il calendario
             else:
@@ -436,7 +436,7 @@ class PlannerCalendarWidget(QWidget):
 
         month = self.current_date.month()
         year = self.current_date.year()
-        self.month_label.setText(self.tm.get("months", "full")[month - 1])
+        self.month_label.setText(self.tm.get("LISTE", "MONTHS_FULL").split(";")[month - 1])
         first_day = QDate(year, month, 1)
         start_col = first_day.dayOfWeek() - 1
         days_in_month = first_day.daysInMonth()
@@ -745,10 +745,11 @@ class ExportDialog(QDialog):
 class TransactionDialogWithSuppliers(QDialog):
     """Dialog transazione con suggerimenti fornitori intelligenti"""
 
-    def __init__(self, property_service, supplier_service, parent=None):
+    def __init__(self, property_service, supplier_service, tm, parent=None):
         super().__init__(parent)
         self.property_service = property_service
         self.supplier_service = supplier_service
+        self.tm = tm
         self.selected_supplier = None
 
         self.setWindowTitle("Nuova Transazione")
@@ -759,17 +760,15 @@ class TransactionDialogWithSuppliers(QDialog):
 
     def setup_ui(self):
         """Costruisce l'interfaccia"""
-        layout = QVBoxLayout(self)
+        layout = QFormLayout(self)
         layout.setSpacing(15)
 
         # Tipo transazione
-        type_layout = QHBoxLayout()
-        type_label = QLabel("Tipo*:")
-        type_label.setStyleSheet("color: white; font-size: 13px;")
-        type_layout.addWidget(type_label)
-
         self.type_box = QComboBox()
-        self.type_box.addItems(["Uscita", "Entrata"])
+        self.type_box.addItems([
+            self.tm.get("ETICHETTE", "USCITA"),
+            self.tm.get("ETICHETTE", "ENTRATA")
+        ])
         self.type_box.setStyleSheet(f"""
             QComboBox {{
                 background-color: {COLORE_WIDGET_2};
@@ -779,21 +778,13 @@ class TransactionDialogWithSuppliers(QDialog):
                 font-size: 13px;
             }}
         """)
-        type_layout.addWidget(self.type_box)
-        type_layout.addStretch()
-        layout.addLayout(type_layout)
+        layout.addRow(f"{self.tm.get('ETICHETTE', 'TIPO')}*:", self.type_box)
 
         # Proprietà
-        property_layout = QHBoxLayout()
-        property_label = QLabel("Proprietà*:")
-        property_label.setStyleSheet("color: white; font-size: 13px;")
-        property_layout.addWidget(property_label)
-
         self.property_combo = QComboBox()
         properties = self.property_service.get_all()
         for prop in properties:
             self.property_combo.addItem(prop['name'], prop['id'])
-
         self.property_combo.setStyleSheet(f"""
             QComboBox {{
                 background-color: {COLORE_WIDGET_2};
@@ -803,19 +794,12 @@ class TransactionDialogWithSuppliers(QDialog):
                 font-size: 13px;
             }}
         """)
-        property_layout.addWidget(self.property_combo)
-        property_layout.addStretch()
-        layout.addLayout(property_layout)
+        layout.addRow(f"{self.tm.get('ETICHETTE', 'PROPRIETA')}*:", self.property_combo)
 
         # Categoria/Servizio
-        service_layout = QHBoxLayout()
-        service_label = QLabel("Categoria*:")
-        service_label.setStyleSheet("color: white; font-size: 13px;")
-        service_layout.addWidget(service_label)
-
         self.service_combo = QComboBox()
         self.service_combo.setEditable(True)
-        self.service_combo.setPlaceholderText("Es: Bolletta Luce")
+        self.service_combo.setPlaceholderText(self.tm.get("PLACEHOLDER", "ES_BOLLETTA_LUCE"))
         self.service_combo.setStyleSheet(f"""
             QComboBox {{
                 background-color: {COLORE_WIDGET_2};
@@ -825,21 +809,14 @@ class TransactionDialogWithSuppliers(QDialog):
                 font-size: 13px;
             }}
         """)
-
-        # Popola categorie dai fornitori
         categories = self.supplier_service.get_categories()
         for cat in categories:
             self.service_combo.addItem(cat)
-
-        # Quando cambia la categoria, mostra suggerimenti
         self.service_combo.currentTextChanged.connect(self.show_supplier_suggestions)
-
-        service_layout.addWidget(self.service_combo)
-        service_layout.addStretch()
-        layout.addLayout(service_layout)
+        layout.addRow(f"{self.tm.get('ETICHETTE', 'CATEGORIA')}*:", self.service_combo)
 
         # SUGGERIMENTI FORNITORI
-        self.suggestions_group = QGroupBox("💡 Fornitori Suggeriti")
+        self.suggestions_group = QGroupBox(f"💡 {self.tm.get('ETICHETTE', 'FORNITORI_SUGGERITI')}")
         self.suggestions_group.setStyleSheet(f"""
             QGroupBox {{
                 color: white;
@@ -857,7 +834,6 @@ class TransactionDialogWithSuppliers(QDialog):
             }}
         """)
         suggestions_layout = QVBoxLayout(self.suggestions_group)
-
         self.suggestions_list = QListWidget()
         self.suggestions_list.setMaximumHeight(150)
         self.suggestions_list.setStyleSheet(f"""
@@ -879,8 +855,7 @@ class TransactionDialogWithSuppliers(QDialog):
         """)
         self.suggestions_list.itemClicked.connect(self.select_supplier)
         suggestions_layout.addWidget(self.suggestions_list)
-
-        self.suggestions_group.setVisible(False)  # Nascosto inizialmente
+        self.suggestions_group.setVisible(False)
         layout.addWidget(self.suggestions_group)
 
         # Fornitore selezionato (badge)
@@ -897,35 +872,16 @@ class TransactionDialogWithSuppliers(QDialog):
         layout.addWidget(self.selected_supplier_label)
 
         # Fornitore (manuale)
-        provider_layout = QHBoxLayout()
-        provider_label = QLabel("Fornitore*:")
-        provider_label.setStyleSheet("color: white; font-size: 13px;")
-        provider_layout.addWidget(provider_label)
-
         self.provider_input = QLineEdit()
-        self.provider_input.setPlaceholderText("Es: ENEL Energia")
-        provider_layout.addWidget(self.provider_input)
-        provider_layout.addStretch()
-        layout.addLayout(provider_layout)
+        self.provider_input.setPlaceholderText(self.tm.get("PLACEHOLDER", "ES_ENEL_ENERGIA"))
+        layout.addRow(f"{self.tm.get('ETICHETTE', 'FORNITORE')}*:", self.provider_input)
 
         # Importo
-        amount_layout = QHBoxLayout()
-        amount_label = QLabel("Importo (€)*:")
-        amount_label.setStyleSheet("color: white; font-size: 13px;")
-        amount_layout.addWidget(amount_label)
-
         self.amount_input = QLineEdit()
-        self.amount_input.setPlaceholderText("Es: 123,45")
-        amount_layout.addWidget(self.amount_input)
-        amount_layout.addStretch()
-        layout.addLayout(amount_layout)
+        self.amount_input.setPlaceholderText(self.tm.get("PLACEHOLDER", "ES_123_45"))
+        layout.addRow(f"{self.tm.get('ETICHETTE', 'IMPORTO_EURO')}*:", self.amount_input)
 
         # Data
-        date_layout = QHBoxLayout()
-        date_label = QLabel("Data*:")
-        date_label.setStyleSheet("color: white; font-size: 13px;")
-        date_layout.addWidget(date_label)
-
         self.date_edit = QDateEdit()
         self.date_edit.setDisplayFormat("dd/MM/yyyy")
         self.date_edit.setCalendarPopup(True)
@@ -939,9 +895,7 @@ class TransactionDialogWithSuppliers(QDialog):
                 font-size: 13px;
             }}
         """)
-        date_layout.addWidget(self.date_edit)
-        date_layout.addStretch()
-        layout.addLayout(date_layout)
+        layout.addRow(f"{self.tm.get('ETICHETTE', 'DATA')}*:", self.date_edit)
 
         # Bottoni
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -1033,8 +987,8 @@ class TransactionDialogWithSuppliers(QDialog):
             "property_id": self.property_combo.currentData(),
             "service": self.service_combo.currentText().strip(),
             "provider": self.provider_input.text().strip(),
-            "amount": self.amount_input.text().strip(),
-            "date": self.date_edit.date().toString("dd/MM/yyyy"),
+            "importo": self.amount_input.text().strip(),
+            "data_fattura": self.date_edit.date().toString("dd/MM/yyyy"),
             "supplier_id": self.selected_supplier['id'] if self.selected_supplier else None
         }
 

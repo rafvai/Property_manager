@@ -839,7 +839,7 @@ class SuppliersView(BaseView):
         header_layout = QHBoxLayout()
 
         title = QLabel(self.tm.get("suppliers", "title"))
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
+        title.setStyleSheet(default_title_style)
         header_layout.addWidget(title)
         header_layout.addStretch()
 

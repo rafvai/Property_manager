@@ -3,7 +3,7 @@ from collections import defaultdict
 from datetime import datetime
 
 from PySide6.QtCore import Qt, QDate
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtGui import QColor, QFont, QIcon
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton,
     QTableWidget, QTableWidgetItem, QFrame, QDialog,
@@ -12,7 +12,8 @@ from PySide6.QtWidgets import (
 )
 
 from dialogs import ExportDialog, TransactionDialogWithSuppliers
-from services import supplier_service
+from dialogs_import import ImportDialog
+from services.import_service import ImportService
 from services.export_service import ExportService
 from styles import *
 from validation_utils import parse_decimal, ValidationError
@@ -28,11 +29,18 @@ class ReportView(BaseView):
         self.tm = translation_service
         self.logger = logger
 
-        # Export service
-        self.export_service = ExportService()
         self.supplier_service = supplier_service
 
         super().__init__(property_service, transaction_service, None, parent)
+
+        # Export service
+        self.export_service = ExportService()
+        self.import_service = ImportService(
+            self.transaction_service,
+            self.property_service,
+            self.supplier_service,
+            self.logger
+        )
 
     def setup_ui(self):
         """Costruisce l'interfaccia report"""
@@ -43,13 +51,13 @@ class ReportView(BaseView):
         # --- HEADER RIGA 1 ---
         header_layout = QHBoxLayout()
 
-        title = QLabel(self.tm.get("report", "title"))
-        title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
+        title = QLabel(self.tm.get("ETICHETTE", "LE_MIE_TRANSAZIONI"))
+        title.setStyleSheet(default_title_style)
         header_layout.addWidget(title)
         header_layout.addStretch()
 
         # Selettore proprietà
-        property_label = QLabel(f"{self.tm.get("common", "property")}:")
+        property_label = QLabel(f"{self.tm.get("ETICHETTE", "PROPRIETA")}:")
         property_label.setStyleSheet("color: white;")
         header_layout.addWidget(property_label)
 
@@ -65,7 +73,7 @@ class ReportView(BaseView):
         header_layout.addWidget(self.property_selector)
 
         # Selettore mese/anno
-        month_label = QLabel(f"{self.tm.get("common", "period")}:")
+        month_label = QLabel(f"{self.tm.get("ETICHETTE", "PERIODO")}:")
         month_label.setStyleSheet("color: white;")
         header_layout.addWidget(month_label)
 
@@ -84,20 +92,30 @@ class ReportView(BaseView):
         actions_layout.addStretch()  # Spinge i bottoni a destra
 
         # Bottone aggiungi transazione
-        add_btn = QPushButton(f"+ {self.tm.get('report', 'new_transaction')}")
+        add_btn = QPushButton(f"+ {self.tm.get('PULSANTI', 'AGGIUNGI')}")
         add_btn.setStyleSheet(default_aggiungi_button)
         add_btn.clicked.connect(self.add_transaction)
         actions_layout.addWidget(add_btn)
 
+        # Bottone Importa da Excel
+        import_btn = QPushButton()
+        import_btn.setIcon(QIcon("./icons/import.png"))
+        import_btn.setToolTip(self.tm.get("TOOLTIP", "IMPORTA_DA_EXCEL"))
+        import_btn.setStyleSheet(default_style_secondary_buttons)
+        import_btn.clicked.connect(self.import_from_excel)
+        actions_layout.addWidget(import_btn)
+
         # Bottone Export
-        export_btn = QPushButton(f"📥 {self.tm.get("report", "export")}")
-        export_btn.setStyleSheet(default_export_button)
+        export_btn = QPushButton()
+        export_btn.setIcon(QIcon("./icons/export.png"))
+        export_btn.setToolTip(self.tm.get("TOOLTIP", "ESPORTA"))
+        export_btn.setStyleSheet(default_style_secondary_buttons)
         export_btn.clicked.connect(self.open_export_dialog)
         actions_layout.addWidget(export_btn)
 
         main_layout.addLayout(actions_layout)
 
-        # --- TABELLE CATEGORIE IN ALTO ---
+        # --- TABELLE GENERALI INGRESSI E SPESE ---
         tables_layout = QHBoxLayout()
         tables_layout.setSpacing(15)
 
@@ -108,7 +126,7 @@ class ReportView(BaseView):
 
         # Header con totale e linea verticale rossa
         gastos_header = QHBoxLayout()
-        self.gastos_total_label = QLabel(f"{self.tm.get('report', 'expenses').upper()} € 0.00")
+        self.gastos_total_label = QLabel(f"{self.tm.get('ETICHETTE', 'SPESE').upper()} € 0.00")
         self.gastos_total_label.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {COLORE_BIANCO};border-left: 6px solid {COLORE_ERROR};padding-left: 20px;margin-left: 20px;border-radius: 0px;")
         gastos_header.addWidget(self.gastos_total_label)
         gastos_header.addStretch()
@@ -130,7 +148,7 @@ class ReportView(BaseView):
 
         # Header con totale
         ganancias_header = QHBoxLayout()
-        self.ganancias_total_label = QLabel(f"{self.tm.get('report', 'income').upper()} € 0.00")
+        self.ganancias_total_label = QLabel(f"{self.tm.get('ETICHETTE', 'GUADAGNI').upper()} € 0.00")
         self.ganancias_total_label.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {COLORE_BIANCO};border-left: 6px solid {COLORE_SUCCESS};padding-left: 20px;margin-left: 20px;border-radius: 0px;")
         ganancias_header.addWidget(self.ganancias_total_label)
         ganancias_header.addStretch()
@@ -155,12 +173,12 @@ class ReportView(BaseView):
         # Header con filtro
         trans_header = QHBoxLayout()
 
-        trans_title = QLabel(self.tm.get("report", "view_transactions"))
+        trans_title = QLabel(self.tm.get("ETICHETTE", "STORICO_TRANSAZIONI").upper())
         trans_title.setStyleSheet("font-size: 16px; font-weight: bold; color: white;")
         trans_header.addWidget(trans_title)
         trans_header.addStretch()
 
-        filter_label = QLabel(self.tm.get("report", "filter"))
+        filter_label = QLabel(self.tm.get("ETICHETTE", "CATEGORIA"))
         filter_label.setStyleSheet("color: white;")
         trans_header.addWidget(filter_label)
 
@@ -191,7 +209,7 @@ class ReportView(BaseView):
     def populate_month_selector(self):
         """Popola il selettore con gli ultimi 24 mesi"""
         current_date = datetime.now()
-        months_it = self.tm.get("months", "full")
+        months_list = self.tm.get("LISTE", "MONTHS_FULL").split(";")
 
         for i in range(24):
             date = datetime(current_date.year, current_date.month, 1)
@@ -202,7 +220,7 @@ class ReportView(BaseView):
                 month += 12
                 year -= 1
 
-            label = f"{months_it[month - 1]} {year}"
+            label = f"{months_list[month - 1]} {year}"
             value = f"{year}-{month:02d}"
 
             self.month_selector.addItem(label, value)
@@ -212,7 +230,7 @@ class ReportView(BaseView):
     def populate_category_filter(self):
         """Popola il filtro categorie"""
         self.category_filter.clear()
-        self.category_filter.addItem(self.tm.get("ETICHETTE", "CATEGORY"), None)
+        self.category_filter.addItem(self.tm.get("ETICHETTE", "TUTTE_LE_CATEGORIE"), None)
 
         categories = set()
         for trans in self.current_transactions:
@@ -237,11 +255,11 @@ class ReportView(BaseView):
 
         # RIGA 0: Header personalizzato
         headers = [
-            self.tm.get("common", "date"),
-            self.tm.get("report", "amount"),
-            self.tm.get("common", "description"),
-            self.tm.get("common", "category"),
-            self.tm.get("common", "type"),
+            self.tm.get("ETICHETTE", "DATA"),
+            self.tm.get("ETICHETTE", "IMPORTO"),
+            self.tm.get("ETICHETTE", "DESCRIZIONE"),
+            self.tm.get("ETICHETTE", "CATEGORIA"),
+            self.tm.get("ETICHETTE", "TIPO"),
             ""
         ]
 
@@ -359,8 +377,8 @@ class ReportView(BaseView):
         total_ganancias = sum(ganancias.values())
 
         # Aggiorna label totali
-        self.gastos_total_label.setText(f"{self.tm.get('report', 'expenses').upper()} € {total_gastos:,.2f}")
-        self.ganancias_total_label.setText(f"{self.tm.get('report', 'income').upper()} € {total_ganancias:,.2f}")
+        self.gastos_total_label.setText(f"{self.tm.get('ETICHETTE', 'SPESE').upper()}  € {total_gastos:,.2f}")
+        self.ganancias_total_label.setText(f"{self.tm.get('ETICHETTE', 'GUADAGNI').upper()}  € {total_ganancias:,.2f}")
 
         self.update_category_table(self.gastos_table, gastos, COLORE_ERROR)
         self.update_category_table(self.ganancias_table, ganancias, COLORE_SUCCESS)
@@ -383,15 +401,14 @@ class ReportView(BaseView):
     def update_category_table(self, table, data, color):
         """Aggiorna tabella categorie """
         table.setRowCount(0)
+        column_names = [self.tm.get("ETICHETTE", "CATEGORIA"), f"{self.tm.get("ETICHETTE", "IMPORTO")}", f"% {self.tm.get('ETICHETTE', 'TOTALE')}"]
 
         if not data:
             # Se non ci sono dati, mostra solo l'header
             table.setRowCount(1)
 
             # Header personalizzato
-            for col, text in enumerate(
-                    [self.tm.get("common", "category"), f"{self.tm.get("report", "amount")} €",
-                     f"% {self.tm.get('common', 'total')}"]):
+            for col, text in enumerate(column_names):
                 header_item = QTableWidgetItem(text)
                 header_item.setForeground(QColor("white"))
                 header_item.setFont(QFont("Arial", 12, QFont.Weight.Bold))
@@ -412,9 +429,7 @@ class ReportView(BaseView):
         table.setRowCount(len(sorted_data) + 1)
 
         # RIGA 0: Header personalizzato
-        for col, text in enumerate(
-                [self.tm.get("common", "category"), f"{self.tm.get("report", "amount")} €",
-                 f"% {self.tm.get('common', 'total')}"]):
+        for col, text in enumerate(column_names):
             header_item = QTableWidgetItem(text)
             header_item.setForeground(QColor("white"))
             header_item.setFont(QFont("Arial", 12, QFont.Weight.Bold))
@@ -464,11 +479,7 @@ class ReportView(BaseView):
         """Dialog per aggiungere transazione manuale CON VALIDAZIONE"""
 
         # crea dialog con suggerimenti fornitori
-        dialog = TransactionDialogWithSuppliers(
-            self.property_service,
-            self.supplier_service,
-            self
-        )
+        dialog = TransactionDialogWithSuppliers(self.property_service, self.supplier_service, self.tm, self)
 
         if dialog.exec():
             try:
@@ -484,7 +495,7 @@ class ReportView(BaseView):
                     amount=amount,
                     provider=data["provider"],
                     service=data["service"],
-                    supplier_id=data.get("supplier_id")  # <- NUOVO: passa supplier_id
+                    supplier_id=data.get("supplier_id")
                 )
 
                 if trans_id:
@@ -509,3 +520,17 @@ class ReportView(BaseView):
                     "⚠️ Validazione fallita",
                     str(e)
                 )
+
+    def import_from_excel(self):
+        """Apre dialog per importare transazioni da Excel"""
+        dialog = ImportDialog(
+            self.import_service,
+            self.property_service,
+            self.tm,
+            self
+        )
+
+        if dialog.exec():
+            # Ricarica i dati dopo l'importazione
+            self.update_report()
+            self.logger.info("Import completato, dati ricaricati")

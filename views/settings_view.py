@@ -220,7 +220,7 @@ class SettingsView(BaseView):
 
         # --- HEADER ---
         title = QLabel(self.tm.get('settings', 'title'))
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
+        title.setStyleSheet(default_title_style)
         main_layout.addWidget(title)
 
         # --- SCROLL AREA ---

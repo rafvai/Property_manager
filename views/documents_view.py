@@ -41,13 +41,13 @@ class DocumentsView(BaseView):
         # --- HEADER ---
         header_layout = QHBoxLayout()
 
-        title = QLabel(self.tm.get("documents", "title"))
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: white;")
+        title = QLabel(self.tm.get("ETICHETTE", "MIEI_DOCUMENTI"))
+        title.setStyleSheet(default_title_style)
         header_layout.addWidget(title)
         header_layout.addStretch()
 
         # Bottone aggiungi spostato qui
-        add_doc_btn = QPushButton(f"+ {self.tm.get("documents", "add_document")}")
+        add_doc_btn = QPushButton(f"+ {self.tm.get("PULSANTI", "AGGIUNGI")}")
         add_doc_btn.setStyleSheet(default_aggiungi_button)
         add_doc_btn.setFixedHeight(36)
         add_doc_btn.clicked.connect(self.add_document)
@@ -150,7 +150,7 @@ class DocumentsView(BaseView):
                         border-radius: 4px;
                     }
                 """)
-                open_file_btn.setToolTip("Apri documento")
+                open_file_btn.setToolTip(self.tm.get("ETICHETTE","APRI_DOCUMENTO"))
                 open_file_btn.clicked.connect(lambda _, path=doc["path"]: self.open_file(path))
                 layout.addWidget(open_file_btn)
 
@@ -168,7 +168,7 @@ class DocumentsView(BaseView):
                         border-radius: 4px;
                     }
                 """)
-                open_folder_btn.setToolTip("Apri cartella")
+                open_folder_btn.setToolTip(self.tm.get("ETICHETTE","APRI_CARTELLA"))
                 open_folder_btn.clicked.connect(lambda _, path=doc["path"]: self.open_file_location(path))
                 layout.addWidget(open_folder_btn)
 
@@ -222,7 +222,7 @@ class DocumentsView(BaseView):
                         self.logger.info(f"Documento salvato: {dest_path}")
                         QMessageBox.information(
                             self,
-                            "✅ Successo",
+                            f"✅ {self.tm.get("MESSAGGI","SUCCESSO")}",
                             f"Documento salvato correttamente!\n\n"
                             f"📄 {os.path.basename(dest_path)}\n"
                             f"💰 {importo_float:,.2f}€"

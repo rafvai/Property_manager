@@ -97,7 +97,7 @@ class DashboardView(BaseView):
         prop_layout = QVBoxLayout(prop_widget)
         prop_layout.setContentsMargins(0, 0, 0, 0)
 
-        label_select = QLabel(self.tm.get("ETICHETTE", "select_property"))
+        label_select = QLabel(self.tm.get("ETICHETTE", "SELEZIONA_PROPRIETA"))
         label_select.setStyleSheet("color: white; font-size: 14px;")
         prop_layout.addWidget(label_select)
 
@@ -145,7 +145,7 @@ class DashboardView(BaseView):
         mid_row.addWidget(label_title)
         mid_row.addStretch()
 
-        label_periodo = QLabel(self.tm.get("ETICHETTE", "period") + ":")
+        label_periodo = QLabel(self.tm.get("ETICHETTE", "PERIODO") + ":")
         label_periodo.setStyleSheet("color: white;")
         mid_row.addWidget(label_periodo)
 
@@ -187,7 +187,7 @@ class DashboardView(BaseView):
         info_layout = QVBoxLayout(info_frame)
         info_layout.setSpacing(8)
 
-        info_title = QLabel(self.tm.get("dashboard", "property_info"))
+        info_title = QLabel(self.tm.get("ETICHETTE", "INFORMAZIONI_PROPRIETA"))
         info_title.setStyleSheet("font-size: 14px; font-weight: bold; color: white;")
         info_layout.addWidget(info_title)
 
@@ -219,7 +219,7 @@ class DashboardView(BaseView):
         deadline_layout = QVBoxLayout(deadline_frame)
         deadline_layout.setSpacing(8)
 
-        deadline_title = QLabel(self.tm.get("dashboard", "next_deadline"))
+        deadline_title = QLabel(self.tm.get("ETICHETTE", "PROSSIMA_SCADENZA"))
         deadline_title.setStyleSheet("font-size: 14px; font-weight: bold; color: white;")
         deadline_layout.addWidget(deadline_title)
 
@@ -328,13 +328,13 @@ class DashboardView(BaseView):
     def update_info_display(self):
         """Aggiorna la visualizzazione delle informazioni"""
         if not self.proprieta:
-            self.info_name.setText(self.tm.get("dashboard", "no_properties"))
+            self.info_name.setText(self.tm.get("ETICHETTE", "NESSUNA_PROPRIETA_TROVATA"))
             self.info_address.setText("")
             self.info_owner.setText("")
         elif self.selected_property is None:
             num_prop = len(self.proprieta)
-            self.info_name.setText(f"🏡 {num_prop} {self.tm.get('dashboard', 'total_properties')}")
-            self.info_address.setText(self.tm.get("dashboard", "aggregate_view"))
+            self.info_name.setText(f"🏡 {num_prop} {self.tm.get('ETICHETTE', 'PROPRIETA_TOTALI')}")
+            self.info_address.setText(self.tm.get("dashboard", "aggregate_view")) # todo: vedere cosa fare qui, che info mettere
             self.info_owner.setText(self.tm.get("dashboard", "click_to_manage"))
         else:
             p = self.selected_property
@@ -390,10 +390,10 @@ class DashboardView(BaseView):
 
         # Mappa i periodi tradotti ai mesi
         period_map = {
-            self.tm.get("dashboard", "period_1_month"): 1,
-            self.tm.get("dashboard", "period_6_months"): 6,
-            self.tm.get("dashboard", "period_1_year"): 12,
-            self.tm.get("dashboard", "period_3_years"): 36
+            self.tm.get("ETICHETTE", "1_MONTH"): 1,
+            self.tm.get("ETICHETTE", "6_MONTHS"): 6,
+            self.tm.get("ETICHETTE", "1_YEAR"): 12,
+            self.tm.get("ETICHETTE", "3_YEARS"): 36
         }
 
         mesi = period_map.get(text, 1)
@@ -412,17 +412,17 @@ class DashboardView(BaseView):
         uscite = sum(t["amount"] for t in rows if t["type"] == "Uscita")
 
         self.ax.clear()
-        sizes, colors = [entrate, uscite], ["#1e7be7", "gray"]
+        sizes, colors = [entrate, uscite], [COLORE_ITEM_SELEZIONATO, COLORE_GRIGIO]
 
         if sum(sizes) == 0:
-            self.ax.pie([1], colors=["#d3d3d3"], startangle=90, wedgeprops=dict(width=0.4))
-            self.ax.text(0, 0, self.tm.get("dashboard", "no_data"), ha="center", va="center", fontsize=14, color="gray")
+            self.ax.pie([1], colors=[COLORE_GRIGIO], startangle=90, wedgeprops=dict(width=0.4))
+            self.ax.text(0, 0, self.tm.get("MESSAGGI", "NESSUN_DATO"), ha="center", va="center", fontsize=14, color="gray")
         else:
             self.ax.pie(sizes, colors=colors, startangle=90, wedgeprops=dict(width=0.4))
             self.ax.text(0, 0, f"€ {entrate - uscite:.0f}", ha='center', va='center',
-                         fontsize=16, fontweight='bold', color='white')
+                         fontsize=16, fontweight='bold', color=COLORE_BIANCO)
 
-            labels = [self.tm.get("dashboard", "income_label"), self.tm.get("dashboard", "expense_label")]
+            labels = [self.tm.get("ETICHETTE", "GUADAGNI"), self.tm.get("ETICHETTE", "SPESE")]
             perc = [f"{sizes[0] / sum(sizes) * 100:.0f}%", f"{sizes[1] / sum(sizes) * 100:.0f}%"]
             x_positions = [-1.2, 1.1]
             y_text = -1.5
@@ -433,13 +433,13 @@ class DashboardView(BaseView):
                 self.ax.add_patch(mpatches.Circle(
                     (x + dot_offset, y_text), dot_size, color=c, transform=self.ax.transData, clip_on=False)
                 )
-                self.ax.text(x, y_text, f"{label} {p}", ha='left', va='center', color='white', fontsize=10)
+                self.ax.text(x, y_text, f"{label} {p}", ha='left', va='center', color=COLORE_BIANCO, fontsize=10)
 
             self.ax.set_aspect('equal')
 
         centre_circle = mpatches.Circle((0, 0), 0.70, fc=COLORE_WIDGET_2)
         self.ax.add_artist(centre_circle)
-        self.ax.set_title(self.tm.get("dashboard", "movements"), color="white", y=1)
+        self.ax.set_title(self.tm.get("ETICHETTE", "SALDO"), color=COLORE_BIANCO, y=1)
         self.chart_canvas.draw()
 
     def update_info_box(self, index):

@@ -96,12 +96,11 @@ default_aggiungi_button = f"""
     }}
 """
 
-custom_title_style = f"""
-    background-color: {COLORE_SECONDARIO}; 
-    color: white;
-    padding: 10px 15px;
-    border-bottom: 1px solid #334155;
-"""
+default_title_style = f"""
+    font-size: 20px; 
+    font-weight: bold; 
+    color: {COLORE_BIANCO};
+    """
 
 default_report_table = f"""
     QHeaderView::section {{ 
@@ -229,5 +228,20 @@ default_dialog_style = f"""
             QPushButton[text="Cancel"]:hover, QPushButton[text="Annulla"]:hover, QPushButton[text="Cancelar"]:hover {{
                 background-color: {COLORE_WIDGET_2};
                 border: 1px solid {COLORE_ITEM_SELEZIONATO};
+            }}
+        """
+
+default_style_secondary_buttons = f"""
+            QPushButton {{
+                background-color: {COLORE_BACKGROUND};
+                color: {COLORE_BIANCO};
+                font-weight: bold;
+                padding: 8px 16px;
+                border-radius: 6px;
+                border: 1px solid {COLORE_BIANCO};
+                font-size: 14px;
+            }}
+            QPushButton:hover {{
+                background-color: {COLORE_ITEM_HOVER};
             }}
         """
