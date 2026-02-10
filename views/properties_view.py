@@ -49,19 +49,7 @@ class PropertiesView(BaseView):
 
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText(self.tm.get("PLACEHOLDER", "CERCA"))
-        self.search_input.setStyleSheet(f"""
-            QLineEdit {{
-                background-color: {COLORE_WIDGET_2};
-                color: white;
-                border: 2px solid {COLORE_SECONDARIO};
-                border-radius: 8px;
-                padding: 8px 12px;
-                font-size: 14px;
-            }}
-            QLineEdit:focus {{
-                border: 2px solid #007BFF;
-            }}
-        """)
+        self.search_input.setStyleSheet(default_style_search_line)
         self.search_input.textChanged.connect(self.filter_properties)
         search_layout.addWidget(self.search_input)
 

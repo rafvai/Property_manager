@@ -121,7 +121,7 @@ class AddDeadlineDialog(QDialog):
     def __init__(self, tm, properties=None, parent=None):
         super().__init__(parent)
         self.tm = tm
-        self.setWindowTitle(self.tm.get("calendar", "new_deadline"))
+        self.setWindowTitle(self.tm.get("ETICHETTE", "NUOVA_SCADENZA"))
         self.setMinimumSize(400, 300)
         self.setStyleSheet(default_dialog_style)
 
@@ -129,7 +129,7 @@ class AddDeadlineDialog(QDialog):
 
         # Titolo
         self.title_input = QLineEdit()
-        self.title_input.setPlaceholderText("Es: Pagamento IMU")
+        self.title_input.setPlaceholderText(self.tm.get("ETICHETTE", "NUOVA_SCADENZA"))
         layout.addRow("Titolo*:", self.title_input)
 
         # Descrizione
@@ -415,12 +415,12 @@ class PlannerCalendarWidget(QWidget):
             )
 
             if deadline_id:
-                QMessageBox.information(self, self.tm.get("MESSAGGI", "SUCCESSO"), self.tm.get("calendar","deadline_addded_succesfully"))
-                self.logger.info(f"Scadenza aggiunta correttamente! {data['title']}")
+                QMessageBox.information(self, self.tm.get("MESSAGGI", "SUCCESSO"))
+                self.logger.info(f"{self.tm.get("MESSAGGI","SALVATO")} {data['title']}")
                 self.populate_month()  # Ricarica il calendario
             else:
-                QMessageBox.warning(self, self.tm.get("common", "error"), "Impossibile salvare la scadenza.")
-                self.logger.error(f"Impossibile salvare la scadenza. {data['title']}")
+                QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"))
+                self.logger.error(f"{self.tm.get("MESSAGGI", "ERRORE")} {data['title']}")
 
     def add_deadline_for_date(self, date_str):
         """ Aggiunge scadenza per una data specifica (chiamato dal click sulla cella)"""

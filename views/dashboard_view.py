@@ -1,8 +1,9 @@
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
     QPushButton, QFrame, QWidget
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.patches as mpatches
@@ -24,31 +25,6 @@ class ClickableFrame(QFrame):
         if self.on_click:
             self.on_click()
         super().mousePressEvent(event)
-
-
-class LanguageButton(QPushButton):
-    """Bottone bandierina per cambio lingua"""
-
-    def __init__(self, flag_emoji, lang_code, parent=None):
-        super().__init__(flag_emoji, parent)
-        self.lang_code = lang_code
-        self.setFixedSize(40, 40)
-        self.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                border: 2px solid transparent;
-                border-radius: 20px;
-                font-size: 24px;
-                padding: 0px;
-            }
-            QPushButton:hover {
-                background-color: rgba(255, 255, 255, 0.1);
-                border: 2px solid #007BFF;
-            }
-            QPushButton:pressed {
-                background-color: rgba(255, 255, 255, 0.2);
-            }
-        """)
 
 
 class DashboardView(BaseView):
@@ -121,18 +97,24 @@ class DashboardView(BaseView):
         lang_layout.setContentsMargins(0, 0, 0, 0)
         lang_layout.setSpacing(5)
 
-        # Bottoni bandierine - EMOJI DIRETTE
-        self.btn_it = LanguageButton("🇮🇹", "it")
-        self.btn_es = LanguageButton("🇪🇸", "es")
-        self.btn_en = LanguageButton("🇬🇧", "en")
+        # Bottoni bandierine - con icone
+        self.language_combo = QComboBox()
+        self.language_combo.addItem(QIcon("icons/flag-it.png"), "Italiano", "it")
+        self.language_combo.addItem(QIcon("icons/flag-uk.png"), "English", "en")
+        self.language_combo.addItem(QIcon("icons/flag-es.png"), "Español", "es")
+        self.language_combo.setIconSize(QSize(20, 20))
+        self.language_combo.setFixedWidth(150)
 
-        self.btn_it.clicked.connect(lambda: self.change_language("it"))
-        self.btn_es.clicked.connect(lambda: self.change_language("es"))
-        self.btn_en.clicked.connect(lambda: self.change_language("en"))
+        # Imposta la lingua corrente nel ComboBox
+        current_lang = self.preferences_service.get_language()
+        for i in range(self.language_combo.count()):
+            if self.language_combo.itemData(i) == current_lang:
+                self.language_combo.setCurrentIndex(i)
+                break
 
-        lang_layout.addWidget(self.btn_it)
-        lang_layout.addWidget(self.btn_es)
-        lang_layout.addWidget(self.btn_en)
+        self.language_combo.currentIndexChanged.connect(self.on_language_changed)
+
+        lang_layout.addWidget(self.language_combo)
 
         top_row.addWidget(lang_container)
 
@@ -140,8 +122,8 @@ class DashboardView(BaseView):
         mid_row = QHBoxLayout()
         mid_row.setSpacing(10)
 
-        label_title = QLabel(self.tm.get("ETICHETTE", "title"))
-        label_title.setStyleSheet("font-weight: 650; font-size: 20px; color: white;")
+        label_title = QLabel(self.tm.get("ETICHETTE", "PANORAMICA"))
+        label_title.setStyleSheet(default_title_style)
         mid_row.addWidget(label_title)
         mid_row.addStretch()
 
@@ -275,7 +257,7 @@ class DashboardView(BaseView):
             }}
         """)
         bottom_layout = QVBoxLayout(bottom_frame)
-        bottom_label = QLabel(self.tm.get("documents", "title") + " - " + self.tm.get("dashboard", "click_to_manage"))
+        bottom_label = QLabel(self.tm.get("ETICHETTE", "DOCUMENTS") + " - " + self.tm.get("dashboard", "click_to_manage"))
         bottom_label.setStyleSheet("color: white; font-size: 14px;")
         bottom_layout.addWidget(bottom_label)
         layout.addWidget(bottom_frame)
@@ -283,6 +265,10 @@ class DashboardView(BaseView):
         # Carica dati iniziali
         self.update_chart()
         self.update_next_deadline()
+
+    def on_language_changed(self):
+        lang_code = self.language_combo.currentData()
+        self.change_language(lang_code)
 
     def change_language(self, lang_code):
         """Cambia la lingua e ricarica la dashboard"""
@@ -294,7 +280,7 @@ class DashboardView(BaseView):
         self.preferences_service.set_language(lang_code)
         self.tm.set_language(lang_code)
 
-        # 🔧 FIX: Blocca temporaneamente i segnali del menu per evitare navigazione
+        #  Blocca temporaneamente i segnali del menu per evitare navigazione
         if hasattr(self.main_window, 'menu'):
             self.main_window.menu.blockSignals(True)
 
@@ -304,7 +290,7 @@ class DashboardView(BaseView):
             # Assicurati che "Dashboard" sia selezionato
             self.main_window.menu.setCurrentRow(0)
 
-        # 🔧 FIX: Riattiva i segnali del menu
+        # Riattiva i segnali del menu
         if hasattr(self.main_window, 'menu'):
             self.main_window.menu.blockSignals(False)
 
@@ -357,10 +343,10 @@ class DashboardView(BaseView):
                 date_text = f"⚠️ Scaduta {abs(days_left)} giorni fa"
                 self.deadline_date_label.setStyleSheet("color: #e74c3c; font-size: 12px; font-weight: bold;")
             elif days_left == 0:
-                date_text = "🔴 OGGI"
+                date_text = self.tm.get("ETICHETTE", "OGGI")
                 self.deadline_date_label.setStyleSheet("color: #e74c3c; font-size: 12px; font-weight: bold;")
             elif days_left == 1:
-                date_text = "🟡 Domani"
+                date_text = self.tm.get("ETICHETTE", "DOMANI")
                 self.deadline_date_label.setStyleSheet("color: #f39c12; font-size: 12px; font-weight: bold;")
             elif days_left <= 7:
                 date_text = f"🟡 Tra {days_left} giorni"
@@ -374,9 +360,9 @@ class DashboardView(BaseView):
             if next_deadline.get('description'):
                 self.deadline_desc_label.setText(next_deadline['description'])
             else:
-                self.deadline_desc_label.setText("Nessuna descrizione")
+                self.deadline_desc_label.setText(self.tm.get("ETICHETTE", "NESSUNA_DESCRIZIONE"))
         else:
-            self.deadline_title_label.setText(self.tm.get("dashboard", "no_deadline"))
+            self.deadline_title_label.setText(self.tm.get("ETICHETTE", "NESSUNA_SCADENZA"))
             self.deadline_date_label.setText(self.tm.get("dashboard", "all_ok"))
             self.deadline_date_label.setStyleSheet("color: #2ecc71; font-size: 12px;")
             self.deadline_desc_label.setText("")

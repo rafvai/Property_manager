@@ -229,6 +229,36 @@ default_dialog_style = f"""
                 background-color: {COLORE_WIDGET_2};
                 border: 1px solid {COLORE_ITEM_SELEZIONATO};
             }}
+            QSpinBox {{ 
+            background-color: {COLORE_WIDGET_2};
+            color: #94a3b8;
+            border: 2px solid #334155;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 14px;
+            }}
+            QSpinBox:focus {{
+                border: 2px solid {COLORE_ITEM_SELEZIONATO};
+                color: white;
+            }}
+            QSpinBox::up-button, QSpinBox::down-button {{
+                background-color: transparent;
+                border: none;
+                width: 20px;
+            }}
+            QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
+                background-color: {COLORE_ITEM_HOVER};
+            }}
+            QSpinBox::up-arrow {{
+                image: url(icons/up-arrow.png);
+                width: 10px;
+                height: 10px;
+            }}
+            QSpinBox::down-arrow {{
+                image: url(icons/down-arrow.png);
+                width: 10px;
+                height: 10px;
+            }}
         """
 
 default_style_secondary_buttons = f"""
@@ -243,5 +273,20 @@ default_style_secondary_buttons = f"""
             }}
             QPushButton:hover {{
                 background-color: {COLORE_ITEM_HOVER};
+            }}
+        """
+
+default_style_search_line = f"""
+            QLineEdit {{
+                background-color: {COLORE_WIDGET_2};
+                color: white;
+                border: 2px solid {COLORE_SECONDARIO};
+                border-radius: 8px;
+                padding: 8px 12px;
+                font-size: 14px;
+                min-width: 250px;
+            }}
+            QLineEdit:focus {{
+                border: 2px solid {COLORE_ITEM_SELEZIONATO};
             }}
         """

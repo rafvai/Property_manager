@@ -838,12 +838,12 @@ class SuppliersView(BaseView):
         # HEADER
         header_layout = QHBoxLayout()
 
-        title = QLabel(self.tm.get("suppliers", "title"))
+        title = QLabel(self.tm.get("ETICHETTE", "I_MIEI_FORNITORI"))
         title.setStyleSheet(default_title_style)
         header_layout.addWidget(title)
         header_layout.addStretch()
 
-        add_btn = QPushButton(f"+ {self.tm.get("suppliers", "add_supplier")}")
+        add_btn = QPushButton(f"+ {self.tm.get("PULSANTI", "AGGIUNGI")}")
         add_btn.setStyleSheet(default_aggiungi_button)
         add_btn.clicked.connect(self.add_supplier)
         header_layout.addWidget(add_btn)
@@ -855,14 +855,14 @@ class SuppliersView(BaseView):
         filters_layout.setSpacing(15)
 
         # Proprietà
-        property_label = QLabel(f"{self.tm.get('common', 'property')}:")
+        property_label = QLabel(f"{self.tm.get('ETICHETTE', 'PROPRIETA')}:")
         property_label.setStyleSheet("color: white; font-size: 14px;")
         filters_layout.addWidget(property_label)
 
         self.property_selector = QComboBox()
         self.property_selector.setStyleSheet(default_combo_box_style)
         self.property_selector.setMinimumWidth(200)
-        self.property_selector.addItem(self.tm.get('common', 'all_properties'), None)
+        self.property_selector.addItem(self.tm.get('ETICHETTE', 'ALL_PROPERTIES'), None)
         
         properties = self.property_service.get_all()
         for prop in properties:
@@ -872,7 +872,7 @@ class SuppliersView(BaseView):
         filters_layout.addWidget(self.property_selector)
 
         # Categoria
-        category_label = QLabel("Categoria:")
+        category_label = QLabel(f"{self.tm.get('ETICHETTE', 'CATEGORIA')}:")
         category_label.setStyleSheet("color: white; font-size: 14px;")
         filters_layout.addWidget(category_label)
 
@@ -884,13 +884,13 @@ class SuppliersView(BaseView):
         filters_layout.addWidget(self.category_selector)
 
         # Rating minimo
-        rating_label = QLabel("Rating Min:")
+        rating_label = QLabel(f"{self.tm.get('ETICHETTE','VALUTAZIONE')}:")
         rating_label.setStyleSheet("color: white; font-size: 14px;")
         filters_layout.addWidget(rating_label)
 
         self.rating_selector = QComboBox()
         self.rating_selector.setStyleSheet(default_combo_box_style)
-        self.rating_selector.addItem("Tutti", None)
+        self.rating_selector.addItem(self.tm.get('ETICHETTE','TUTTI'), None)
         for i in range(1, 6):
             self.rating_selector.addItem(f"⭐ {i}+", i)
         self.rating_selector.currentIndexChanged.connect(self.filter_by_rating)
@@ -900,21 +900,8 @@ class SuppliersView(BaseView):
 
         # Barra ricerca
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText(self.tm.get("suppliers","search_placeholder"))
-        self.search_input.setStyleSheet(f"""
-            QLineEdit {{
-                background-color: {COLORE_WIDGET_2};
-                color: white;
-                border: 2px solid {COLORE_SECONDARIO};
-                border-radius: 8px;
-                padding: 8px 12px;
-                font-size: 14px;
-                min-width: 250px;
-            }}
-            QLineEdit:focus {{
-                border: 2px solid {COLORE_ITEM_SELEZIONATO};
-            }}
-        """)
+        self.search_input.setPlaceholderText(self.tm.get("PLACEHOLDER","CERCA"))
+        self.search_input.setStyleSheet(default_style_search_line)
         self.search_input.textChanged.connect(self.search_suppliers)
         filters_layout.addWidget(self.search_input)
 
@@ -973,7 +960,7 @@ class SuppliersView(BaseView):
     def populate_categories(self):
         """Popola selettore categorie"""
         self.category_selector.clear()
-        self.category_selector.addItem(self.tm.get("suppliers","all_categories"), None)
+        self.category_selector.addItem(self.tm.get("ETICHETTE","TUTTE_LE_CATEGORIE"), None)
 
         categories = self.supplier_service.get_categories(self.current_property_id)
         for category in categories:
@@ -1081,7 +1068,7 @@ class SuppliersView(BaseView):
     def add_supplier(self):
         """Dialog aggiungi fornitore"""
         dialog = QDialog(self)
-        dialog.setWindowTitle(self.tm.get("suppliers","new_supplier"))
+        dialog.setWindowTitle(self.tm.get("ETICHETTE","NUOVO_FORNITORE"))
         dialog.setMinimumWidth(500)
         dialog.setStyleSheet(default_dialog_style)
 
@@ -1089,7 +1076,7 @@ class SuppliersView(BaseView):
 
         name_input = QLineEdit()
         name_input.setPlaceholderText("Es: ENEL Energia")
-        layout.addRow(f"{self.tm.get("suppliers","name")}*:", name_input)
+        layout.addRow(f"{self.tm.get("ETICHETTE","NOME")}*:", name_input)
 
         category_combo = QComboBox()
         category_combo.setEditable(True)
@@ -1099,10 +1086,10 @@ class SuppliersView(BaseView):
         for cat in categories:
             category_combo.addItem(cat)
         
-        layout.addRow(f"{self.tm.get("suppliers","category")}*:", category_combo)
+        layout.addRow(f"{self.tm.get("ETICHETTE","CATEGORIA")}*:", category_combo)
 
         property_combo = QComboBox()
-        property_combo.addItem("Nessuna proprietà", None)
+        property_combo.addItem(self.tm.get("ETICHETTE","ALL_PROPERTIES"), None)
         
         properties = self.property_service.get_all()
         for prop in properties:
@@ -1113,31 +1100,30 @@ class SuppliersView(BaseView):
             if index >= 0:
                 property_combo.setCurrentIndex(index)
         
-        layout.addRow("Proprietà:", property_combo)
+        layout.addRow(f"{self.tm.get("ETICHETTE","PROPRIETA")}:", property_combo)
 
         phone_input = QLineEdit()
-        phone_input.setPlaceholderText("Es: +39 123 456 7890")
-        layout.addRow("Telefono:", phone_input)
+        phone_input.setPlaceholderText(self.tm.get("PLACEHOLDER","NUMERO_TELEFONO"))
+        layout.addRow(f"{self.tm.get("ETICHETTE","TELEFONO")}:", phone_input)
 
         email_input = QLineEdit()
-        email_input.setPlaceholderText("Es: info@fornitore.it")
-        layout.addRow("Email:", email_input)
+        email_input.setPlaceholderText(self.tm.get("PLACEHOLDER","EMAIL_FORNITORE"))
+        layout.addRow(f"{self.tm.get("ETICHETTE","EMAIL")}:", email_input)
 
         address_input = QLineEdit()
-        address_input.setPlaceholderText("Es: Via Roma 123, Milano")
-        layout.addRow("Indirizzo:", address_input)
+        address_input.setPlaceholderText(self.tm.get("PLACEHOLDER","VIA_APPARTAMENTO"))
+        layout.addRow(f"{self.tm.get("ETICHETTE","INDIRIZZO")}:", address_input)
 
         notes_input = QTextEdit()
-        notes_input.setPlaceholderText("Note aggiuntive...")
         notes_input.setMaximumHeight(80)
-        layout.addRow("Note:", notes_input)
+        layout.addRow(f"{self.tm.get("ETICHETTE","NOTE")}:", notes_input)
 
         # Rating iniziale
         rating_spin = QSpinBox()
         rating_spin.setRange(0, 5)
         rating_spin.setValue(0)
         rating_spin.setSuffix(" ⭐")
-        layout.addRow("Valutazione:", rating_spin)
+        layout.addRow(f"{self.tm.get("ETICHETTE","VALUTAZIONE")}:", rating_spin)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)
