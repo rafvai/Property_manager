@@ -321,15 +321,15 @@ class ReportView(BaseView):
         """Elimina transazione"""
         reply = QMessageBox.question(
             self,
-            "Confirmar",
-            f"¿Eliminar transacción de {trans['amount']}€?",
+            self.tm.get("PULSANTI", "CONFERMA"),
+            self.tm.get("MESSAGGI", "ELIMINARE_TRANSAZIONE"),
             QMessageBox.Yes | QMessageBox.No
         )
 
         if reply == QMessageBox.Yes:
             success = self.transaction_service.delete(trans['id'])
             if success:
-                QMessageBox.information(self, self.tm.get("common", "success"), "Transacción eliminada!")
+                QMessageBox.information(self, self.tm.get("MESSAGGI", "SUCCESSO"), self.tm.get("MESSAGGI", "TRANSAZIONE_ELIMINATA"))
                 self.update_report()
 
     def update_report(self):
@@ -501,16 +501,16 @@ class ReportView(BaseView):
                 if trans_id:
                     QMessageBox.information(
                         self,
-                        self.tm.get("common", "success"),
+                        self.tm.get("MESSAGGI", "SUCCESSO"),
                         f"✅ Transazione aggiunta!\n\n"
-                        f"Categoria: {data['service']}\n"
-                        f"Importo: {amount:,.2f}€"
+                        f"{self.tm.get("ETICHETTE", "CATEGORIA")}: {data['service']}\n"
+                        f"{self.tm.get("ETICHETTE", "IMPORTO")}: {amount:,.2f}€"
                     )
                     self.update_report()
                 else:
                     QMessageBox.warning(
                         self,
-                        self.tm.get("common", "error"),
+                        self.tm.get("MESSAGGI", "ERRORE"),
                         "❌ Impossibile salvare la transazione."
                     )
 

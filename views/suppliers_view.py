@@ -1075,12 +1075,11 @@ class SuppliersView(BaseView):
         layout = QFormLayout(dialog)
 
         name_input = QLineEdit()
-        name_input.setPlaceholderText("Es: ENEL Energia")
+        name_input.setPlaceholderText(self.tm.get("PLACEHOLDER","ES_FORNITORE"))
         layout.addRow(f"{self.tm.get("ETICHETTE","NOME")}*:", name_input)
 
         category_combo = QComboBox()
         category_combo.setEditable(True)
-        category_combo.setPlaceholderText("Es: Bolletta Luce")
         
         categories = self.supplier_service.get_categories()
         for cat in categories:

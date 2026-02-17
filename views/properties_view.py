@@ -289,7 +289,7 @@ class PropertiesView(BaseView):
 
         # Media mensile
         if stats['mesi_gestione'] > 0:
-            avg_label = QLabel(f"Media mensile: +{stats['media_entrate']:,.0f}€ / -{stats['media_uscite']:,.0f}€")
+            avg_label = QLabel(f"{self.tm.get("ETICHETTE", "MEDIA_MENSILE")}: +{stats['media_entrate']:,.0f}€ / -{stats['media_uscite']:,.0f}€")
             avg_label.setStyleSheet("color: #95a5a6; font-size: 11px;")
             stats_row.addWidget(avg_label)
 
@@ -335,21 +335,21 @@ class PropertiesView(BaseView):
             proprietario = owner_input.text().strip()
 
             if not nome or not indirizzo or not proprietario:
-                QMessageBox.warning(self, "Errore", "Tutti i campi sono obbligatori!")
+                QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"), "Tutti i campi sono obbligatori!")
                 return
 
             property_id = self.property_service.create(nome, indirizzo, proprietario)
 
             if property_id:
-                QMessageBox.information(self, "Successo", f"Proprietà '{nome}' aggiunta con successo!")
+                QMessageBox.information(self, self.tm.get("MESSAGGI", "SUCCESSO"), f"{nome}: {self.tm.get("MESSAGGI", "PROPRIETA_AGGIUNTA")}")
                 self.load_properties()
             else:
-                QMessageBox.warning(self, "Errore", "Impossibile aggiungere la proprietà.")
+                QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"), self.tm.get("MESSAGGI","IMPOSSIBILE_AGGIUNGERE_PROPRIETA"))
 
     def edit_property(self, prop):
         """Dialog per modificare una proprietà esistente"""
         dialog = QDialog(self)
-        dialog.setWindowTitle(f"Modifica Proprietà: {prop['name']}")
+        dialog.setWindowTitle(f"{self.tm.get("ETICHETTE", "MODIFICA_PROPRIETA")}: {prop['name']}")
         dialog.setMinimumWidth(400)
         dialog.setStyleSheet(default_dialog_style)
 
@@ -374,7 +374,7 @@ class PropertiesView(BaseView):
             proprietario = owner_input.text().strip()
 
             if not nome or not indirizzo or not proprietario:
-                QMessageBox.warning(self, "Errore", "Tutti i campi sono obbligatori!")
+                QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"), "Tutti i campi sono obbligatori!")
                 return
 
             success = self.property_service.update(
@@ -388,7 +388,7 @@ class PropertiesView(BaseView):
                 QMessageBox.information(self, "Successo", "Proprietà aggiornata con successo!")
                 self.load_properties()
             else:
-                QMessageBox.warning(self, "Errore", "Impossibile aggiornare la proprietà.")
+                QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"), "Impossibile aggiornare la proprietà.")
 
     def delete_property(self, prop):
         """Elimina una proprietà con conferma e pulizia completa"""
@@ -495,7 +495,7 @@ class PropertiesView(BaseView):
                 else:
                     QMessageBox.warning(
                         self,
-                        "❌ Errore",
+                        self.tm.get("MESSAGGI", "ERRORE"),
                         "Impossibile eliminare la proprietà dal database."
                     )
 

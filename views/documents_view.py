@@ -191,7 +191,7 @@ class DocumentsView(BaseView):
 
         for path in selected_files:
             filename = os.path.basename(path)
-            meta_dialog = DocumentMetadataDialog(filename, self)
+            meta_dialog = DocumentMetadataDialog(filename, self.tm, self)
             if meta_dialog.exec() != QDialog.Accepted:
                 continue
 
