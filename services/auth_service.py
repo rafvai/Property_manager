@@ -1,0 +1,242 @@
+"""
+services/auth_service.py — lato CLIENT (Property Manager Desktop)
+
+Gestisce:
+- Login contro il server remoto delle licenze
+- Cache locale cifrata (max 7 giorni offline)
+- Verifica stato licenza (grace, warning, scaduta)
+"""
+import json
+import os
+import hashlib
+import hmac
+from pathlib import Path
+from datetime import datetime, timedelta
+from typing import Optional
+
+try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
+
+# ─────────────────────────────────────────────
+#  CONFIG
+# ─────────────────────────────────────────────
+LICENSE_SERVER_URL = os.getenv("LICENSE_SERVER_URL", "https://your-vps-domain.com")
+OFFLINE_CACHE_DAYS = 7
+CONNECT_TIMEOUT    = 5
+READ_TIMEOUT       = 10
+
+if os.name == "nt":
+    _CACHE_DIR = Path(os.getenv("APPDATA")) / "PropertyManager"
+else:
+    _CACHE_DIR = Path.home() / ".propertymanager"
+
+_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+_CACHE_FILE    = _CACHE_DIR / ".license_cache"
+_HMAC_KEY      = b"pm-license-cache-v1"
+
+
+# ─────────────────────────────────────────────
+#  RISULTATO AUTH
+# ─────────────────────────────────────────────
+class AuthResult:
+    def __init__(self, success: bool, mode: str = "online",
+                 token: str = None, email: str = None,
+                 expires_at: str = None, days_left: int = 0,
+                 is_admin: bool = False,
+                 warning: str = None, grace_mode: bool = False,
+                 error: str = None):
+        self.success    = success
+        self.mode       = mode
+        self.token      = token
+        self.email      = email
+        self.expires_at = expires_at
+        self.days_left  = days_left
+        self.is_admin   = is_admin
+        self.warning    = warning
+        self.grace_mode = grace_mode
+        self.error      = error
+
+
+# ─────────────────────────────────────────────
+#  AUTH SERVICE
+# ─────────────────────────────────────────────
+class AuthService:
+
+    def __init__(self, logger, server_url: str = None):
+        self.logger     = logger
+        self.server_url = (server_url or LICENSE_SERVER_URL).rstrip("/")
+
+    # ── Login principale ────────────────────────────────────────────
+    def login(self, email: str, password: str) -> AuthResult:
+        email = email.strip().lower()
+
+        if REQUESTS_AVAILABLE:
+            result = self._login_online(email, password)
+            if result is not None:
+                return result
+
+        return self._login_offline(email, password)
+
+    def _login_online(self, email: str, password: str) -> Optional[AuthResult]:
+        try:
+            import requests as req
+            resp = req.post(
+                f"{self.server_url}/auth/login",
+                json={"email": email, "password": password, "client_info": "desktop-v1"},
+                timeout=(CONNECT_TIMEOUT, READ_TIMEOUT)
+            )
+
+            if resp.status_code == 200:
+                data = resp.json()
+                self.logger.info(f"AuthService: Login online OK per {email}")
+                self._save_cache(email, password, data)
+                return AuthResult(
+                    success    = True,
+                    mode       = "online",
+                    token      = data["token"],
+                    email      = data["email"],
+                    expires_at = data["expires_at"],
+                    days_left  = data["days_left"],
+                    is_admin   = data.get("is_admin", False),
+                    warning    = data.get("warning"),
+                    grace_mode = data.get("grace_mode", False)
+                )
+
+            elif resp.status_code in (401, 403):
+                detail = resp.json().get("detail", "Accesso negato")
+                self.logger.warning(f"AuthService: Login negato ({resp.status_code}): {detail}")
+                return AuthResult(success=False, mode="failed", error=detail)
+
+            else:
+                self.logger.error(f"AuthService: Risposta server inattesa: {resp.status_code}")
+                return None
+
+        except Exception as e:
+            self.logger.warning(f"AuthService: Server non raggiungibile: {e}")
+            return None
+
+    def _login_offline(self, email: str, password: str) -> AuthResult:
+        cache = self._load_cache()
+
+        if not cache:
+            return AuthResult(
+                success=False, mode="failed",
+                error=(
+                    "Impossibile connettersi al server delle licenze.\n"
+                    "Nessuna sessione precedente trovata.\n"
+                    "Verifica la connessione internet e riprova."
+                )
+            )
+
+        if cache.get("email") != email:
+            return AuthResult(
+                success=False, mode="failed",
+                error="Email non corrisponde alla sessione salvata.\nConnettiti a internet per accedere."
+            )
+
+        if not self._verify_pwd_hash(password, cache.get("pwd_hash", "")):
+            return AuthResult(success=False, mode="failed", error="Password errata.")
+
+        cached_at = datetime.fromisoformat(cache["cached_at"])
+        age_days  = (datetime.utcnow() - cached_at).days
+
+        if age_days > OFFLINE_CACHE_DAYS:
+            self._clear_cache()
+            return AuthResult(
+                success=False, mode="failed",
+                error=(
+                    f"La sessione offline è scaduta ({age_days} giorni fa).\n"
+                    "Connettiti a internet per rinnovare l'accesso."
+                )
+            )
+
+        expires_at = cache.get("expires_at", "")
+        days_left  = self._days_left(expires_at)
+        grace_mode = cache.get("grace_mode", False)
+
+        if days_left == 0 and not grace_mode:
+            return AuthResult(
+                success=False, mode="failed",
+                error="La licenza è scaduta. Connettiti a internet per rinnovare."
+            )
+
+        remaining_offline = OFFLINE_CACHE_DAYS - age_days
+        warning = (
+            f"⚠️ Modalità offline – connessione assente da {age_days} giorni.\n"
+            f"Connettiti a internet entro {remaining_offline} giorni."
+        )
+
+        self.logger.info(f"AuthService: Login offline da cache per {email} (età {age_days}gg)")
+        return AuthResult(
+            success    = True,
+            mode       = "offline_cache",
+            token      = cache.get("token"),
+            email      = email,
+            expires_at = expires_at,
+            days_left  = days_left,
+            is_admin   = cache.get("is_admin", False),
+            warning    = warning,
+            grace_mode = grace_mode
+        )
+
+    # ── Cache locale firmata con HMAC ───────────────────────────────
+    def _save_cache(self, email: str, password: str, server_data: dict):
+        cache = {
+            "email"      : email,
+            "pwd_hash"   : self._hash_pwd(password),
+            "token"      : server_data.get("token"),
+            "expires_at" : server_data.get("expires_at"),
+            "days_left"  : server_data.get("days_left"),
+            "is_admin"   : server_data.get("is_admin", False),
+            "grace_mode" : server_data.get("grace_mode", False),
+            "cached_at"  : datetime.utcnow().isoformat()
+        }
+        payload   = json.dumps(cache, sort_keys=True).encode()
+        signature = hmac.new(_HMAC_KEY, payload, hashlib.sha256).hexdigest()
+        _CACHE_FILE.write_text(json.dumps({"payload": cache, "sig": signature}), encoding="utf-8")
+        try:
+            _CACHE_FILE.chmod(0o600)
+        except Exception:
+            pass
+
+    def _load_cache(self) -> Optional[dict]:
+        if not _CACHE_FILE.exists():
+            return None
+        try:
+            data      = json.loads(_CACHE_FILE.read_text(encoding="utf-8"))
+            payload   = json.dumps(data["payload"], sort_keys=True).encode()
+            expected  = hmac.new(_HMAC_KEY, payload, hashlib.sha256).hexdigest()
+            if not hmac.compare_digest(data["sig"], expected):
+                self.logger.warning("AuthService: Cache locale manomessa, ignorata")
+                return None
+            return data["payload"]
+        except Exception as e:
+            self.logger.warning(f"AuthService: Errore lettura cache: {e}")
+            return None
+
+    def _clear_cache(self):
+        if _CACHE_FILE.exists():
+            _CACHE_FILE.unlink()
+
+    def logout(self):
+        self._clear_cache()
+        self.logger.info("AuthService: Logout, cache rimossa")
+
+    # ── Utilità statiche ────────────────────────────────────────────
+    @staticmethod
+    def _hash_pwd(password: str) -> str:
+        return hashlib.pbkdf2_hmac("sha256", password.encode(), b"pm-local-salt", 100_000).hex()
+
+    @staticmethod
+    def _verify_pwd_hash(password: str, stored: str) -> bool:
+        return hmac.compare_digest(AuthService._hash_pwd(password), stored)
+
+    @staticmethod
+    def _days_left(expires_at: str) -> int:
+        try:
+            return max(0, (datetime.fromisoformat(expires_at) - datetime.utcnow()).days)
+        except Exception:
+            return 0

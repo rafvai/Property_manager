@@ -15,6 +15,8 @@ from services.supplier_service import SupplierService
 from services.translation_system_simple import TranslationManager
 from ui_main import DashboardWindow
 from log_manager import LogManager
+from ui_login import LoginWindow
+from ui_register import RegisterWindow
 
 if __name__ == "__main__":
     log_manager = LogManager()
