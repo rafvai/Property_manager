@@ -1,6 +1,7 @@
 from database.models import Deadline
 from database.connection import DatabaseConnection
 from datetime import datetime
+from config import Config
 
 
 class DeadlineService:
@@ -14,7 +15,7 @@ class DeadlineService:
         """Recupera tutte le scadenze con filtri opzionali"""
         session = self.db.get_session()
         try:
-            query = session.query(Deadline)
+            query = session.query(Deadline).filter_by(tenant_id=Config.CURRENT_TENANT_ID)
 
             # Filtro per proprietà
             if property_id:
@@ -40,7 +41,7 @@ class DeadlineService:
         session = self.db.get_session()
         try:
             query = session.query(Deadline).filter(
-                Deadline.completed == False
+                Deadline.completed == False, Deadline.tenant_id == Config.CURRENT_TENANT_ID
             )
 
             if property_id:
@@ -66,7 +67,7 @@ class DeadlineService:
         session = self.db.get_session()
         try:
             deadlines = session.query(Deadline).filter(
-                Deadline.due_date == date_str
+                Deadline.due_date == date_str, Deadline.tenant_id == Config.CURRENT_TENANT_ID
             ).order_by(Deadline.title.asc()).all()
 
             return [deadline.to_dict() for deadline in deadlines]
@@ -83,6 +84,7 @@ class DeadlineService:
         try:
             new_deadline = Deadline(
                 property_id=property_id,
+                tenant_id=Config.CURRENT_TENANT_ID,
                 title=title,
                 description=description,
                 due_date=due_date,
@@ -107,7 +109,7 @@ class DeadlineService:
         session = self.db.get_session()
         try:
             deadline = session.query(Deadline).filter(
-                Deadline.id == deadline_id
+                Deadline.id == deadline_id, Deadline.tenant_id == Config.CURRENT_TENANT_ID
             ).first()
 
             if not deadline:
@@ -140,7 +142,7 @@ class DeadlineService:
         session = self.db.get_session()
         try:
             deadline = session.query(Deadline).filter(
-                Deadline.id == deadline_id
+                Deadline.id == deadline_id, Deadline.tenant_id == Config.CURRENT_TENANT_ID
             ).first()
 
             if not deadline:

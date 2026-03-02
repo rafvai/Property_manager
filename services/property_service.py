@@ -1,5 +1,6 @@
 from database.models import Property
 from database.connection import DatabaseConnection
+from config import Config
 
 
 class PropertyService:
@@ -13,7 +14,7 @@ class PropertyService:
         """Recupera tutte le proprietà"""
         session = self.db.get_session()
         try:
-            properties = session.query(Property).all()
+            properties = session.query(Property).filter_by(tenant_id = Config.CURRENT_TENANT_ID).all()
             return [prop.to_dict() for prop in properties]
         except Exception as e:
             self.logger.error(f"PropertyService: Errore recupero proprietà: {e}")
@@ -25,7 +26,7 @@ class PropertyService:
         """Recupera una proprietà per ID"""
         session = self.db.get_session()
         try:
-            prop = session.query(Property).filter(Property.id == property_id).first()
+            prop = session.query(Property).filter(Property.id == property_id, Property.tenant_id==Config.CURRENT_TENANT_ID).first()
             return prop.to_dict() if prop else None
         except Exception as e:
             self.logger.error(f"PropertyService: Errore recupero proprietà: {e}")
@@ -37,7 +38,7 @@ class PropertyService:
         """Crea una nuova proprietà"""
         session = self.db.get_session()
         try:
-            new_property = Property(name=name, address=address, owner=owner)
+            new_property = Property(name=name, tenant_id=Config.CURRENT_TENANT_ID,address=address, owner=owner)
             session.add(new_property)
             session.commit()
 
@@ -56,7 +57,7 @@ class PropertyService:
         """Aggiorna una proprietà esistente"""
         session = self.db.get_session()
         try:
-            prop = session.query(Property).filter(Property.id == property_id).first()
+            prop = session.query(Property).filter(Property.id == property_id, Property.tenant_id==Config.CURRENT_TENANT_ID).first()
             if not prop:
                 return False
 
@@ -82,7 +83,7 @@ class PropertyService:
         """Elimina una proprietà (CASCADE elimina anche transactions/deadlines)"""
         session = self.db.get_session()
         try:
-            prop = session.query(Property).filter(Property.id == property_id).first()
+            prop = session.query(Property).filter(Property.id == property_id, Property.tenant_id==Config.CURRENT_TENANT_ID).first()
             if not prop:
                 return False
 

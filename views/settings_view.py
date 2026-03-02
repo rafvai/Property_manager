@@ -546,11 +546,14 @@ class SettingsView(BaseView):
 
     def open_exports_folder(self):
         """Apri cartella export"""
+        from PySide6.QtGui import QDesktopServices
+        from PySide6.QtCore import QUrl
+
         exports_dir = "exports"
         if not os.path.exists(exports_dir):
             os.makedirs(exports_dir)
 
-        os.startfile(os.path.abspath(exports_dir))
+        QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.abspath(exports_dir)))
 
     def clean_old_exports(self):
         """Pulisci export vecchi (>30 giorni)"""

@@ -162,7 +162,7 @@ class SupplierService:
             for field, value in kwargs.items():
                 if field in allowed_fields:
                     setattr(supplier, field, value)
-
+            supplier.updated_at = datetime.utcnow()
             session.commit()
             self.logger.info(f"SupplierService: Fornitore aggiornato: {supplier_id}")
             return True

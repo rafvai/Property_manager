@@ -31,7 +31,17 @@ load_dotenv()
 # ─────────────────────────────────────────────
 #  CONFIG
 # ─────────────────────────────────────────────
-SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_hex(32))
+_KEY_FILE = Path(__file__).parent / ".secret_key"
+
+def _load_or_create_secret_key() -> str:
+    if _KEY_FILE.exists():
+        return _KEY_FILE.read_text().strip()
+    key = secrets.token_hex(32)
+    _KEY_FILE.write_text(key)
+    _KEY_FILE.chmod(0o600)
+    return key
+
+SECRET_KEY = os.getenv("SECRET_KEY") or _load_or_create_secret_key()
 ADMIN_KEY  = os.getenv("ADMIN_KEY", "changeme-in-production")
 ALGORITHM  = "HS256"
 DB_PATH    = Path("licenses.db")
@@ -589,8 +599,9 @@ def login_log(user_id: int, limit: int = 50):
 @app.post("/admin/invites", dependencies=[Depends(require_admin)])
 def create_invite(invite: InviteCreate):
     """Crea un codice invito"""
-    import random, string
-    code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+    import string
+    ALPHABET = string.ascii_uppercase + string.digits
+    code = ''.join(secrets.choice(ALPHABET) for _ in range(8))
     conn = get_db()
     conn.execute(
         """INSERT INTO invite_codes (code, plan, expires_days, max_uses, note)

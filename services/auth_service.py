@@ -9,7 +9,7 @@ Gestisce:
 import json
 import os
 import hashlib
-import hmac
+import hmac  # FIX: hmac è un modulo standard, ok
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional
@@ -23,7 +23,7 @@ except ImportError:
 # ─────────────────────────────────────────────
 #  CONFIG
 # ─────────────────────────────────────────────
-LICENSE_SERVER_URL = os.getenv("LICENSE_SERVER_URL", "https://your-vps-domain.com")
+LICENSE_SERVER_URL = os.getenv("LICENSE_SERVER_URL", "http://129.159.240.166")
 OFFLINE_CACHE_DAYS = 7
 CONNECT_TIMEOUT    = 5
 READ_TIMEOUT       = 10
@@ -208,6 +208,7 @@ class AuthService:
         try:
             data      = json.loads(_CACHE_FILE.read_text(encoding="utf-8"))
             payload   = json.dumps(data["payload"], sort_keys=True).encode()
+            # FIX: stessa correzione del _save_cache
             expected  = hmac.new(_HMAC_KEY, payload, hashlib.sha256).hexdigest()
             if not hmac.compare_digest(data["sig"], expected):
                 self.logger.warning("AuthService: Cache locale manomessa, ignorata")
@@ -232,7 +233,9 @@ class AuthService:
 
     @staticmethod
     def _verify_pwd_hash(password: str, stored: str) -> bool:
-        return hmac.compare_digest(AuthService._hash_pwd(password), stored)
+        # FIX: confronto sicuro contro timing attack
+        current = AuthService._hash_pwd(password)
+        return hmac.compare_digest(current, stored)
 
     @staticmethod
     def _days_left(expires_at: str) -> int:

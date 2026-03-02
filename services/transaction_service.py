@@ -2,6 +2,7 @@ from database.models import Transaction
 from database.connection import DatabaseConnection
 from sqlalchemy import and_, func, cast, Integer
 from datetime import datetime
+from config import Config
 
 
 class TransactionService:
@@ -28,7 +29,7 @@ class TransactionService:
         """Recupera tutte le transazioni con filtri opzionali"""
         session = self.db.get_session()
         try:
-            query = session.query(Transaction)
+            query = session.query(Transaction).filter_by(tenant_id=Config.CURRENT_TENANT_ID)
 
             # Filtro per proprietà
             if property_id:
@@ -78,7 +79,8 @@ class TransactionService:
                 and_(
                     parsed_date >= start_date,
                     parsed_date <= end_date
-                )
+                ),
+                Transaction.tenant_id == Config.CURRENT_TENANT_ID
             )
 
             if property_id:
@@ -100,6 +102,7 @@ class TransactionService:
         try:
             new_transaction = Transaction(
                 property_id=property_id,
+                tenant_id=Config.CURRENT_TENANT_ID,
                 date=date,
                 type=trans_type,
                 amount=amount,
@@ -125,7 +128,7 @@ class TransactionService:
         session = self.db.get_session()
         try:
             transaction = session.query(Transaction).filter(
-                Transaction.id == transaction_id
+                Transaction.id == transaction_id, Transaction.tenant_id == Config.CURRENT_TENANT_ID
             ).first()
 
             if not transaction:
@@ -154,7 +157,7 @@ class TransactionService:
         session = self.db.get_session()
         try:
             transaction = session.query(Transaction).filter(
-                Transaction.id == transaction_id
+                Transaction.id == transaction_id, Transaction.tenant_id == Config.CURRENT_TENANT_ID
             ).first()
 
             if not transaction:
@@ -179,12 +182,18 @@ class TransactionService:
             # Query per entrate
             entrate_query = session.query(
                 func.coalesce(func.sum(Transaction.amount), 0)
-            ).filter(Transaction.type == 'Entrata')
+            ).filter(
+                Transaction.type == 'Entrata',
+                Transaction.tenant_id == Config.CURRENT_TENANT_ID
+            )
 
             # Query per uscite
             uscite_query = session.query(
                 func.coalesce(func.sum(Transaction.amount), 0)
-            ).filter(Transaction.type == 'Uscita')
+            ).filter(
+                Transaction.type == 'Uscita',
+                Transaction.tenant_id == Config.CURRENT_TENANT_ID
+            )
 
             # Filtro per proprietà
             if property_id:
@@ -195,7 +204,6 @@ class TransactionService:
             if end_date:
                 parsed_date = self._parse_date_for_filter(Transaction.date)
                 date_filter = parsed_date <= end_date
-
                 entrate_query = entrate_query.filter(date_filter)
                 uscite_query = uscite_query.filter(date_filter)
 
@@ -231,7 +239,8 @@ class TransactionService:
         try:
             new_transaction = Transaction(
                 property_id=property_id,
-                supplier_id=supplier_id,  # <- NUOVO campo
+                tenant_id=Config.CURRENT_TENANT_ID,
+                supplier_id=supplier_id,
                 date=date,
                 type=trans_type,
                 amount=amount,

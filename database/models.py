@@ -10,6 +10,7 @@ class Property(Base):
     __tablename__ = 'properties'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(String(64), nullable=False, index=True)
     name = Column(String(200), nullable=False)
     address = Column(String(500), nullable=False)
     owner = Column(String(200), nullable=False)
@@ -21,6 +22,7 @@ class Property(Base):
     def to_dict(self):
         return {
             'id': self.id,
+            'tenant_id': self.tenant_id,
             'name': self.name,
             'address': self.address,
             'owner': self.owner
@@ -31,6 +33,7 @@ class Transaction(Base):
     __tablename__ = 'transactions'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(String(64), nullable=False, index=True)
     property_id = Column(Integer, ForeignKey('properties.id'), nullable=False)
 
     # AGGIUNGI QUESTO CAMPO:
@@ -51,6 +54,7 @@ class Transaction(Base):
     def to_dict(self):
         return {
             'id': self.id,
+            'tenant_id': self.tenant_id,
             'property_id': self.property_id,
             'supplier_id': self.supplier_id,  # <- AGGIUNGI
             'date': self.date,
@@ -65,6 +69,7 @@ class Deadline(Base):
     __tablename__ = 'deadlines'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(String(64), nullable=False, index=True)
     property_id = Column(Integer, ForeignKey('properties.id'), nullable=True)
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
@@ -78,6 +83,7 @@ class Deadline(Base):
     def to_dict(self):
         return {
             'id': self.id,
+            'tenant_id': self.tenant_id,
             'property_id': self.property_id,
             'title': self.title,
             'description': self.description,
@@ -91,6 +97,7 @@ class Supplier(Base):
     __tablename__ = 'suppliers'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(String(64), nullable=False, index=True)
     property_id = Column(Integer, ForeignKey('properties.id'), nullable=True)
     name = Column(String(200), nullable=False)
     category = Column(String(200), nullable=False)
@@ -106,7 +113,7 @@ class Supplier(Base):
     service_count = Column(Integer, default=0)  # Numero di servizi utilizzati
 
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow)
 
     # Relazioni
     property = relationship("Property", backref="suppliers")
@@ -118,6 +125,7 @@ class Supplier(Base):
     def to_dict(self):
         return {
             'id': self.id,
+            'tenant_id': self.tenant_id,
             'property_id': self.property_id,
             'name': self.name,
             'category': self.category,
@@ -138,6 +146,7 @@ class SupplierDocument(Base):
     __tablename__ = 'supplier_documents'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(String(64), nullable=False, index=True)
     supplier_id = Column(Integer, ForeignKey('suppliers.id'), nullable=False)
     document_type = Column(String(50), nullable=False)  # 'contratto', 'preventivo', 'fattura', 'altro'
     title = Column(String(200), nullable=False)
@@ -151,6 +160,7 @@ class SupplierDocument(Base):
     def to_dict(self):
         return {
             'id': self.id,
+            'tenant_id': self.tenant_id,
             'supplier_id': self.supplier_id,
             'document_type': self.document_type,
             'title': self.title,
@@ -164,6 +174,7 @@ class SupplierReview(Base):
     __tablename__ = 'supplier_reviews'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id = Column(String(64), nullable=False, index=True)
     supplier_id = Column(Integer, ForeignKey('suppliers.id'), nullable=False)
     rating = Column(Integer, nullable=False)  # 1-5 stelle
     title = Column(String(200), nullable=True)
@@ -177,6 +188,7 @@ class SupplierReview(Base):
     def to_dict(self):
         return {
             'id': self.id,
+            'tenant_id': self.tenant_id,
             'supplier_id': self.supplier_id,
             'rating': self.rating,
             'title': self.title,

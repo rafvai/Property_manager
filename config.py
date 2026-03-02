@@ -16,7 +16,8 @@ class Config:
 
     # Service name per keyring
     SERVICE_NAME = "PropertyManager"
-
+    # tenant name
+    CURRENT_TENANT_ID = 'local'
     # Determina ambiente
     ENV = os.getenv('APP_ENV', 'development')
 

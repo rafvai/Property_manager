@@ -3,7 +3,7 @@ ui_login.py — Login window con autenticazione remota
 """
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QFrame, QApplication
+    QPushButton, QFrame, QApplication, QSizePolicy
 )
 from PySide6.QtCore import Qt, Signal, QTimer, QPropertyAnimation, QEasingCurve
 
@@ -43,6 +43,7 @@ class LoginWindow(QWidget):
     """
 
     login_successful = Signal(str, str, bool)  # email, token, is_admin
+    open_register    = Signal()                 # apre la finestra di registrazione
 
     def __init__(self, auth_service, logger):
         super().__init__()
@@ -53,12 +54,12 @@ class LoginWindow(QWidget):
         self._max_attempts = 5
 
         self.setWindowTitle("Property Manager")
-        self.setMinimumSize(460, 480)
+        self.setMinimumSize(460, 560)          # ← altezza aumentata da 480 a 560
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
         geo = QApplication.primaryScreen().geometry()
-        self.setGeometry((geo.width() - 460) // 2, (geo.height() - 480) // 2, 460, 480)
+        self.setGeometry((geo.width() - 460) // 2, (geo.height() - 560) // 2, 460, 560)
 
         self._build_ui()
 
@@ -75,8 +76,8 @@ class LoginWindow(QWidget):
         outer.addWidget(card)
 
         lay = QVBoxLayout(card)
-        lay.setContentsMargins(40, 36, 40, 36)
-        lay.setSpacing(16)
+        lay.setContentsMargins(40, 32, 40, 32)
+        lay.setSpacing(10)                     # ← spacing ridotto da 16 a 10
 
         # drag / close bar
         drag_row = QHBoxLayout()
@@ -103,7 +104,7 @@ class LoginWindow(QWidget):
         sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lay.addWidget(sub)
 
-        lay.addSpacing(6)
+        lay.addSpacing(8)
 
         # email
         lay.addWidget(self._lbl("Email", f"color:{COLORE_BIANCO};font-size:13px;font-weight:600;"))
@@ -113,6 +114,8 @@ class LoginWindow(QWidget):
         self.email_input.setMinimumHeight(48)
         self.email_input.returnPressed.connect(lambda: self.password_input.setFocus())
         lay.addWidget(self.email_input)
+
+        lay.addSpacing(4)                      # ← spazio esplicito tra i due campi
 
         # password
         lay.addWidget(self._lbl("Password", f"color:{COLORE_BIANCO};font-size:13px;font-weight:600;"))
@@ -124,10 +127,11 @@ class LoginWindow(QWidget):
         self.password_input.returnPressed.connect(self._on_submit)
         lay.addWidget(self.password_input)
 
-        # messaggio errore/avviso
+        # messaggio errore/avviso — occupa spazio fisso per evitare salti di layout
         self.msg_label = QLabel("")
         self.msg_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.msg_label.setWordWrap(True)
+        self.msg_label.setFixedHeight(36)      # ← altezza fissa: non sposta gli altri widget
         self.msg_label.setStyleSheet(f"color:{COLORE_ERROR};font-size:12px;padding:4px 0;")
         self.msg_label.hide()
         lay.addWidget(self.msg_label)
@@ -142,6 +146,24 @@ class LoginWindow(QWidget):
         footer = self._lbl("Problemi? Contatta il supporto", f"color:{COLORE_GRIGIO};font-size:11px;padding-top:4px;")
         footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lay.addWidget(footer)
+
+        # link registrazione
+        register_row = QHBoxLayout()
+        register_row.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        register_row.addWidget(self._lbl("Non hai un account?", f"color:{COLORE_GRIGIO};font-size:12px;"))
+        register_link = QPushButton("Registrati")
+        register_link.setCursor(Qt.CursorShape.PointingHandCursor)
+        register_link.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent; border: none;
+                color: {COLORE_ITEM_SELEZIONATO}; font-size: 12px;
+                font-weight: 600; padding: 0 2px;
+            }}
+            QPushButton:hover {{ color: {COLORE_ITEM_HOVER}; text-decoration: underline; }}
+        """)
+        register_link.clicked.connect(self.open_register.emit)
+        register_row.addWidget(register_link)
+        lay.addLayout(register_row)
 
         self.email_input.setFocus()
 

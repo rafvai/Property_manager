@@ -1,0 +1,28 @@
+# Chiavi segrete
+.secret_key
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Variabili ambiente
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Chiave cifratura
+.encryption_key
+
+# Log
+logs/
+*.log
+
+# Export e documenti utente
+exports/
+docs/

@@ -2,6 +2,7 @@ import os
 import shutil
 from pathlib import Path
 from security_manager import SecurityManager
+from config import Config
 
 
 def get_docs_dir():
@@ -48,7 +49,7 @@ class DocumentService:
             raise ValueError(f"property_id non valido: {property_id}")
 
         # Costruisci path base
-        base_path = os.path.join(self.docs_dir, f"property_{property_id}")
+        base_path = os.path.join(self.docs_dir, Config.CURRENT_TENANT_ID, f"property_{property_id}")
 
         # Se c'è una sottocartella, sanitizzala
         if sub_directory:
