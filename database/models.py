@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean, Text
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean, Text, Date
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -35,11 +35,8 @@ class Transaction(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     tenant_id = Column(String(64), nullable=False, index=True)
     property_id = Column(Integer, ForeignKey('properties.id'), nullable=False)
-
-    # AGGIUNGI QUESTO CAMPO:
     supplier_id = Column(Integer, ForeignKey('suppliers.id'), nullable=True)
-
-    date = Column(String(20), nullable=False)
+    date = Column(Date, nullable=False, index=True)
     type = Column(String(20), nullable=False)
     amount = Column(Float, nullable=False)
     provider = Column(String(200), nullable=False)
@@ -73,7 +70,7 @@ class Deadline(Base):
     property_id = Column(Integer, ForeignKey('properties.id'), nullable=True)
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
-    due_date = Column(String(20), nullable=False)  # Formato: yyyy-MM-dd
+    due_date = Column(Date, nullable=False, index=True)
     completed = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -105,13 +102,10 @@ class Supplier(Base):
     email = Column(String(200), nullable=True)
     address = Column(String(500), nullable=True)
     notes = Column(Text, nullable=True)
-
-    # NUOVI CAMPI per le 4 funzionalità
     rating = Column(Integer, nullable=True)  # Valutazione 1-5 stelle
-    last_service_date = Column(String(20), nullable=True)  # Formato: yyyy-MM-dd
+    last_service_date = Column(Date, nullable=True)  # Formato: yyyy-MM-dd
     total_spent = Column(Float, default=0.0)  # Totale speso con questo fornitore
     service_count = Column(Integer, default=0)  # Numero di servizi utilizzati
-
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
@@ -179,7 +173,7 @@ class SupplierReview(Base):
     rating = Column(Integer, nullable=False)  # 1-5 stelle
     title = Column(String(200), nullable=True)
     comment = Column(Text, nullable=True)
-    service_date = Column(String(20), nullable=True)  # Data del servizio recensito
+    service_date = Column(Date, nullable=True)  # Data del servizio recensito
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relazione

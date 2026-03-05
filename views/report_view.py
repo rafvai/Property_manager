@@ -277,7 +277,12 @@ class ReportView(BaseView):
 
         # RIGHE DATI (a partire dalla riga 1)
         for i, trans in enumerate(filtered, start=1):
-            date_item = QTableWidgetItem(trans['date'])
+            date_val = trans['date']
+            if hasattr(date_val, 'strftime'):
+                date_str = date_val.strftime("%d/%m/%Y")
+            else:
+                date_str = str(date_val)
+            date_item = QTableWidgetItem(date_str)
             date_item.setForeground(QColor("white"))
             self.transactions_table.setItem(i, 0, date_item)
 
@@ -484,13 +489,13 @@ class ReportView(BaseView):
         if dialog.exec():
             try:
                 data = dialog.get_data()
-
                 # Valida importo
                 amount = parse_decimal(data["importo"], self.tm.get("ETICHETTE", "IMPORTO"))
+                date_obj = datetime.strptime(data["data_fattura"], "%d%m%Y").date()
 
-                trans_id = self.transaction_service.create_with_supplier(  # <- USA create_with_supplier
+                trans_id = self.transaction_service.create_with_supplier(
                     property_id=data["property_id"],
-                    date=data["data_fattura"],
+                    date=date_obj,
                     trans_type=data["tipo"],
                     amount=amount,
                     provider=data["provider"],

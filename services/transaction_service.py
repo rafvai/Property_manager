@@ -12,19 +12,6 @@ class TransactionService:
         self.logger = logger
         self.db = DatabaseConnection()
 
-    def _parse_date_for_filter(self, date_field):
-        """
-        Converte formato dd/MM/yyyy in yyyy-MM-dd per confronto
-        Usa funzioni SQLAlchemy compatibili con tutti i DB
-        """
-        # Estrai anno, mese, giorno dalla stringa dd/MM/yyyy
-        year = func.substr(date_field, 7, 4)
-        month = func.substr(date_field, 4, 2)
-        day = func.substr(date_field, 1, 2)
-
-        # Concatena in formato yyyy-MM-dd usando concat di SQLAlchemy
-        return func.date(func.concat(year, '-', month, '-', day))
-
     def get_all(self, property_id=None, start_date=None, end_date=None):
         """Recupera tutte le transazioni con filtri opzionali"""
         session = self.db.get_session()
@@ -37,11 +24,10 @@ class TransactionService:
 
             # Filtro per date
             if start_date and end_date:
-                parsed_date = self._parse_date_for_filter(Transaction.date)
                 query = query.filter(
                     and_(
-                        parsed_date >= start_date,
-                        parsed_date <= end_date
+                        Transaction.date >= start_date,
+                        Transaction.date <= end_date
                     )
                 )
 
@@ -57,29 +43,16 @@ class TransactionService:
             self.db.close_session(session)
 
     def get_monthly_summary(self, year, property_id=None):
-        """Recupera il riepilogo mensile per un anno"""
         session = self.db.get_session()
         try:
-            start_date = f"{year}-01-01"
-            end_date = f"{year}-12-31"
+            from sqlalchemy import extract
 
-            # Estrai mese dalla data dd/MM/yyyy
-            month_expr = cast(func.substr(Transaction.date, 4, 2), Integer)
-
-            # Query per raggruppare per mese e tipo
             query = session.query(
-                month_expr.label('month'),
+                extract('month', Transaction.date).label('month'),
                 Transaction.type,
                 func.sum(Transaction.amount).label('total')
-            )
-
-            # Filtro per anno
-            parsed_date = self._parse_date_for_filter(Transaction.date)
-            query = query.filter(
-                and_(
-                    parsed_date >= start_date,
-                    parsed_date <= end_date
-                ),
+            ).filter(
+                extract('year', Transaction.date) == year,
                 Transaction.tenant_id == Config.CURRENT_TENANT_ID
             )
 
@@ -87,7 +60,6 @@ class TransactionService:
                 query = query.filter(Transaction.property_id == property_id)
 
             results = query.group_by('month', Transaction.type).order_by('month').all()
-
             return results
 
         except Exception as e:
@@ -202,8 +174,7 @@ class TransactionService:
 
             # Filtro per data fine
             if end_date:
-                parsed_date = self._parse_date_for_filter(Transaction.date)
-                date_filter = parsed_date <= end_date
+                date_filter = Transaction.date <= end_date
                 entrate_query = entrate_query.filter(date_filter)
                 uscite_query = uscite_query.filter(date_filter)
 
@@ -254,11 +225,8 @@ class TransactionService:
 
             # AGGIORNA STATISTICHE FORNITORE se collegato
             if supplier_id and trans_type == 'Uscita':
-                # Converti data da dd/MM/yyyy a yyyy-MM-dd
                 try:
-                    date_parts = date.split('/')
-                    service_date = f"{date_parts[2]}-{date_parts[1]}-{date_parts[0]}"
-
+                    service_date = date.isoformat()
                     # Importa SupplierService (oppure passa come parametro)
                     from services.supplier_service import SupplierService
                     supplier_service = SupplierService(self.logger)
