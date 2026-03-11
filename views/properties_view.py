@@ -374,7 +374,7 @@ class PropertiesView(BaseView):
             proprietario = owner_input.text().strip()
 
             if not nome or not indirizzo or not proprietario:
-                QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"), "Tutti i campi sono obbligatori!")
+                QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"), self.tm.get("ETICHETTE","TUTTI_CAMPI_OBBLIGATORI"))
                 return
 
             success = self.property_service.update(
@@ -385,10 +385,10 @@ class PropertiesView(BaseView):
             )
 
             if success:
-                QMessageBox.information(self, "Successo", "Proprietà aggiornata con successo!")
+                QMessageBox.information(self, self.tm.get("MESSAGGI", "SUCCESSO"), self.tm.get("MESSAGGI","PROPRIETA_AGGIORNATA"))
                 self.load_properties()
             else:
-                QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"), "Impossibile aggiornare la proprietà.")
+                QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"), "")
 
     def delete_property(self, prop):
         """Elimina una proprietà con conferma e pulizia completa"""
@@ -404,24 +404,11 @@ class PropertiesView(BaseView):
         has_documents = os.path.exists(property_folder)
 
         # Costruisci messaggio di conferma dettagliato
-        warning_message = (
-            f"Sei sicuro di voler eliminare '{prop['name']}'?\n\n"
-            f"⚠️ ATTENZIONE: Questa operazione è IRREVERSIBILE!\n\n"
-            f"Verranno eliminati permanentemente:\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"📊 Transazioni: {len(transactions)}\n"
-            f"📅 Scadenze: {len(deadlines)}\n"
-        )
-
-        if has_documents and folder_size_bytes > 0:
-            warning_message += f"📁 Documenti: {folder_size_str}\n"
-            warning_message += f"🗑️ Cartella: {os.path.basename(property_folder)}\n"
-
-        warning_message += f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        warning_message = f"{self.tm.get("MESSAGGI","CONFERMA_ELIMINA").replace('?',f"{prop['name']} ?")}"
 
         reply = QMessageBox.question(
             self,
-            "🚨 Conferma Eliminazione",
+            self.tm.get("MESSAGGI","CONFERMA_ELIMINA"),
             warning_message,
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
@@ -453,21 +440,15 @@ class PropertiesView(BaseView):
                         f"⚠️ Solo {deleted_deadlines}/{len(deadlines)} scadenze eliminate"
                     )
 
-                # 3. Elimina cartella documenti usando il service
+                # Elimina cartella documenti usando il service
                 folder_result = self.document_service.delete_property_folder(prop['id'])
 
-                # 4. Elimina proprietà dal database
+                # Elimina proprietà dal database
                 success = self.property_service.delete(prop['id'])
 
                 if success:
                     # Messaggio di successo dettagliato
-                    success_message = (
-                        f"✅ Proprietà '{prop['name']}' eliminata con successo!\n\n"
-                        f"Riepilogo operazioni:\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
-                        f"📊 Transazioni eliminate: {deleted_trans}\n"
-                        f"📅 Scadenze eliminate: {deleted_deadlines}\n"
-                    )
+                    success_message = self.tm.get("MESSAGGI","PROPRIETA_ELIMINATA")
 
                     if folder_result['success']:
                         success_message += (
@@ -502,7 +483,7 @@ class PropertiesView(BaseView):
             except Exception as e:
                 QMessageBox.critical(
                     self,
-                    "❌ Errore Critico",
+                    self.tm.get("MESSAGGI", "ERRORE"),
                     f"Si è verificato un errore durante l'eliminazione:\n\n{str(e)}\n\n"
                     f"La proprietà potrebbe essere stata eliminata solo parzialmente.\n"
                     f"Controlla manualmente i dati."

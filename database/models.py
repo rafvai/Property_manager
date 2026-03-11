@@ -53,8 +53,8 @@ class Transaction(Base):
             'id': self.id,
             'tenant_id': self.tenant_id,
             'property_id': self.property_id,
-            'supplier_id': self.supplier_id,  # <- AGGIUNGI
-            'date': self.date,
+            'supplier_id': self.supplier_id,
+            'date': self.date.isoformat() if self.date else None,
             'type': self.type,
             'amount': self.amount,
             'provider': self.provider,
@@ -84,7 +84,7 @@ class Deadline(Base):
             'property_id': self.property_id,
             'title': self.title,
             'description': self.description,
-            'due_date': self.due_date,
+            'due_date': self.date.isoformat() if self.due_date else None,
             'completed': self.completed,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
@@ -128,7 +128,7 @@ class Supplier(Base):
             'address': self.address,
             'notes': self.notes,
             'rating': self.rating,
-            'last_service_date': self.last_service_date,
+            'last_service_date': self.date.isoformat() if self.last_service_date else None,
             'total_spent': self.total_spent,
             'service_count': self.service_count,
             'created_at': self.created_at.isoformat() if self.created_at else None,
@@ -187,6 +187,6 @@ class SupplierReview(Base):
             'rating': self.rating,
             'title': self.title,
             'comment': self.comment,
-            'service_date': self.service_date,
+            'service_date': self.date.isoformat() if self.service_date else None,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }

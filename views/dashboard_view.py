@@ -348,12 +348,9 @@ class DashboardView(BaseView):
             elif days_left == 1:
                 date_text = self.tm.get("ETICHETTE", "DOMANI")
                 self.deadline_date_label.setStyleSheet("color: #f39c12; font-size: 12px; font-weight: bold;")
-            elif days_left <= 7:
-                date_text = f"🟡 Tra {days_left} giorni"
-                self.deadline_date_label.setStyleSheet("color: #f39c12; font-size: 12px; font-weight: bold;")
             else:
-                date_text = f"🟢 Tra {days_left} giorni"
-                self.deadline_date_label.setStyleSheet("color: #2ecc71; font-size: 12px;")
+                date_text = self.tm.get("ETICHETTE", "IN_X_GIORNI").replace('XXX',str(days_left))
+                self.deadline_date_label.setStyleSheet("color: #f39c12; font-size: 12px; font-weight: bold;")
 
             self.deadline_date_label.setText(f"{date_text} - {due_date.strftime('%d/%m/%Y')}")
 
@@ -363,7 +360,6 @@ class DashboardView(BaseView):
                 self.deadline_desc_label.setText(self.tm.get("ETICHETTE", "NESSUNA_DESCRIZIONE"))
         else:
             self.deadline_title_label.setText(self.tm.get("ETICHETTE", "NESSUNA_SCADENZA"))
-            self.deadline_date_label.setText(self.tm.get("dashboard", "all_ok"))
             self.deadline_date_label.setStyleSheet("color: #2ecc71; font-size: 12px;")
             self.deadline_desc_label.setText("")
 
@@ -402,7 +398,7 @@ class DashboardView(BaseView):
 
         if sum(sizes) == 0:
             self.ax.pie([1], colors=[COLORE_GRIGIO], startangle=90, wedgeprops=dict(width=0.4))
-            self.ax.text(0, 0, self.tm.get("MESSAGGI", "NESSUN_DATO"), ha="center", va="center", fontsize=14, color="gray")
+            self.ax.text(0, 0, self.tm.get("MESSAGGI", "NESSUN_DATO"), ha="center", va="center", fontsize=14, color=COLORE_GRIGIO)
         else:
             self.ax.pie(sizes, colors=colors, startangle=90, wedgeprops=dict(width=0.4))
             self.ax.text(0, 0, f"€ {entrate - uscite:.0f}", ha='center', va='center',

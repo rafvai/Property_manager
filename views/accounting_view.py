@@ -157,8 +157,8 @@ class AccountingView(BaseView):
         has_data = np.any(entrate > 0) or np.any(spese > 0)
 
         if not has_data:
-            self.ax.text(6.5, 500, self.tm.get("accounting", "no_data_year"),
-                         ha='center', va='center', color='white', fontsize=14)
+            self.ax.text(6.5, 500, self.tm.get("MESSAGGI", "NESSUN_DATO"),
+                         ha='center', va='center', color=COLORE_BIANCO, fontsize=14)
             self.canvas.draw()
             return
 
@@ -169,7 +169,7 @@ class AccountingView(BaseView):
                      markersize=10,
                      label=self.tm.get("ETICHETTE", "GUADAGNI"),
                      markerfacecolor=COLORE_SUCCESS,
-                     markeredgecolor='white',
+                     markeredgecolor=COLORE_BIANCO,
                      markeredgewidth=2)
 
         self.ax.plot(mesi, spese,
@@ -179,18 +179,18 @@ class AccountingView(BaseView):
                      markersize=10,
                      label=self.tm.get("ETICHETTE", "SPESE"),
                      markerfacecolor=COLORE_ERROR,
-                     markeredgecolor='white',
+                     markeredgecolor=COLORE_BIANCO,
                      markeredgewidth=2)
 
         self.ax.plot(mesi, saldo,
-                     color='#bdc3c7',
+                     color=COLORE_GRIGIO,
                      linewidth=1,
                      marker='s',
                      markersize=8,
                      label=self.tm.get("ETICHETTE", "SALDO"),
                      linestyle='--',
-                     markerfacecolor='#bdc3c7',
-                     markeredgecolor='white',
+                     markerfacecolor=COLORE_GRIGIO,
+                     markeredgecolor=COLORE_BIANCO,
                      markeredgewidth=2)
 
         self.ax.set_xlabel(self.tm.get("ETICHETTE", "MESE"), color=COLORE_BIANCO, fontsize=12)

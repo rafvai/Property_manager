@@ -27,7 +27,7 @@ class AppController:
     Flusso:
         Login ──► Dashboard
           │
-          └──► Register ──► Login (riapre)
+          └──► Register ──► Dashboard
     """
 
     def __init__(self, app, services: dict, logger):
@@ -78,7 +78,16 @@ class AppController:
     def _on_register_ok(self):
         self.logger.info("AppController: registrazione completata, ritorno al login")
         self._window.close()
-        self._show_login()
+        s = self.services
+        win = DashboardWindow(
+            s['db'],
+            s['prefs'],
+            s['supplier'],
+            s['translation'],
+            logger=self.logger
+        )
+        win.show()
+        self._window = win
 
 
 # ──────────────────────────────────────────────────────────────────

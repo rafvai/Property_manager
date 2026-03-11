@@ -126,7 +126,7 @@ class DashboardWindow(QMainWindow):
             ("icons/calendar.png", self.tm.get("ETICHETTE", "CALENDAR")),
             ("icons/security.png", self.tm.get("ETICHETTE", "FORNITORI")),
             ("icons/settings.png", self.tm.get("ETICHETTE", "IMPOSTAZIONI")),
-            ("icons/settings.png", self.tm.get("ETICHETTE", "Traduzioni"))
+            ("icons/settings.png", self.tm.get("MENU", "TRADUZIONI"))
         ]
 
         for icon_path, text in menu_items:

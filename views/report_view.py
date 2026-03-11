@@ -491,8 +491,8 @@ class ReportView(BaseView):
                 data = dialog.get_data()
                 # Valida importo
                 amount = parse_decimal(data["importo"], self.tm.get("ETICHETTE", "IMPORTO"))
-                date_obj = datetime.strptime(data["data_fattura"], "%d%m%Y").date()
-
+                # CORRETTO
+                date_obj = datetime.strptime(data["data_fattura"], "%d/%m/%Y").date()
                 trans_id = self.transaction_service.create_with_supplier(
                     property_id=data["property_id"],
                     date=date_obj,
@@ -506,8 +506,7 @@ class ReportView(BaseView):
                 if trans_id:
                     QMessageBox.information(
                         self,
-                        self.tm.get("MESSAGGI", "SUCCESSO"),
-                        f"✅ Transazione aggiunta!\n\n"
+                        self.tm.get("MESSAGGI", "TRANSAZIONE_AGGIUNTA"),
                         f"{self.tm.get("ETICHETTE", "CATEGORIA")}: {data['service']}\n"
                         f"{self.tm.get("ETICHETTE", "IMPORTO")}: {amount:,.2f}€"
                     )
@@ -515,14 +514,14 @@ class ReportView(BaseView):
                 else:
                     QMessageBox.warning(
                         self,
-                        self.tm.get("MESSAGGI", "ERRORE"),
-                        "❌ Impossibile salvare la transazione."
+                        self.tm.get("MESSAGGI","IMPOSSIBILE_SALVARE_TRANSAZIONE"),
+                        ""
                     )
 
             except ValidationError as e:
                 QMessageBox.warning(
                     self,
-                    "⚠️ Validazione fallita",
+                    self.tm.get("MESSAGGI","IMPOSSIBILE_SALVARE_TRANSAZIONE"),
                     str(e)
                 )
 
