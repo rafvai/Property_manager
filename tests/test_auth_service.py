@@ -1,423 +1,531 @@
 """
-test_security_manager.py
-========================
-Test unitari per security_manager.py
+test_auth_service.py
+====================
+Test unitari per services/auth_service.py
 
 Copertura:
-- sanitize_filename: path traversal, caratteri pericolosi, lunghezza
-- validate_file_upload: estensioni, dimensione, MIME type
-- sanitize_sql_input: SQL keywords, caratteri pericolosi, lunghezza
-- validate_path: path traversal prevention
-- hash_password / verify_password: PBKDF2, salt, timing-safe compare
-- generate_secure_token: lunghezza, unicità
-- validate_email: formato RFC
-- sanitize_html: rimozione tag, escape caratteri
-- validate_numeric_range: min/max check
+- login: delega a _login_online / _login_offline
+- _login_online: risposta 200, 401/403, errore server, eccezione rete
+- _login_offline: cache valida, email errata, password errata, cache scaduta,
+                  licenza scaduta, modalità grace
+- _save_cache / _load_cache: firma HMAC, manomissione rilevata
+- _clear_cache / logout: rimozione file cache
+- _hash_pwd / _verify_pwd_hash: determinismo, timing-safe compare
+- _days_left: parsing ISO, data scaduta, formato non valido
 
 Esecuzione:
-    pytest tests/test_security_manager.py -v
+    pytest tests/test_auth_service.py -v
 """
 
 import pytest
-import os
 import sys
+import os
+import json
+import hashlib
+import hmac
 import tempfile
+from pathlib import Path
+from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch, mock_open
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from security_manager import SecurityManager
+from services.auth_service import AuthService, AuthResult, _HMAC_KEY
 
 
 # ══════════════════════════════════════════════════════════
-#  sanitize_filename
+#  Fixture condivise
 # ══════════════════════════════════════════════════════════
 
-class TestSanitizeFilename:
-    """Test per sanitize_filename — prevenzione path traversal"""
+@pytest.fixture
+def mock_logger():
+    logger = MagicMock()
+    return logger
 
-    def test_nome_normale(self):
-        result = SecurityManager.sanitize_filename("fattura_gennaio.pdf")
-        assert result == "fattura_gennaio.pdf"
 
-    def test_path_traversal_slash(self):
-        """../../../etc/passwd deve diventare un nome sicuro"""
-        result = SecurityManager.sanitize_filename("../../../etc/passwd")
-        assert ".." not in result
-        assert "/" not in result
+@pytest.fixture
+def tmp_cache_dir(tmp_path):
+    """Directory temporanea isolata per ogni test"""
+    return tmp_path
 
-    def test_path_traversal_backslash(self):
-        result = SecurityManager.sanitize_filename("..\\..\\windows\\system32")
-        assert ".." not in result
-        assert "\\" not in result
 
-    def test_null_byte_rimosso(self):
-        result = SecurityManager.sanitize_filename("file\x00.pdf")
-        assert "\x00" not in result
+@pytest.fixture
+def auth_service(mock_logger, tmp_path):
+    """AuthService con cache in directory temporanea"""
+    svc = AuthService(logger=mock_logger, server_url="http://test-server")
+    # Redirige la cache alla directory temporanea
+    svc._cache_file = tmp_path / ".license_cache"
+    return svc
 
-    def test_solo_basename(self):
-        """Deve restituire solo il nome file, senza path"""
-        result = SecurityManager.sanitize_filename("/home/user/docs/file.pdf")
-        assert "/" not in result
-        assert result == "file.pdf"
 
-    def test_troncatura_lunghezza(self):
-        """Nome troppo lungo deve essere troncato"""
-        lungo = "a" * 300 + ".pdf"
-        result = SecurityManager.sanitize_filename(lungo, max_length=50)
-        assert len(result) <= 50
+def _make_cache_payload(email="test@email.com", password="password123",
+                        days_offset=-2, days_left=30,
+                        grace_mode=False, is_admin=False):
+    """Helper: costruisce payload cache firmato con HMAC valido"""
+    expires_at = (datetime.utcnow() + timedelta(days=days_left)).isoformat()
+    cached_at = (datetime.utcnow() + timedelta(days=days_offset)).isoformat()
 
-    def test_nome_vuoto_lancia_errore(self):
-        with pytest.raises(ValueError, match="vuoto"):
-            SecurityManager.sanitize_filename("")
+    cache = {
+        "email": email,
+        "pwd_hash": AuthService._hash_pwd(password),
+        "token": "tok_abc123",
+        "expires_at": expires_at,
+        "days_left": days_left,
+        "is_admin": is_admin,
+        "grace_mode": grace_mode,
+        "cached_at": cached_at,
+    }
 
-    def test_solo_punti_non_crasha(self):
-        """'...' può essere accettato o rifiutato — l'importante è non crashare"""
-        try:
-            result = SecurityManager.sanitize_filename("...")
-            assert isinstance(result, str)
-        except ValueError:
-            pass  # Accettabile se il metodo lo rifiuta
-
-    def test_estensione_preservata_dopo_troncatura(self):
-        """L'estensione deve sopravvivere alla troncatura"""
-        lungo = "a" * 300 + ".pdf"
-        result = SecurityManager.sanitize_filename(lungo, max_length=20)
-        assert result.endswith(".pdf")
+    payload = json.dumps(cache, sort_keys=True).encode()
+    signature = hmac.new(_HMAC_KEY, payload, hashlib.sha256).hexdigest()
+    return json.dumps({"payload": cache, "sig": signature})
 
 
 # ══════════════════════════════════════════════════════════
-#  validate_file_upload
+#  _hash_pwd / _verify_pwd_hash
 # ══════════════════════════════════════════════════════════
 
-class TestValidateFileUpload:
-    """Test per validate_file_upload — usa file temporanei reali"""
+class TestPasswordUtils:
+    """Test per le utility statiche di hashing password"""
 
-    def _crea_file_temp(self, suffix=".pdf", size_bytes=1024):
-        """Helper: crea file temporaneo con contenuto"""
-        tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
-        tmp.write(b"X" * size_bytes)
-        tmp.close()
-        return tmp.name
+    def test_hash_pwd_restituisce_stringa(self):
+        result = AuthService._hash_pwd("password123")
+        assert isinstance(result, str)
+        assert len(result) > 0
 
-    def test_file_pdf_valido(self):
-        path = self._crea_file_temp(".pdf")
-        try:
-            result = SecurityManager.validate_file_upload(path)
-            assert result["valid"] is True
-            assert result["extension"] == "pdf"
-        finally:
-            os.unlink(path)
-
-    def test_file_xlsx_valido(self):
-        path = self._crea_file_temp(".xlsx")
-        try:
-            result = SecurityManager.validate_file_upload(path)
-            assert result["valid"] is True
-        finally:
-            os.unlink(path)
-
-    def test_estensione_non_permessa(self):
-        path = self._crea_file_temp(".exe")
-        try:
-            result = SecurityManager.validate_file_upload(path)
-            assert result["valid"] is False
-            assert "estensione" in result["error"].lower() or "permessa" in result["error"].lower()
-        finally:
-            os.unlink(path)
-
-    def test_file_vuoto(self):
-        path = self._crea_file_temp(".pdf", size_bytes=0)
-        try:
-            result = SecurityManager.validate_file_upload(path)
-            assert result["valid"] is False
-            assert "vuoto" in result["error"].lower()
-        finally:
-            os.unlink(path)
-
-    def test_file_non_esistente(self):
-        result = SecurityManager.validate_file_upload("/path/che/non/esiste/file.pdf")
-        assert result["valid"] is False
-        assert "trovato" in result["error"].lower()
-
-    def test_file_troppo_grande(self):
-        """20MB + 1 byte deve essere rifiutato"""
-        path = self._crea_file_temp(".pdf", size_bytes=SecurityManager.MAX_FILE_SIZE + 1)
-        try:
-            result = SecurityManager.validate_file_upload(path)
-            assert result["valid"] is False
-            assert "grande" in result["error"].lower()
-        finally:
-            os.unlink(path)
-
-    def test_estensioni_personalizzate(self):
-        """Whitelist custom passata come parametro"""
-        path = self._crea_file_temp(".csv")
-        try:
-            result = SecurityManager.validate_file_upload(path, allowed_extensions={"csv"})
-            assert result["valid"] is True
-        finally:
-            os.unlink(path)
-
-    def test_dimensione_corretta_nel_risultato(self):
-        path = self._crea_file_temp(".pdf", size_bytes=512)
-        try:
-            result = SecurityManager.validate_file_upload(path)
-            assert result["size"] == 512
-        finally:
-            os.unlink(path)
-
-
-# ══════════════════════════════════════════════════════════
-#  sanitize_sql_input
-# ══════════════════════════════════════════════════════════
-
-class TestSanitizeSqlInput:
-    """Test per sanitize_sql_input"""
-
-    def test_input_normale(self):
-        result = SecurityManager.sanitize_sql_input("ENEL Energia")
-        assert result == "ENEL Energia"
-
-    def test_stringa_vuota_ritorna_vuota(self):
-        result = SecurityManager.sanitize_sql_input("")
-        assert result == ""
-
-    def test_sql_union_lancia_errore(self):
-        with pytest.raises(ValueError, match="SQL"):
-            SecurityManager.sanitize_sql_input("UNION SELECT password FROM users")
-
-    def test_sql_drop_lancia_errore(self):
-        with pytest.raises(ValueError, match="SQL"):
-            SecurityManager.sanitize_sql_input("DROP TABLE transactions")
-
-    def test_sql_select_lancia_errore(self):
-        with pytest.raises(ValueError):
-            SecurityManager.sanitize_sql_input("SELECT * FROM properties")
-
-    def test_carattere_punto_e_virgola_lancia_errore(self):
-        """Il semicolon innesca il pattern SQL injection — messaggio reale dal codice"""
-        with pytest.raises(ValueError):
-            SecurityManager.sanitize_sql_input("valore; DROP TABLE")
-
-    def test_pipe_lancia_errore(self):
-        with pytest.raises(ValueError, match="pericolosi"):
-            SecurityManager.sanitize_sql_input("valore | comando")
-
-    def test_troppo_lungo_lancia_errore(self):
-        with pytest.raises(ValueError, match="lungo"):
-            SecurityManager.sanitize_sql_input("a" * 501, max_length=500)
-
-    def test_null_byte_rimosso(self):
-        result = SecurityManager.sanitize_sql_input("test\x00value")
-        assert "\x00" not in result
-
-    def test_spazi_vengono_rimossi(self):
-        result = SecurityManager.sanitize_sql_input("  Fornitore  ")
-        assert result == "Fornitore"
-
-
-# ══════════════════════════════════════════════════════════
-#  validate_path
-# ══════════════════════════════════════════════════════════
-
-class TestValidatePath:
-    """Test per validate_path — path traversal prevention"""
-
-    def test_path_dentro_base_ok(self):
-        base = "/home/app/docs"
-        path = "/home/app/docs/property_1/file.pdf"
-        assert SecurityManager.validate_path(path, base) is True
-
-    def test_path_traversal_lancia_errore(self):
-        base = "/home/app/docs"
-        path = "/home/app/docs/../../../etc/passwd"
-        with pytest.raises(ValueError, match="traversal"):
-            SecurityManager.validate_path(path, base)
-
-    def test_path_completamente_fuori_lancia_errore(self):
-        base = "/home/app/docs"
-        path = "/etc/passwd"
-        with pytest.raises(ValueError, match="traversal"):
-            SecurityManager.validate_path(path, base)
-
-    def test_path_uguale_a_base_ok(self):
-        base = "/home/app/docs"
-        assert SecurityManager.validate_path(base, base) is True
-
-
-# ══════════════════════════════════════════════════════════
-#  hash_password / verify_password
-# ══════════════════════════════════════════════════════════
-
-class TestPasswordHashing:
-    """
-    Test per hash_password e verify_password.
-    Usa PBKDF2-SHA256 con 100.000 iterazioni — sicuro ma lento.
-    I test sono marcati con pytest.mark.slow se necessario.
-    """
-
-    def test_hash_genera_stringa_non_vuota(self):
-        h, salt = SecurityManager.hash_password("password123")
-        assert isinstance(h, str)
-        assert len(h) > 0
-
-    def test_hash_genera_salt_non_vuoto(self):
-        h, salt = SecurityManager.hash_password("password123")
-        assert isinstance(salt, str)
-        assert len(salt) > 0
-
-    def test_stesso_input_sale_diverso_produce_hash_diverso(self):
-        """Ogni chiamata senza salt esplicito deve produrre hash diversi"""
-        h1, _ = SecurityManager.hash_password("stessa_password")
-        h2, _ = SecurityManager.hash_password("stessa_password")
-        assert h1 != h2
-
-    def test_stesso_input_stesso_sale_produce_hash_uguale(self):
-        """Con salt fisso l'hash deve essere deterministico"""
-        salt = "salt_fisso_per_test"
-        h1, _ = SecurityManager.hash_password("password", salt)
-        h2, _ = SecurityManager.hash_password("password", salt)
+    def test_hash_pwd_deterministico(self):
+        """Stessa password → stesso hash (salt fisso interno)"""
+        h1 = AuthService._hash_pwd("stessa_password")
+        h2 = AuthService._hash_pwd("stessa_password")
         assert h1 == h2
 
-    def test_verify_password_corretta(self):
-        password = "MiaPassword!123"
-        h, salt = SecurityManager.hash_password(password)
-        assert SecurityManager.verify_password(password, h, salt) is True
+    def test_hash_pwd_password_diverse_hash_diversi(self):
+        h1 = AuthService._hash_pwd("password_A")
+        h2 = AuthService._hash_pwd("password_B")
+        assert h1 != h2
 
-    def test_verify_password_errata(self):
-        h, salt = SecurityManager.hash_password("password_corretta")
-        assert SecurityManager.verify_password("password_sbagliata", h, salt) is False
+    def test_verify_pwd_hash_corretta(self):
+        stored = AuthService._hash_pwd("mypassword")
+        assert AuthService._verify_pwd_hash("mypassword", stored) is True
 
-    def test_verify_password_vuota(self):
-        h, salt = SecurityManager.hash_password("password_corretta")
-        assert SecurityManager.verify_password("", h, salt) is False
+    def test_verify_pwd_hash_errata(self):
+        stored = AuthService._hash_pwd("password_corretta")
+        assert AuthService._verify_pwd_hash("password_sbagliata", stored) is False
 
-    def test_password_con_caratteri_speciali(self):
-        password = "P@$$w0rd!#%&*()€"
-        h, salt = SecurityManager.hash_password(password)
-        assert SecurityManager.verify_password(password, h, salt) is True
+    def test_verify_pwd_hash_vuota(self):
+        stored = AuthService._hash_pwd("qualcosa")
+        assert AuthService._verify_pwd_hash("", stored) is False
 
-
-# ══════════════════════════════════════════════════════════
-#  generate_secure_token
-# ══════════════════════════════════════════════════════════
-
-class TestGenerateSecureToken:
-    """Test per generate_secure_token"""
-
-    def test_lunghezza_default(self):
-        """Default 32 byte = 64 caratteri esadecimali"""
-        token = SecurityManager.generate_secure_token()
-        assert len(token) == 64
-
-    def test_lunghezza_personalizzata(self):
-        token = SecurityManager.generate_secure_token(16)
-        assert len(token) == 32  # 16 byte = 32 hex chars
-
-    def test_token_e_esadecimale(self):
-        token = SecurityManager.generate_secure_token()
-        assert all(c in "0123456789abcdef" for c in token)
-
-    def test_due_token_sono_diversi(self):
-        """I token devono essere casuali — collisione praticamente impossibile"""
-        t1 = SecurityManager.generate_secure_token()
-        t2 = SecurityManager.generate_secure_token()
-        assert t1 != t2
+    def test_verify_pwd_hash_timing_safe(self):
+        """_verify_pwd_hash usa compare_digest — non deve sollevare eccezioni"""
+        stored = AuthService._hash_pwd("test")
+        # Non deve crashare nemmeno con hash di lunghezza diversa
+        result = AuthService._verify_pwd_hash("x", stored)
+        assert isinstance(result, bool)
 
 
 # ══════════════════════════════════════════════════════════
-#  validate_email
+#  _days_left
 # ══════════════════════════════════════════════════════════
 
-class TestValidateEmail:
-    """Test per validate_email"""
+class TestDaysLeft:
+    """Test per il calcolo dei giorni residui alla scadenza"""
 
-    def test_email_valida(self):
-        assert SecurityManager.validate_email("mario.rossi@email.com") is True
+    def test_scadenza_futura(self):
+        future = (datetime.utcnow() + timedelta(days=30)).isoformat()
+        result = AuthService._days_left(future)
+        assert result >= 29  # Margine di 1 giorno per esecuzione
 
-    def test_email_con_sottodominio(self):
-        assert SecurityManager.validate_email("utente@mail.esempio.it") is True
+    def test_scadenza_oggi(self):
+        today = datetime.utcnow().isoformat()
+        result = AuthService._days_left(today)
+        assert result == 0
 
-    def test_email_senza_at_non_valida(self):
-        assert SecurityManager.validate_email("emailsenzaat.com") is False
+    def test_scadenza_passata(self):
+        past = (datetime.utcnow() - timedelta(days=5)).isoformat()
+        result = AuthService._days_left(past)
+        assert result == 0  # Non può essere negativo
 
-    def test_email_senza_dominio_non_valida(self):
-        assert SecurityManager.validate_email("utente@") is False
+    def test_formato_non_valido_ritorna_zero(self):
+        result = AuthService._days_left("data-non-valida")
+        assert result == 0
 
-    def test_email_senza_tld_non_valida(self):
-        assert SecurityManager.validate_email("utente@dominio") is False
-
-    def test_stringa_vuota_non_valida(self):
-        assert SecurityManager.validate_email("") is False
-
-    def test_none_non_valido(self):
-        assert SecurityManager.validate_email(None) is False
-
-    def test_email_troppo_lunga_non_valida(self):
-        lunga = "a" * 320 + "@email.com"
-        assert SecurityManager.validate_email(lunga) is False
+    def test_stringa_vuota_ritorna_zero(self):
+        result = AuthService._days_left("")
+        assert result == 0
 
 
 # ══════════════════════════════════════════════════════════
-#  sanitize_html
+#  _save_cache / _load_cache
 # ══════════════════════════════════════════════════════════
 
-class TestSanitizeHtml:
-    """Test per sanitize_html — prevenzione XSS"""
+class TestCacheOperations:
+    """Test per la gestione della cache locale firmata con HMAC"""
 
-    def test_testo_normale_invariato(self):
-        result = SecurityManager.sanitize_html("Testo normale")
-        assert result == "Testo normale"
+    def test_save_e_load_cache_round_trip(self, auth_service, tmp_path):
+        """Salva e ricarica: i dati devono essere identici"""
+        auth_service._cache_file = tmp_path / ".license_cache"
 
-    def test_tag_script_rimosso(self):
-        result = SecurityManager.sanitize_html("<script>alert('xss')</script>")
-        assert "<script>" not in result
-        assert "alert" in result  # Il testo rimane, solo il tag è rimosso
+        server_data = {
+            "token": "tok_xyz",
+            "expires_at": (datetime.utcnow() + timedelta(days=30)).isoformat(),
+            "days_left": 30,
+            "is_admin": False,
+            "grace_mode": False,
+        }
 
-    def test_tag_html_rimosso(self):
-        result = SecurityManager.sanitize_html("<b>testo grassetto</b>")
-        assert "<b>" not in result
-        assert "</b>" not in result
+        with patch("services.auth_service._CACHE_FILE", auth_service._cache_file):
+            auth_service._save_cache("user@test.com", "pass123", server_data)
+            loaded = auth_service._load_cache()
 
-    def test_stringa_vuota(self):
-        assert SecurityManager.sanitize_html("") == ""
+        assert loaded is not None
+        assert loaded["email"] == "user@test.com"
+        assert loaded["token"] == "tok_xyz"
 
-    def test_none_ritorna_vuoto(self):
-        assert SecurityManager.sanitize_html(None) == ""
+    def test_load_cache_file_assente_ritorna_none(self, auth_service, tmp_path):
+        """Nessun file cache → None"""
+        auth_service._cache_file = tmp_path / ".non_esistente"
+        with patch("services.auth_service._CACHE_FILE", auth_service._cache_file):
+            result = auth_service._load_cache()
+        assert result is None
 
-    def test_caratteri_speciali_escapati(self):
-        result = SecurityManager.sanitize_html("5 > 3 & 2 < 4")
-        assert "&gt;" in result or ">" not in result
-        assert "&lt;" in result or "<" not in result
+    def test_load_cache_firma_manomessa_ritorna_none(self, auth_service, tmp_path):
+        """Cache con firma HMAC alterata deve essere scartata"""
+        cache_file = tmp_path / ".license_cache"
+
+        # Scrivi cache con firma errata
+        tampered = json.dumps({
+            "payload": {"email": "hacker@evil.com"},
+            "sig": "firma_falsa_0000000000000000"
+        })
+        cache_file.write_text(tampered, encoding="utf-8")
+
+        with patch("services.auth_service._CACHE_FILE", cache_file):
+            result = auth_service._load_cache()
+
+        assert result is None
+        auth_service.logger.warning.assert_called()
+
+    def test_load_cache_json_corrotto_ritorna_none(self, auth_service, tmp_path):
+        """JSON malformato non deve far crashare l'app"""
+        cache_file = tmp_path / ".license_cache"
+        cache_file.write_text("{ questo non e' json valido }", encoding="utf-8")
+
+        with patch("services.auth_service._CACHE_FILE", cache_file):
+            result = auth_service._load_cache()
+
+        assert result is None
+
+    def test_clear_cache_rimuove_file(self, auth_service, tmp_path):
+        """_clear_cache deve eliminare il file"""
+        cache_file = tmp_path / ".license_cache"
+        cache_file.write_text("dati", encoding="utf-8")
+
+        with patch("services.auth_service._CACHE_FILE", cache_file):
+            auth_service._clear_cache()
+
+        assert not cache_file.exists()
+
+    def test_clear_cache_senza_file_non_crasha(self, auth_service, tmp_path):
+        """_clear_cache senza file preesistente non deve sollevare eccezioni"""
+        with patch("services.auth_service._CACHE_FILE", tmp_path / ".inesistente"):
+            auth_service._clear_cache()  # Non deve sollevare eccezioni
 
 
 # ══════════════════════════════════════════════════════════
-#  validate_numeric_range
+#  _login_online
 # ══════════════════════════════════════════════════════════
 
-class TestValidateNumericRange:
-    """Test per validate_numeric_range"""
+class TestLoginOnline:
+    """Test per il flusso di autenticazione online"""
 
-    def test_valore_nel_range(self):
-        assert SecurityManager.validate_numeric_range(50, 0, 100) is True
+    def _make_ok_response(self, email="user@test.com", days_left=30):
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json.return_value = {
+            "token": "tok_online_123",
+            "email": email,
+            "expires_at": (datetime.utcnow() + timedelta(days=days_left)).isoformat(),
+            "days_left": days_left,
+            "is_admin": False,
+            "warning": None,
+            "grace_mode": False,
+        }
+        return resp
 
-    def test_valore_al_minimo(self):
-        assert SecurityManager.validate_numeric_range(0, 0, 100) is True
+    def test_login_online_successo(self, auth_service, tmp_path):
+        resp = self._make_ok_response()
 
-    def test_valore_al_massimo(self):
-        assert SecurityManager.validate_numeric_range(100, 0, 100) is True
+        with patch("services.auth_service._CACHE_FILE", tmp_path / ".lc"), \
+             patch("requests.post", return_value=resp):
+            result = auth_service._login_online("user@test.com", "password")
 
-    def test_valore_sotto_minimo_lancia_errore(self):
-        with pytest.raises(ValueError, match="fuori range"):
-            SecurityManager.validate_numeric_range(-1, 0, 100)
+        assert result is not None
+        assert result.success is True
+        assert result.mode == "online"
+        assert result.token == "tok_online_123"
 
-    def test_valore_sopra_massimo_lancia_errore(self):
-        with pytest.raises(ValueError, match="fuori range"):
-            SecurityManager.validate_numeric_range(101, 0, 100)
+    def test_login_online_401_ritorna_fallimento(self, auth_service):
+        resp = MagicMock()
+        resp.status_code = 401
+        resp.json.return_value = {"detail": "Credenziali errate"}
 
-    def test_non_numerico_lancia_errore(self):
-        with pytest.raises(ValueError, match="numerico"):
-            SecurityManager.validate_numeric_range("cinquanta", 0, 100)
+        with patch("requests.post", return_value=resp):
+            result = auth_service._login_online("user@test.com", "wrong")
 
-    def test_float_valido(self):
-        assert SecurityManager.validate_numeric_range(3.14, 0.0, 10.0) is True
+        assert result is not None
+        assert result.success is False
+        assert result.mode == "failed"
+        assert "Credenziali errate" in (result.error or "")
+
+    def test_login_online_403_ritorna_fallimento(self, auth_service):
+        resp = MagicMock()
+        resp.status_code = 403
+        resp.json.return_value = {"detail": "Accesso negato"}
+
+        with patch("requests.post", return_value=resp):
+            result = auth_service._login_online("user@test.com", "pass")
+
+        assert result is not None
+        assert result.success is False
+
+    def test_login_online_500_ritorna_none(self, auth_service):
+        """Errore server inatteso → None (si passa all'offline)"""
+        resp = MagicMock()
+        resp.status_code = 500
+
+        with patch("requests.post", return_value=resp):
+            result = auth_service._login_online("user@test.com", "pass")
+
+        assert result is None
+
+    def test_login_online_eccezione_rete_ritorna_none(self, auth_service):
+        """Timeout/connection error → None (si passa all'offline)"""
+        with patch("requests.post", side_effect=Exception("Connection refused")):
+            result = auth_service._login_online("user@test.com", "pass")
+
+        assert result is None
+
+    def test_login_online_salva_cache_dopo_successo(self, auth_service, tmp_path):
+        """Dopo un login riuscito la cache deve essere aggiornata"""
+        resp = self._make_ok_response()
+        cache_file = tmp_path / ".license_cache"
+
+        with patch("services.auth_service._CACHE_FILE", cache_file), \
+             patch("requests.post", return_value=resp):
+            auth_service._login_online("user@test.com", "password")
+
+        assert cache_file.exists()
+
+    def test_login_online_imposta_is_admin(self, auth_service, tmp_path):
+        resp = MagicMock()
+        resp.status_code = 200
+        resp.json.return_value = {
+            "token": "tok", "email": "admin@test.com",
+            "expires_at": (datetime.utcnow() + timedelta(days=10)).isoformat(),
+            "days_left": 10, "is_admin": True,
+            "warning": None, "grace_mode": False,
+        }
+
+        with patch("services.auth_service._CACHE_FILE", tmp_path / ".lc"), \
+             patch("requests.post", return_value=resp):
+            result = auth_service._login_online("admin@test.com", "pass")
+
+        assert result.is_admin is True
+
+
+# ══════════════════════════════════════════════════════════
+#  _login_offline
+# ══════════════════════════════════════════════════════════
+
+class TestLoginOffline:
+    """Test per il flusso di autenticazione offline da cache"""
+
+    def test_offline_cache_valida_successo(self, auth_service, tmp_path):
+        """Cache recente e password corretta → login OK"""
+        cache_content = _make_cache_payload(
+            email="user@test.com", password="pass123",
+            days_offset=-1, days_left=25
+        )
+        cache_file = tmp_path / ".license_cache"
+        cache_file.write_text(cache_content, encoding="utf-8")
+
+        with patch("services.auth_service._CACHE_FILE", cache_file):
+            result = auth_service._login_offline("user@test.com", "pass123")
+
+        assert result.success is True
+        assert result.mode == "offline_cache"
+        assert result.warning is not None  # Deve avvertire modalità offline
+
+    def test_offline_nessuna_cache_fallisce(self, auth_service, tmp_path):
+        """Nessuna cache → errore con messaggio chiaro"""
+        with patch("services.auth_service._CACHE_FILE", tmp_path / ".assente"):
+            result = auth_service._login_offline("user@test.com", "pass")
+
+        assert result.success is False
+        assert "internet" in result.error.lower() or "server" in result.error.lower()
+
+    def test_offline_email_diversa_fallisce(self, auth_service, tmp_path):
+        """Email diversa da quella in cache → accesso negato"""
+        cache_content = _make_cache_payload(email="cached@test.com", password="pass")
+        cache_file = tmp_path / ".license_cache"
+        cache_file.write_text(cache_content, encoding="utf-8")
+
+        with patch("services.auth_service._CACHE_FILE", cache_file):
+            result = auth_service._login_offline("altro@test.com", "pass")
+
+        assert result.success is False
+        assert "email" in result.error.lower() or "corrisponde" in result.error.lower()
+
+    def test_offline_password_errata_fallisce(self, auth_service, tmp_path):
+        """Password sbagliata → accesso negato"""
+        cache_content = _make_cache_payload(email="user@test.com", password="corretta")
+        cache_file = tmp_path / ".license_cache"
+        cache_file.write_text(cache_content, encoding="utf-8")
+
+        with patch("services.auth_service._CACHE_FILE", cache_file):
+            result = auth_service._login_offline("user@test.com", "sbagliata")
+
+        assert result.success is False
+        assert "password" in result.error.lower()
+
+    def test_offline_cache_scaduta_fallisce(self, auth_service, tmp_path):
+        """Cache più vecchia di 7 giorni → accesso negato e cache rimossa"""
+        cache_content = _make_cache_payload(
+            email="user@test.com", password="pass",
+            days_offset=-8  # 8 giorni fa — oltre il limite di 7
+        )
+        cache_file = tmp_path / ".license_cache"
+        cache_file.write_text(cache_content, encoding="utf-8")
+
+        with patch("services.auth_service._CACHE_FILE", cache_file):
+            result = auth_service._login_offline("user@test.com", "pass")
+
+        assert result.success is False
+        assert "scaduta" in result.error.lower() or "internet" in result.error.lower()
+
+    def test_offline_licenza_scaduta_senza_grace_fallisce(self, auth_service, tmp_path):
+        """Licenza scaduta e grace_mode=False → accesso negato"""
+        cache_content = _make_cache_payload(
+            email="user@test.com", password="pass",
+            days_offset=-1, days_left=0, grace_mode=False
+        )
+        cache_file = tmp_path / ".license_cache"
+        cache_file.write_text(cache_content, encoding="utf-8")
+
+        with patch("services.auth_service._CACHE_FILE", cache_file):
+            result = auth_service._login_offline("user@test.com", "pass")
+
+        assert result.success is False
+        assert "scaduta" in result.error.lower() or "licenza" in result.error.lower()
+
+    def test_offline_licenza_scaduta_con_grace_successo(self, auth_service, tmp_path):
+        """Licenza scaduta ma grace_mode=True → accesso consentito"""
+        cache_content = _make_cache_payload(
+            email="user@test.com", password="pass",
+            days_offset=-1, days_left=0, grace_mode=True
+        )
+        cache_file = tmp_path / ".license_cache"
+        cache_file.write_text(cache_content, encoding="utf-8")
+
+        with patch("services.auth_service._CACHE_FILE", cache_file):
+            result = auth_service._login_offline("user@test.com", "pass")
+
+        assert result.success is True
+        assert result.grace_mode is True
+
+    def test_offline_warning_contiene_giorni_rimanenti(self, auth_service, tmp_path):
+        """Il warning offline deve indicare quanti giorni rimangono"""
+        cache_content = _make_cache_payload(
+            email="user@test.com", password="pass",
+            days_offset=-3, days_left=30
+        )
+        cache_file = tmp_path / ".license_cache"
+        cache_file.write_text(cache_content, encoding="utf-8")
+
+        with patch("services.auth_service._CACHE_FILE", cache_file):
+            result = auth_service._login_offline("user@test.com", "pass")
+
+        assert result.success is True
+        assert result.warning is not None
+        # Deve indicare i giorni trascorsi offline
+        assert "3" in result.warning or "offline" in result.warning.lower()
+
+
+# ══════════════════════════════════════════════════════════
+#  login (entry point principale)
+# ══════════════════════════════════════════════════════════
+
+class TestLogin:
+    """Test per il metodo login() che coordina online e offline"""
+
+    def test_login_preferisce_online_se_disponibile(self, auth_service):
+        """Se online funziona, non deve tentare offline"""
+        online_result = AuthResult(success=True, mode="online", token="tok")
+        auth_service._login_online = MagicMock(return_value=online_result)
+        auth_service._login_offline = MagicMock()
+
+        result = auth_service.login("user@test.com", "pass")
+
+        auth_service._login_online.assert_called_once()
+        auth_service._login_offline.assert_not_called()
+        assert result.mode == "online"
+
+    def test_login_fallback_offline_se_online_ritorna_none(self, auth_service):
+        """Se _login_online ritorna None (server irraggiungibile) → usa offline"""
+        auth_service._login_online = MagicMock(return_value=None)
+        offline_result = AuthResult(success=True, mode="offline_cache")
+        auth_service._login_offline = MagicMock(return_value=offline_result)
+
+        result = auth_service.login("user@test.com", "pass")
+
+        auth_service._login_offline.assert_called_once()
+        assert result.mode == "offline_cache"
+
+    def test_login_normalizza_email(self, auth_service):
+        """L'email deve essere lowercase e senza spazi"""
+        auth_service._login_online = MagicMock(return_value=None)
+        auth_service._login_offline = MagicMock(
+            return_value=AuthResult(success=False, error="test")
+        )
+
+        auth_service.login("  USER@TEST.COM  ", "pass")
+
+        call_args = auth_service._login_offline.call_args
+        assert call_args[0][0] == "user@test.com"
+
+    def test_login_senza_requests_usa_solo_offline(self, auth_service):
+        """Se requests non è disponibile, deve usare direttamente offline"""
+        auth_service._login_offline = MagicMock(
+            return_value=AuthResult(success=False, error="no cache")
+        )
+
+        with patch("services.auth_service.REQUESTS_AVAILABLE", False):
+            auth_service.login("user@test.com", "pass")
+
+        auth_service._login_offline.assert_called_once()
+
+
+# ══════════════════════════════════════════════════════════
+#  logout
+# ══════════════════════════════════════════════════════════
+
+class TestLogout:
+    """Test per il logout"""
+
+    def test_logout_rimuove_cache(self, auth_service, tmp_path):
+        cache_file = tmp_path / ".license_cache"
+        cache_file.write_text("dati", encoding="utf-8")
+
+        with patch("services.auth_service._CACHE_FILE", cache_file):
+            auth_service.logout()
+
+        assert not cache_file.exists()
+
+    def test_logout_logga_operazione(self, auth_service, tmp_path):
+        with patch("services.auth_service._CACHE_FILE", tmp_path / ".lc"):
+            auth_service.logout()
+
+        auth_service.logger.info.assert_called()
+        log_msg = str(auth_service.logger.info.call_args)
+        assert "logout" in log_msg.lower() or "Logout" in log_msg

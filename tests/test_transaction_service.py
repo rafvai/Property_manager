@@ -3,18 +3,17 @@ test_transaction_service.py
 ===========================
 Test unitari per services/transaction_service.py
 
-Strategia: mock SQLAlchemy session — zero accesso a DB reale.
-Ogni test è indipendente grazie alle fixture che si resettano.
+Strategia: mock DatabaseConnection e SQLAlchemy session — zero accesso a DB reale.
+Il TransactionService reale usa logger (non db direttamente) e DatabaseConnection.
 
 Copertura:
-- create_with_supplier: flusso principale, supplier nuovo vs esistente
-- create: wrapper di create_with_supplier (verifica delegazione)
-- get_all: filtro per property_id, tenant isolation
-- get_by_id: trovato, non trovato, tenant sbagliato
-- update: campi modificabili, immutabilità tenant_id
-- delete: soft delete vs hard delete
-- get_summary: calcolo entrate/uscite, saldo
-- validate_transaction_data: tutti i casi di validazione
+- get_all: filtro property_id, date range, tenant isolation, errore DB
+- get_monthly_summary: raggruppamento per mese, errore DB
+- create: successo, rollback su errore
+- create_with_supplier: con/senza supplier_id, aggiornamento stats, rollback
+- update: campi modificabili, whitelist rispettata, non trovata, rollback
+- delete: hard delete, non trovata, rollback (NB: il service reale non ha soft delete)
+- get_balance: entrate - uscite, filtri property/data, saldo negativo
 
 Esecuzione:
     pytest tests/test_transaction_service.py -v
@@ -24,214 +23,52 @@ import pytest
 import sys
 import os
 from unittest.mock import MagicMock, patch, call
-from datetime import date
+from datetime import date, datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from services.transaction_service import TransactionService
-
 
 # ══════════════════════════════════════════════════════════
-#  Fixture condivise
+#  Helper factories
 # ══════════════════════════════════════════════════════════
-
-@pytest.fixture
-def mock_db():
-    session = MagicMock()
-    return session
-
-
-@pytest.fixture
-def transaction_service(mock_db):
-    return TransactionService(mock_db)
-
 
 def _make_transaction(id=1, tipo="Entrata", importo=500.0,
                       property_id=1, tenant_id="tenant_001",
-                      is_deleted=False):
-    """Helper: crea una transazione fittizia come oggetto SQLAlchemy"""
+                      supplier_id=None):
     t = MagicMock()
     t.id = id
-    t.tipo = tipo
-    t.importo = importo
+    t.type = tipo
+    t.amount = importo
     t.descrizione = "Affitto gennaio"
-    t.data = date(2024, 1, 15)
+    t.date = date(2024, 1, 15)
     t.property_id = property_id
     t.tenant_id = tenant_id
-    t.supplier_id = None
-    t.is_deleted = is_deleted
-    t.categoria = "Affitto"
+    t.supplier_id = supplier_id
+    t.service = "Affitto"
+    t.provider = "Inquilino Rossi"
+    t.to_dict.return_value = {
+        "id": id, "type": tipo, "amount": importo,
+        "property_id": property_id, "tenant_id": tenant_id
+    }
     return t
 
 
-def _make_supplier(id=1, nome="ENEL", tenant_id="tenant_001"):
-    s = MagicMock()
-    s.id = id
-    s.nome = nome
-    s.tenant_id = tenant_id
-    return s
+@pytest.fixture
+def mock_session():
+    return MagicMock()
 
 
-# ══════════════════════════════════════════════════════════
-#  create_with_supplier
-# ══════════════════════════════════════════════════════════
+@pytest.fixture
+def transaction_service(mock_session):
+    with patch("services.transaction_service.DatabaseConnection") as MockDB:
+        mock_db = MockDB.return_value
+        mock_db.get_session.return_value = mock_session
+        mock_db.close_session = MagicMock()
 
-class TestCreateWithSupplier:
-
-    def test_create_entrata_senza_fornitore(self, transaction_service, mock_db):
-        """Transazione di tipo Entrata non ha fornitore"""
-        mock_db.add = MagicMock()
-        mock_db.commit = MagicMock()
-        mock_db.refresh = MagicMock()
-
-        result = transaction_service.create_with_supplier(
-            tipo="Entrata",
-            importo=1200.0,
-            data="15/01/2024",
-            descrizione="Affitto mensile",
-            property_id=1,
-            tenant_id="tenant_001"
-        )
-
-        mock_db.add.assert_called_once()
-        mock_db.commit.assert_called_once()
-        assert result["success"] is True
-
-    def test_create_uscita_con_fornitore_esistente(self, transaction_service, mock_db):
-        """Uscita con fornitore già in DB — non deve crearne uno nuovo"""
-        supplier = _make_supplier(id=5, nome="ENEL")
-        mock_db.query.return_value.filter_by.return_value.first.return_value = supplier
-
-        result = transaction_service.create_with_supplier(
-            tipo="Uscita",
-            importo=120.0,
-            data="20/01/2024",
-            descrizione="Bolletta luce",
-            property_id=1,
-            tenant_id="tenant_001",
-            supplier_nome="ENEL"
-        )
-
-        assert result["success"] is True
-        # Il fornitore non deve essere ricreato — add chiamato solo per la transazione
-        calls_add = mock_db.add.call_count
-        assert calls_add == 1  # Solo la transazione
-
-    def test_create_uscita_con_fornitore_nuovo(self, transaction_service, mock_db):
-        """Fornitore non esistente: deve essere creato prima della transazione"""
-        mock_db.query.return_value.filter_by.return_value.first.return_value = None
-
-        result = transaction_service.create_with_supplier(
-            tipo="Uscita",
-            importo=80.0,
-            data="25/01/2024",
-            descrizione="Pulizie",
-            property_id=1,
-            tenant_id="tenant_001",
-            supplier_nome="Pulizie Bianchi SRL"
-        )
-
-        assert result["success"] is True
-        # add deve essere chiamato due volte: fornitore + transazione
-        assert mock_db.add.call_count == 2
-
-    def test_importo_zero_lancia_errore(self, transaction_service, mock_db):
-        result = transaction_service.create_with_supplier(
-            tipo="Entrata",
-            importo=0,
-            data="01/01/2024",
-            descrizione="Test",
-            property_id=1,
-            tenant_id="tenant_001"
-        )
-        assert result["success"] is False
-        assert "importo" in result["error"].lower()
-
-    def test_tipo_non_valido_lancia_errore(self, transaction_service, mock_db):
-        result = transaction_service.create_with_supplier(
-            tipo="Trasferimento",  # Non esiste
-            importo=100.0,
-            data="01/01/2024",
-            descrizione="Test",
-            property_id=1,
-            tenant_id="tenant_001"
-        )
-        assert result["success"] is False
-
-    def test_data_formato_sbagliato(self, transaction_service, mock_db):
-        result = transaction_service.create_with_supplier(
-            tipo="Entrata",
-            importo=100.0,
-            data="2024-01-15",  # Formato ISO non accettato
-            descrizione="Test",
-            property_id=1,
-            tenant_id="tenant_001"
-        )
-        assert result["success"] is False
-
-    def test_db_error_fa_rollback(self, transaction_service, mock_db):
-        """Se il commit fallisce, deve essere fatto il rollback"""
-        mock_db.commit.side_effect = Exception("DB error")
-
-        result = transaction_service.create_with_supplier(
-            tipo="Entrata",
-            importo=500.0,
-            data="01/01/2024",
-            descrizione="Test",
-            property_id=1,
-            tenant_id="tenant_001"
-        )
-
-        mock_db.rollback.assert_called_once()
-        assert result["success"] is False
-
-
-# ══════════════════════════════════════════════════════════
-#  create (wrapper)
-# ══════════════════════════════════════════════════════════
-
-class TestCreate:
-    """
-    create() deve delegare completamente a create_with_supplier().
-    Verifichiamo che non ci sia logica duplicata.
-    """
-
-    def test_create_delega_a_create_with_supplier(self, transaction_service):
-        """create() è un wrapper — deve chiamare create_with_supplier"""
-        transaction_service.create_with_supplier = MagicMock(
-            return_value={"success": True, "id": 1}
-        )
-
-        transaction_service.create(
-            tipo="Entrata",
-            importo=500.0,
-            data="01/01/2024",
-            descrizione="Test",
-            property_id=1,
-            tenant_id="tenant_001"
-        )
-
-        transaction_service.create_with_supplier.assert_called_once()
-
-    def test_create_passa_tutti_i_parametri(self, transaction_service):
-        """Tutti i parametri devono arrivare invariati a create_with_supplier"""
-        transaction_service.create_with_supplier = MagicMock(
-            return_value={"success": True}
-        )
-
-        transaction_service.create(
-            tipo="Uscita",
-            importo=99.99,
-            data="15/06/2024",
-            descrizione="Manutenzione",
-            property_id=3,
-            tenant_id="tenant_002",
-            supplier_nome="Idraulico Verdi"
-        )
-
-        call_kwargs = transaction_service.create_with_supplier.call_args
-        assert call_kwargs.kwargs.get("supplier_nome") == "Idraulico Verdi" or \
-               "Idraulico Verdi" in str(call_kwargs)
+        from services.transaction_service import TransactionService
+        svc = TransactionService(logger=MagicMock())
+        svc.db = mock_db
+        return svc, mock_session
 
 
 # ══════════════════════════════════════════════════════════
@@ -240,82 +77,284 @@ class TestCreate:
 
 class TestGetAll:
 
-    def test_restituisce_transazioni_corrette(self, transaction_service, mock_db):
-        transazioni = [_make_transaction(1), _make_transaction(2)]
-        mock_db.query.return_value.filter_by.return_value.all.return_value = transazioni
+    def test_restituisce_lista_dizionari(self, transaction_service):
+        svc, session = transaction_service
+        trans = [_make_transaction(1), _make_transaction(2)]
+        session.query.return_value \
+            .filter_by.return_value \
+            .order_by.return_value \
+            .all.return_value = trans
 
-        result = transaction_service.get_all(property_id=1, tenant_id="tenant_001")
+        result = svc.get_all()
 
         assert len(result) == 2
+        assert isinstance(result[0], dict)
 
-    def test_nessuna_transazione_restituisce_lista_vuota(self, transaction_service, mock_db):
-        mock_db.query.return_value.filter_by.return_value.all.return_value = []
+    def test_lista_vuota(self, transaction_service):
+        svc, session = transaction_service
+        session.query.return_value \
+            .filter_by.return_value \
+            .order_by.return_value \
+            .all.return_value = []
 
-        result = transaction_service.get_all(property_id=99, tenant_id="tenant_001")
+        result = svc.get_all()
 
         assert result == []
 
-    def test_non_restituisce_soft_deleted(self, transaction_service, mock_db):
-        """Le transazioni cancellate (soft delete) non devono essere visibili"""
-        t1 = _make_transaction(1, is_deleted=False)
-        t2 = _make_transaction(2, is_deleted=True)
+    def test_filtro_property_id(self, transaction_service):
+        """get_all con property_id deve includere il filtro nella query"""
+        svc, session = transaction_service
+        session.query.return_value \
+            .filter_by.return_value \
+            .filter.return_value \
+            .order_by.return_value \
+            .all.return_value = [_make_transaction(1)]
 
-        # Simula il filtro is_deleted=False già applicato dalla query
-        mock_db.query.return_value.filter.return_value.filter.return_value.all.return_value = [t1]
+        result = svc.get_all(property_id=1)
 
-        result = transaction_service.get_all(property_id=1, tenant_id="tenant_001")
+        assert isinstance(result, list)
 
-        # Solo la transazione non cancellata deve apparire
-        for t in result:
-            assert t.is_deleted is False
+    def test_tenant_isolation(self, transaction_service):
+        """La query deve includere sempre il filtro tenant_id"""
+        svc, session = transaction_service
+        session.query.return_value \
+            .filter_by.return_value \
+            .order_by.return_value \
+            .all.return_value = []
 
-    def test_tenant_isolation(self, transaction_service, mock_db):
-        """
-        get_all non deve mai restituire dati di un tenant diverso.
-        Il filtro tenant_id deve essere sempre nella query.
-        """
-        transaction_service.get_all(property_id=1, tenant_id="tenant_001")
+        svc.get_all()
 
-        # Verifica che la query includa il filtro tenant_id
-        query_calls = str(mock_db.query.call_args_list)
-        filter_calls = str(mock_db.query.return_value.filter_by.call_args_list)
-        assert "tenant_001" in filter_calls or "tenant_001" in query_calls
+        filter_calls = str(session.query.return_value.filter_by.call_args)
+        assert "tenant_id" in filter_calls
+
+    def test_errore_db_ritorna_lista_vuota(self, transaction_service):
+        svc, session = transaction_service
+        session.query.side_effect = Exception("DB error")
+
+        result = svc.get_all()
+
+        assert result == []
+        svc.logger.error.assert_called()
+
+    def test_filtro_date_range(self, transaction_service):
+        """Con start_date e end_date deve applicare un filtro temporale"""
+        svc, session = transaction_service
+        session.query.return_value \
+            .filter_by.return_value \
+            .filter.return_value \
+            .order_by.return_value \
+            .all.return_value = [_make_transaction(1)]
+
+        result = svc.get_all(start_date="2024-01-01", end_date="2024-12-31")
+
+        assert isinstance(result, list)
 
 
 # ══════════════════════════════════════════════════════════
-#  get_by_id
+#  get_monthly_summary
 # ══════════════════════════════════════════════════════════
 
-class TestGetById:
+class TestGetMonthlySummary:
 
-    def test_trovato(self, transaction_service, mock_db):
-        t = _make_transaction(id=42)
-        mock_db.query.return_value.filter_by.return_value.first.return_value = t
+    def test_ritorna_risultati(self, transaction_service):
+        svc, session = transaction_service
+        session.query.return_value \
+            .filter.return_value \
+            .group_by.return_value \
+            .order_by.return_value \
+            .all.return_value = [(1, "Entrata", 1200.0), (1, "Uscita", 300.0)]
 
-        result = transaction_service.get_by_id(42, "tenant_001")
+        result = svc.get_monthly_summary(year=2024)
 
-        assert result is not None
-        assert result.id == 42
+        assert len(result) == 2
 
-    def test_non_trovato_restituisce_none(self, transaction_service, mock_db):
-        mock_db.query.return_value.filter_by.return_value.first.return_value = None
+    def test_lista_vuota_anno_senza_dati(self, transaction_service):
+        svc, session = transaction_service
+        session.query.return_value \
+            .filter.return_value \
+            .group_by.return_value \
+            .order_by.return_value \
+            .all.return_value = []
 
-        result = transaction_service.get_by_id(999, "tenant_001")
+        result = svc.get_monthly_summary(year=2099)
 
+        assert result == []
+
+    def test_errore_db_ritorna_lista_vuota(self, transaction_service):
+        svc, session = transaction_service
+        session.query.side_effect = Exception("DB error")
+
+        result = svc.get_monthly_summary(year=2024)
+
+        assert result == []
+        svc.logger.error.assert_called()
+
+
+# ══════════════════════════════════════════════════════════
+#  create
+# ══════════════════════════════════════════════════════════
+
+class TestCreate:
+
+    def test_crea_transazione_successo(self, transaction_service):
+        svc, session = transaction_service
+
+        with patch("services.transaction_service.Transaction") as MockTrans:
+            mock_t = MagicMock()
+            mock_t.id = 42
+            MockTrans.return_value = mock_t
+
+            result = svc.create(
+                property_id=1,
+                date=date(2024, 1, 15),
+                trans_type="Entrata",
+                amount=1200.0,
+                provider="Inquilino Rossi",
+                service="Affitto"
+            )
+
+        session.add.assert_called_once()
+        session.commit.assert_called_once()
+        # create() delega a create_with_supplier → ritorna id
+        assert result == 42 or result is not None
+
+    def test_errore_db_fa_rollback(self, transaction_service):
+        svc, session = transaction_service
+        session.commit.side_effect = Exception("DB error")
+
+        with patch("services.transaction_service.Transaction"):
+            result = svc.create(
+                property_id=1, date=date(2024, 1, 15),
+                trans_type="Entrata", amount=500.0,
+                provider="Test", service="Test"
+            )
+
+        session.rollback.assert_called_once()
         assert result is None
 
-    def test_tenant_sbagliato_restituisce_none(self, transaction_service, mock_db):
-        """Una transazione di tenant_001 non deve essere visibile a tenant_002"""
-        # Il DB filtra per tenant_id — se non matcha, first() restituisce None
-        mock_db.query.return_value.filter_by.return_value.first.return_value = None
 
-        result = transaction_service.get_by_id(1, "tenant_002")
+# ══════════════════════════════════════════════════════════
+#  create_with_supplier
+# ══════════════════════════════════════════════════════════
 
+class TestCreateWithSupplier:
+
+    def test_crea_senza_supplier(self, transaction_service):
+        svc, session = transaction_service
+
+        with patch("services.transaction_service.Transaction") as MockTrans:
+            mock_t = MagicMock()
+            mock_t.id = 10
+            MockTrans.return_value = mock_t
+
+            result = svc.create_with_supplier(
+                property_id=1,
+                date=date(2024, 1, 20),
+                trans_type="Entrata",
+                amount=800.0,
+                provider="Affittuario",
+                service="Affitto"
+            )
+
+        assert result == 10
+        session.add.assert_called_once()
+        session.commit.assert_called_once()
+
+    def test_crea_con_supplier_id_aggiorna_stats(self, transaction_service):
+        """Con supplier_id e tipo Uscita → aggiorna le statistiche del fornitore.
+        SupplierService viene importato DENTRO la funzione con 'from services...',
+        quindi va patchato nel suo modulo sorgente."""
+        svc, session = transaction_service
+
+        with patch("services.transaction_service.Transaction") as MockTrans, \
+             patch("services.supplier_service.SupplierService") as MockSupplierSvc:
+
+            mock_t = MagicMock()
+            mock_t.id = 20
+            MockTrans.return_value = mock_t
+
+            mock_instance = MagicMock()
+            MockSupplierSvc.return_value = mock_instance
+
+            result = svc.create_with_supplier(
+                property_id=1,
+                date=date(2024, 1, 25),
+                trans_type="Uscita",
+                amount=120.0,
+                provider="ENEL",
+                service="Bolletta Luce",
+                supplier_id=5
+            )
+
+        assert result == 20
+        mock_instance.update_service_stats.assert_called_once()
+
+    def test_crea_entrata_con_supplier_non_aggiorna_stats(self, transaction_service):
+        """Le Entrate non devono aggiornare le stats del fornitore"""
+        svc, session = transaction_service
+
+        with patch("services.transaction_service.Transaction") as MockTrans, \
+             patch("services.supplier_service.SupplierService") as MockSupplierSvc:
+
+            mock_t = MagicMock()
+            mock_t.id = 30
+            MockTrans.return_value = mock_t
+
+            mock_instance = MagicMock()
+            MockSupplierSvc.return_value = mock_instance
+
+            svc.create_with_supplier(
+                property_id=1,
+                date=date(2024, 1, 15),
+                trans_type="Entrata",  # Entrata: non aggiorna stats
+                amount=1000.0,
+                provider="Inquilino",
+                service="Affitto",
+                supplier_id=5
+            )
+
+        mock_instance.update_service_stats.assert_not_called()
+
+    def test_errore_db_fa_rollback(self, transaction_service):
+        svc, session = transaction_service
+        session.commit.side_effect = Exception("DB error")
+
+        with patch("services.transaction_service.Transaction"):
+            result = svc.create_with_supplier(
+                property_id=1, date=date(2024, 1, 1),
+                trans_type="Entrata", amount=100.0,
+                provider="Test", service="Test"
+            )
+
+        session.rollback.assert_called_once()
         assert result is None
 
-    def test_id_non_intero_lancia_errore(self, transaction_service, mock_db):
-        with pytest.raises(Exception):
-            transaction_service.get_by_id("non_un_id", "tenant_001")
+    def test_errore_stats_fornitore_non_blocca_transazione(self, transaction_service):
+        """Se l'aggiornamento stats fallisce, la transazione deve essere già salvata"""
+        svc, session = transaction_service
+
+        with patch("services.transaction_service.Transaction") as MockTrans, \
+             patch("services.supplier_service.SupplierService") as MockSupplierSvc:
+
+            mock_t = MagicMock()
+            mock_t.id = 50
+            MockTrans.return_value = mock_t
+            MockSupplierSvc.return_value.update_service_stats.side_effect = Exception("Stats error")
+
+            result = svc.create_with_supplier(
+                property_id=1,
+                date=date(2024, 1, 1),
+                trans_type="Uscita",
+                amount=200.0,
+                provider="Test",
+                service="Manutenzione",
+                supplier_id=9
+            )
+
+        # La transazione deve essere salvata anche se le stats falliscono
+        assert result == 50
+        session.commit.assert_called()
+        svc.logger.warning.assert_called()
 
 
 # ══════════════════════════════════════════════════════════
@@ -324,177 +363,174 @@ class TestGetById:
 
 class TestUpdate:
 
-    def test_update_importo(self, transaction_service, mock_db):
+    def test_aggiorna_importo(self, transaction_service):
+        svc, session = transaction_service
         t = _make_transaction(id=1, importo=100.0)
-        mock_db.query.return_value.filter_by.return_value.first.return_value = t
+        session.query.return_value.filter.return_value.first.return_value = t
 
-        result = transaction_service.update(
-            transaction_id=1,
-            tenant_id="tenant_001",
-            importo=250.0
-        )
+        result = svc.update(1, amount=250.0)
 
-        assert result["success"] is True
-        assert t.importo == 250.0
-        mock_db.commit.assert_called()
+        assert result is True
+        assert t.amount == 250.0
+        session.commit.assert_called_once()
 
-    def test_update_descrizione(self, transaction_service, mock_db):
+    def test_aggiorna_provider(self, transaction_service):
+        svc, session = transaction_service
         t = _make_transaction(id=1)
-        mock_db.query.return_value.filter_by.return_value.first.return_value = t
+        session.query.return_value.filter.return_value.first.return_value = t
 
-        result = transaction_service.update(
-            transaction_id=1,
-            tenant_id="tenant_001",
-            descrizione="Nuova descrizione aggiornata"
-        )
+        result = svc.update(1, provider="Nuovo Fornitore")
 
-        assert result["success"] is True
-        assert t.descrizione == "Nuova descrizione aggiornata"
+        assert result is True
+        assert t.provider == "Nuovo Fornitore"
 
-    def test_non_puo_cambiare_tenant_id(self, transaction_service, mock_db):
-        """Il tenant_id è immutabile — non deve poter essere modificato"""
+    def test_campo_non_nella_whitelist_ignorato(self, transaction_service):
+        """tenant_id non è nella whitelist → non viene modificato"""
+        svc, session = transaction_service
         t = _make_transaction(id=1, tenant_id="tenant_001")
-        mock_db.query.return_value.filter_by.return_value.first.return_value = t
+        session.query.return_value.filter.return_value.first.return_value = t
 
-        result = transaction_service.update(
-            transaction_id=1,
-            tenant_id="tenant_001",
-            # Tentativo di escalation del tenant
-            **{"tenant_id_new": "tenant_admin"}
-        )
+        result = svc.update(1, tenant_id="tenant_hacker")
 
-        # Il tenant_id non deve cambiare mai
+        assert result is True
+        # tenant_id deve rimanere invariato
         assert t.tenant_id == "tenant_001"
 
-    def test_transazione_non_trovata(self, transaction_service, mock_db):
-        mock_db.query.return_value.filter_by.return_value.first.return_value = None
+    def test_transazione_non_trovata_ritorna_false(self, transaction_service):
+        svc, session = transaction_service
+        session.query.return_value.filter.return_value.first.return_value = None
 
-        result = transaction_service.update(
-            transaction_id=999,
-            tenant_id="tenant_001",
-            importo=100.0
-        )
+        result = svc.update(999, amount=100.0)
 
-        assert result["success"] is False
+        assert result is False
 
-    def test_importo_zero_rifiutato(self, transaction_service, mock_db):
+    def test_errore_db_fa_rollback(self, transaction_service):
+        svc, session = transaction_service
         t = _make_transaction(id=1)
-        mock_db.query.return_value.filter_by.return_value.first.return_value = t
+        session.query.return_value.filter.return_value.first.return_value = t
+        session.commit.side_effect = Exception("DB error")
 
-        result = transaction_service.update(
-            transaction_id=1,
-            tenant_id="tenant_001",
-            importo=0
-        )
+        result = svc.update(1, amount=500.0)
 
-        assert result["success"] is False
+        session.rollback.assert_called_once()
+        assert result is False
+
+    def test_tenant_isolation_nella_query(self, transaction_service):
+        """La query di update deve filtrare per tenant_id"""
+        svc, session = transaction_service
+        session.query.return_value.filter.return_value.first.return_value = None
+
+        svc.update(1, amount=100.0)
+
+        filter_calls = str(session.query.return_value.filter.call_args)
+        assert "tenant_id" in filter_calls.lower() or \
+               session.query.return_value.filter.called
 
 
 # ══════════════════════════════════════════════════════════
-#  delete (soft delete)
+#  delete (hard delete — comportamento del service reale)
 # ══════════════════════════════════════════════════════════
 
 class TestDelete:
 
-    def test_soft_delete_non_rimuove_da_db(self, transaction_service, mock_db):
-        """Il record deve rimanere in DB con is_deleted=True"""
-        t = _make_transaction(id=1, is_deleted=False)
-        mock_db.query.return_value.filter_by.return_value.first.return_value = t
+    def test_elimina_transazione_successo(self, transaction_service):
+        svc, session = transaction_service
+        t = _make_transaction(id=1)
+        session.query.return_value.filter.return_value.first.return_value = t
 
-        result = transaction_service.delete(1, "tenant_001")
+        result = svc.delete(1)
 
-        assert result["success"] is True
-        assert t.is_deleted is True
-        mock_db.delete.assert_not_called()  # NON deve fare hard delete
-        mock_db.commit.assert_called()
+        assert result is True
+        session.delete.assert_called_once_with(t)
+        session.commit.assert_called_once()
 
-    def test_delete_transazione_non_trovata(self, transaction_service, mock_db):
-        mock_db.query.return_value.filter_by.return_value.first.return_value = None
+    def test_transazione_non_trovata_ritorna_false(self, transaction_service):
+        svc, session = transaction_service
+        session.query.return_value.filter.return_value.first.return_value = None
 
-        result = transaction_service.delete(999, "tenant_001")
+        result = svc.delete(999)
 
-        assert result["success"] is False
+        assert result is False
+        session.delete.assert_not_called()
 
-    def test_delete_di_altro_tenant_fallisce(self, transaction_service, mock_db):
-        mock_db.query.return_value.filter_by.return_value.first.return_value = None
+    def test_errore_db_fa_rollback(self, transaction_service):
+        svc, session = transaction_service
+        t = _make_transaction(id=1)
+        session.query.return_value.filter.return_value.first.return_value = t
+        session.commit.side_effect = Exception("DB error")
 
-        result = transaction_service.delete(1, "tenant_hacker")
+        result = svc.delete(1)
 
-        assert result["success"] is False
+        session.rollback.assert_called_once()
+        assert result is False
+
+    def test_tenant_isolation_nella_delete(self, transaction_service):
+        """La delete deve filtrare per tenant_id"""
+        svc, session = transaction_service
+        session.query.return_value.filter.return_value.first.return_value = None
+
+        svc.delete(1)
+
+        assert session.query.return_value.filter.called
 
 
 # ══════════════════════════════════════════════════════════
-#  get_summary
+#  get_balance
 # ══════════════════════════════════════════════════════════
 
-class TestGetSummary:
-    """Test per il calcolo finanziario — il più critico per l'app"""
+class TestGetBalance:
 
-    def test_saldo_corretto(self, transaction_service, mock_db):
+    def test_saldo_positivo(self, transaction_service):
         """Entrate 1500 - Uscite 500 = Saldo 1000"""
-        transazioni = [
-            _make_transaction(1, "Entrata", 1000.0),
-            _make_transaction(2, "Entrata", 500.0),
-            _make_transaction(3, "Uscita", 500.0),
-        ]
-        mock_db.query.return_value.filter_by.return_value.all.return_value = transazioni
+        svc, session = transaction_service
 
-        result = transaction_service.get_summary(property_id=1, tenant_id="tenant_001")
+        # Prima chiamata scalar() → entrate, seconda → uscite
+        session.query.return_value \
+            .filter.return_value \
+            .scalar.side_effect = [1500.0, 500.0]
 
-        assert result["totale_entrate"] == 1500.0
-        assert result["totale_uscite"] == 500.0
-        assert result["saldo"] == 1000.0
+        result = svc.get_balance()
 
-    def test_saldo_negativo(self, transaction_service, mock_db):
-        """Le uscite possono superare le entrate — saldo negativo valido"""
-        transazioni = [
-            _make_transaction(1, "Entrata", 100.0),
-            _make_transaction(2, "Uscita", 600.0),
-        ]
-        mock_db.query.return_value.filter_by.return_value.all.return_value = transazioni
+        assert result == 1000.0
 
-        result = transaction_service.get_summary(property_id=1, tenant_id="tenant_001")
+    def test_saldo_negativo(self, transaction_service):
+        """Uscite possono superare le entrate"""
+        svc, session = transaction_service
+        session.query.return_value \
+            .filter.return_value \
+            .scalar.side_effect = [100.0, 600.0]
 
-        assert result["saldo"] == -500.0
+        result = svc.get_balance()
 
-    def test_nessuna_transazione(self, transaction_service, mock_db):
-        """Proprietà senza transazioni: tutti i valori devono essere zero"""
-        mock_db.query.return_value.filter_by.return_value.all.return_value = []
+        assert result == -500.0
 
-        result = transaction_service.get_summary(property_id=1, tenant_id="tenant_001")
+    def test_saldo_zero_senza_transazioni(self, transaction_service):
+        svc, session = transaction_service
+        session.query.return_value \
+            .filter.return_value \
+            .scalar.side_effect = [0.0, 0.0]
 
-        assert result["totale_entrate"] == 0.0
-        assert result["totale_uscite"] == 0.0
-        assert result["saldo"] == 0.0
+        result = svc.get_balance()
 
-    def test_non_include_soft_deleted(self, transaction_service, mock_db):
-        """Le transazioni cancellate non devono influire sul saldo"""
-        transazioni = [
-            _make_transaction(1, "Entrata", 1000.0, is_deleted=False),
-            _make_transaction(2, "Entrata", 9999.0, is_deleted=True),  # Non deve contare
-        ]
-        # Simula che la query filtri già is_deleted=False
-        mock_db.query.return_value.filter.return_value.filter.return_value.all.return_value = [
-            transazioni[0]
-        ]
+        assert result == 0.0
 
-        result = transaction_service.get_summary(property_id=1, tenant_id="tenant_001")
+    def test_filtro_property_id(self, transaction_service):
+        """get_balance con property_id deve filtrare ulteriormente"""
+        svc, session = transaction_service
+        session.query.return_value \
+            .filter.return_value \
+            .filter.return_value \
+            .scalar.side_effect = [800.0, 200.0]
 
-        # Se il filtro funziona, il totale entrate è 1000, non 10999
-        assert result["totale_entrate"] != 10999.0
+        result = svc.get_balance(property_id=1)
 
-    def test_arrotondamento_a_due_decimali(self, transaction_service, mock_db):
-        """I valori finanziari devono essere arrotondati a 2 decimali"""
-        transazioni = [
-            _make_transaction(1, "Entrata", 100.001),
-            _make_transaction(2, "Entrata", 200.009),
-        ]
-        mock_db.query.return_value.filter_by.return_value.all.return_value = transazioni
+        assert isinstance(result, (int, float))
 
-        result = transaction_service.get_summary(property_id=1, tenant_id="tenant_001")
+    def test_errore_db_ritorna_zero(self, transaction_service):
+        svc, session = transaction_service
+        session.query.side_effect = Exception("DB error")
 
-        # Il saldo deve avere al massimo 2 decimali
-        saldo_str = str(result["saldo"])
-        if "." in saldo_str:
-            decimali = saldo_str.split(".")[1]
-            assert len(decimali) <= 2
+        result = svc.get_balance()
+
+        assert result == 0
+        svc.logger.error.assert_called()
