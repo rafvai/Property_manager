@@ -1015,7 +1015,7 @@ class SuppliersView(BaseView):
         self.update_stats(len(suppliers))
 
         if not suppliers:
-            no_data_label = QLabel(self.tm.get("suppliers","no_suppliers"))
+            no_data_label = QLabel(self.tm.get("ETICHETTE","NESSUN_FORNITORE"))
             no_data_label.setStyleSheet("color: #bdc3c7; font-size: 16px; padding: 40px;")
             no_data_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.cards_layout.addWidget(no_data_label)
@@ -1166,15 +1166,15 @@ class SuppliersView(BaseView):
                 if supplier_id:
                     QMessageBox.information(
                         self,
-                        "✅ Successo",
-                        f"Fornitore '{name}' aggiunto con successo!"
+                        self.tm.get("MESSAGGI","SUCCESSO"),
+                        self.tm.get("MESSAGGI", "FORNITORE_AGGIUNTO").replace("XXX", name)
                     )
                     self.populate_categories()
                     self.load_suppliers()
                 else:
                     QMessageBox.warning(
                         self,
-                        "❌ Errore",
+                        self.tm.get("MESSAGGI","ERRORE"),
                         "Impossibile aggiungere il fornitore."
                     )
 
@@ -1191,7 +1191,7 @@ class SuppliersView(BaseView):
         layout = QFormLayout(dialog)
 
         name_input = QLineEdit(supplier['name'])
-        layout.addRow("Nome*:", name_input)
+        layout.addRow(f"{self.tm.get("ETICHETTE","NOME")}*:", name_input)
 
         category_combo = QComboBox()
         category_combo.setEditable(True)
@@ -1199,7 +1199,7 @@ class SuppliersView(BaseView):
         for cat in categories:
             category_combo.addItem(cat)
         category_combo.setCurrentText(supplier['category'])
-        layout.addRow("Categoria*:", category_combo)
+        layout.addRow(f"{self.tm.get("ETICHETTE","CATEGORIA")}*:", category_combo)
 
         property_combo = QComboBox()
         property_combo.addItem("Nessuna proprietà", None)
@@ -1213,16 +1213,16 @@ class SuppliersView(BaseView):
             if index >= 0:
                 property_combo.setCurrentIndex(index)
         
-        layout.addRow("Proprietà:", property_combo)
+        layout.addRow(self.tm.get("ETICHETTE","PROPRIETA"), property_combo)
 
         phone_input = QLineEdit(supplier.get('phone') or "")
-        layout.addRow("Telefono:", phone_input)
+        layout.addRow(self.tm.get("ETICHETTE","TELEFONO"), phone_input)
 
         email_input = QLineEdit(supplier.get('email') or "")
-        layout.addRow("Email:", email_input)
+        layout.addRow(self.tm.get("ETICHETTE","EMAIL"), email_input)
 
         address_input = QLineEdit(supplier.get('address') or "")
-        layout.addRow("Indirizzo:", address_input)
+        layout.addRow(self.tm.get("ETICHETTE","INDIRIZZO"), address_input)
 
         notes_input = QTextEdit()
         notes_input.setPlainText(supplier.get('notes') or "")

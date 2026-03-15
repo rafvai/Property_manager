@@ -46,14 +46,29 @@ class DocumentsView(BaseView):
         header_layout.addWidget(title)
         header_layout.addStretch()
 
-        # Bottone aggiungi spostato qui
-        add_doc_btn = QPushButton(f"+ {self.tm.get("PULSANTI", "AGGIUNGI")}")
+        # Bottone aggiungi: visibile solo se ci sono proprietà
+        add_doc_btn = QPushButton(f"+ {self.tm.get('PULSANTI', 'AGGIUNGI')}")
         add_doc_btn.setStyleSheet(default_aggiungi_button)
         add_doc_btn.setFixedHeight(36)
         add_doc_btn.clicked.connect(self.add_document)
+        # Disabilita visivamente il bottone se non ci sono proprietà
+        if not self.proprieta:
+            add_doc_btn.setEnabled(False)
+            add_doc_btn.setToolTip(self.tm.get("MESSAGGI", "NESSUNA_PROPRIETA_TROVATA"))
         header_layout.addWidget(add_doc_btn)
 
         main_layout.addLayout(header_layout)
+
+        # Messaggio se non ci sono proprietà
+        if not self.proprieta:
+            no_prop_label = QLabel(f"⚠️  {self.tm.get('ETICHETTE', 'NESSUNA_PROPRIETA_TROVATA')}")
+            no_prop_label.setStyleSheet(
+                f"color: {COLORE_WARNING}; font-size: 14px; padding: 20px;"
+            )
+            no_prop_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            main_layout.addWidget(no_prop_label)
+            main_layout.addStretch()
+            return
 
         # Combo proprietà
         self.property_selector = QComboBox()
@@ -150,7 +165,7 @@ class DocumentsView(BaseView):
                         border-radius: 4px;
                     }
                 """)
-                open_file_btn.setToolTip(self.tm.get("ETICHETTE","APRI_DOCUMENTO"))
+                open_file_btn.setToolTip(self.tm.get("ETICHETTE", "APRI_DOCUMENTO"))
                 open_file_btn.clicked.connect(lambda _, path=doc["path"]: self.open_file(path))
                 layout.addWidget(open_file_btn)
 
@@ -168,7 +183,7 @@ class DocumentsView(BaseView):
                         border-radius: 4px;
                     }
                 """)
-                open_folder_btn.setToolTip(self.tm.get("ETICHETTE","APRI_CARTELLA"))
+                open_folder_btn.setToolTip(self.tm.get("ETICHETTE", "APRI_CARTELLA"))
                 open_folder_btn.clicked.connect(lambda _, path=doc["path"]: self.open_file_location(path))
                 layout.addWidget(open_folder_btn)
 
@@ -181,6 +196,16 @@ class DocumentsView(BaseView):
     def add_document(self):
         """Aggiunge nuovi documenti CON VALIDAZIONE"""
         from validation_utils import parse_decimal, ValidationError
+
+        # Controllo difensivo: non dovrebbe mai scattare grazie al bottone disabilitato,
+        # ma protegge da chiamate programmatiche dirette
+        if not self.proprieta or not self.selected_property:
+            QMessageBox.warning(
+                self,
+                f"⚠️ {self.tm.get('MESSAGGI', 'ERRORE')}",
+                self.tm.get("ETICHETTE", "NESSUNA_PROPRIETA_TROVATA")
+            )
+            return
 
         dialog = QFileDialog(self)
         dialog.setFileMode(QFileDialog.ExistingFiles)
@@ -222,7 +247,7 @@ class DocumentsView(BaseView):
                         self.logger.info(f"Documento salvato: {dest_path}")
                         QMessageBox.information(
                             self,
-                            f"✅ {self.tm.get("MESSAGGI","SUCCESSO")}",
+                            f"✅ {self.tm.get('MESSAGGI', 'SUCCESSO')}",
                             f"Documento salvato correttamente!\n\n"
                             f"📄 {os.path.basename(dest_path)}\n"
                             f"💰 {importo_float:,.2f}€"
@@ -231,7 +256,7 @@ class DocumentsView(BaseView):
                     self.logger.error(f"Impossibile salvare la transazione nel database")
                     QMessageBox.warning(
                         self,
-                        f"⚠️ {self.tm.get("common", "error")}",
+                        f"⚠️ {self.tm.get('common', 'error')}",
                         "Impossibile salvare la transazione nel database"
                     )
 
@@ -247,7 +272,7 @@ class DocumentsView(BaseView):
                 self.logger.exception(f"Errore durante il salvataggio {str(e)}")
                 QMessageBox.critical(
                     self,
-                    f"❌ {self.tm.get("common", "error")}",
+                    f"❌ {self.tm.get('common', 'error')}",
                     f"Errore durante il salvataggio:\n\n{str(e)}"
                 )
                 continue

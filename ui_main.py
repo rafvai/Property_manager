@@ -28,11 +28,14 @@ from views.suppliers_view import SuppliersView
 
 
 class DashboardWindow(QMainWindow):
-    def __init__(self, db_service, preferences_service, supplier_service, translation_manager, logger):
+    def __init__(self, db_service, preferences_service, supplier_service, translation_manager, logger, is_admin=False):
         super().__init__()
 
         # Logger
         self.logger = logger
+
+        # Ruolo utente
+        self.is_admin = is_admin
 
         # Servizi
         self.db_service = db_service
@@ -40,7 +43,7 @@ class DashboardWindow(QMainWindow):
         self.tm = translation_manager
         self.supplier_service = supplier_service
 
-        # Inizializza i services INTERNAMENTE (non li riceve più come parametri)
+        # Inizializza i services INTERNAMENTE
         from services.property_service import PropertyService
         from services.transaction_service import TransactionService
         from services.document_service import DocumentService
@@ -125,9 +128,11 @@ class DashboardWindow(QMainWindow):
             ("icons/pie-chart.png", self.tm.get("ETICHETTE", "TRANSAZIONI")),
             ("icons/calendar.png", self.tm.get("ETICHETTE", "CALENDAR")),
             ("icons/security.png", self.tm.get("ETICHETTE", "FORNITORI")),
-            ("icons/settings.png", self.tm.get("ETICHETTE", "IMPOSTAZIONI")),
-            ("icons/settings.png", self.tm.get("MENU", "TRADUZIONI"))
+            ("icons/settings.png", self.tm.get("ETICHETTE", "IMPOSTAZIONI"))
         ]
+        # La voce Traduzioni è visibile solo agli admin
+        if self.is_admin:
+            menu_items.append(("icons/settings.png", self.tm.get("MENU", "TRADUZIONI")))
 
         for icon_path, text in menu_items:
             item = QListWidgetItem(QIcon(icon_path), text)
@@ -217,7 +222,7 @@ class DashboardWindow(QMainWindow):
                 logger=self.logger,
                 parent=self
             ))
-        elif index == 8:  # Traduzioni
+        elif index == 8 and self.is_admin:  # Traduzioni
             from views.translations_admin_view_simple import TranslationsAdminView
             self.show_view(TranslationsAdminView(
                 translation_manager=self.tm,

@@ -60,7 +60,8 @@ class AppController:
             s['prefs'],
             s['supplier'],
             s['translation'],
-            logger=self.logger
+            logger=self.logger,
+            is_admin=is_admin
         )
         win.show()
         self._window = win   # login già chiuso dal suo _proceed()
@@ -84,7 +85,8 @@ class AppController:
             s['prefs'],
             s['supplier'],
             s['translation'],
-            logger=self.logger
+            logger=self.logger,
+            is_admin=False
         )
         win.show()
         self._window = win

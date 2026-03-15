@@ -257,7 +257,7 @@ class DashboardView(BaseView):
             }}
         """)
         bottom_layout = QVBoxLayout(bottom_frame)
-        bottom_label = QLabel(self.tm.get("ETICHETTE", "DOCUMENTS") + " - " + self.tm.get("dashboard", "click_to_manage"))
+        bottom_label = QLabel(self.tm.get("ETICHETTE", "DOCUMENTS"))
         bottom_label.setStyleSheet("color: white; font-size: 14px;")
         bottom_layout.addWidget(bottom_label)
         layout.addWidget(bottom_frame)
