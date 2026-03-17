@@ -1,13 +1,18 @@
+# Ambiente — MAI committare il .env attivo
+.env
+
+# Template committabili (contengono solo valori di esempio)
+# .env.development  ← OK committare
+# .env.production   ← OK committare
+
 # Chiavi segrete
 .secret_key
+.encryption_key
 
 # Database
 *.db
 *.db-shm
 *.db-wal
-
-# Variabili ambiente
-.env
 
 # Python
 __pycache__/
@@ -16,9 +21,6 @@ __pycache__/
 .venv/
 venv/
 
-# Chiave cifratura
-.encryption_key
-
 # Log
 logs/
 *.log
@@ -26,3 +28,6 @@ logs/
 # Export e documenti utente
 exports/
 docs/
+
+# Preferenze locali
+preferences.json

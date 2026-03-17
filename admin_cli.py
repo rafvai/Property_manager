@@ -17,14 +17,16 @@ Esempi:
     python admin_cli.py extend 3 --days 90
     python admin_cli.py suspend 3
     python admin_cli.py activate 3
+    python admin_cli.py promote 3
+    python admin_cli.py demote 3
     python admin_cli.py log 3
+    python admin_cli.py delete 3
 """
 
 import os
 import sys
 import argparse
-import json
-from datetime import datetime, timedelta
+from datetime import datetime
 
 try:
     import requests
@@ -42,7 +44,7 @@ HEADERS = {"X-Admin-Key": ADMIN_KEY, "Content-Type": "application/json"}
 #  HELPERS
 # ─────────────────────────────────────────────
 def req(method, path, **kwargs):
-    url = f"{SERVER_URL}{path}"
+    url  = f"{SERVER_URL}{path}"
     resp = getattr(requests, method)(url, headers=HEADERS, timeout=10, **kwargs)
     if resp.status_code not in (200, 201):
         print(f"❌ Errore {resp.status_code}: {resp.text}")
@@ -68,7 +70,6 @@ def days_label(n):
 
 
 def print_table(rows, cols):
-    """Stampa una tabella minimal"""
     widths = {k: len(k) for k in cols}
     for r in rows:
         for k in cols:
@@ -106,15 +107,15 @@ def cmd_list_users(_args):
     rows = []
     for u in users:
         rows.append({
-            "ID"         : u["id"],
-            "Email"      : u["email"],
-            "Nome"       : u["full_name"] or "—",
-            "Piano"      : u["plan"],
-            "Stato"      : u["status"],
-            "Scadenza"   : u["expires_at"][:10],
-            "Giorni"     : days_label(u["days_left"]),
-            "Ultimo acc" : fmt_date(u["last_login"])[:10] if u["last_login"] else "mai",
-            "Accessi"    : u["login_count"]
+            "ID"        : u["id"],
+            "Email"     : u["email"],
+            "Nome"      : u["full_name"] or "—",
+            "Piano"     : u["plan"],
+            "Stato"     : u["status"],
+            "Scadenza"  : u["expires_at"][:10],
+            "Giorni"    : days_label(u["days_left"]),
+            "Ultimo acc": fmt_date(u["last_login"])[:10] if u["last_login"] else "mai",
+            "Accessi"   : u["login_count"]
         })
 
     print(f"\n👥 Utenti registrati ({len(rows)})\n")
@@ -148,12 +149,12 @@ def cmd_list_invites(_args):
     rows = []
     for i in invites:
         rows.append({
-            "Codice"    : i["code"],
-            "Piano"     : i["plan"],
-            "Gg lic."   : i["expires_days"],
-            "Usato"     : f"{i['used_count']}/{i['max_uses']}",
-            "Attivo"    : "✓" if i["is_active"] else "✗",
-            "Note"      : (i["note"] or "")[:30]
+            "Codice"  : i["code"],
+            "Piano"   : i["plan"],
+            "Gg lic." : i["expires_days"],
+            "Usato"   : f"{i['used_count']}/{i['max_uses']}",
+            "Attivo"  : "✓" if i["is_active"] else "✗",
+            "Note"    : (i["note"] or "")[:30]
         })
 
     print(f"\n🎟️  Codici invito ({len(rows)})\n")
@@ -198,14 +199,13 @@ def cmd_log(args):
     rows = []
     for e in entries:
         rows.append({
-            "Data"   : fmt_date(e["timestamp"]),
-            "IP"     : e["ip"] or "—",
-            "Esito"  : "✓ OK" if e["success"] else "✗ KO",
-            "Motivo" : e["reason"] or ""
+            "Data"  : fmt_date(e["timestamp"]),
+            "IP"    : e["ip"] or "—",
+            "Esito" : "✓ OK" if e["success"] else "✗ KO",
+            "Motivo": e["reason"] or ""
         })
     print_table(rows, ["Data", "IP", "Esito", "Motivo"])
     print()
-
 
 
 def cmd_promote(args):
@@ -216,6 +216,7 @@ def cmd_promote(args):
 def cmd_demote(args):
     req("patch", f"/admin/users/{args.user_id}/demote")
     print(f"⬇️  Utente {args.user_id} declassato a utente normale.")
+
 
 def cmd_delete(args):
     confirm = input(f"Sei sicuro di voler eliminare l'utente {args.user_id}? (digita 'CONFERMA'): ")
@@ -242,16 +243,16 @@ def main():
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("stats",         help="Statistiche generali")
-    sub.add_parser("list-users",    help="Lista tutti gli utenti")
+    sub.add_parser("stats",       help="Statistiche generali")
+    sub.add_parser("list-users",  help="Lista tutti gli utenti")
 
     p = sub.add_parser("create-invite", help="Crea codice invito")
-    p.add_argument("--uses",  type=int, default=1,    help="Usi massimi (default 1)")
-    p.add_argument("--days",  type=int, default=90,   help="Durata licenza in giorni (default 90)")
-    p.add_argument("--plan",  default="beta",          help="Piano: beta|monthly|annual")
-    p.add_argument("--note",  default="",              help="Nota (es. nome del tester)")
+    p.add_argument("--uses", type=int, default=1,   help="Usi massimi (default 1)")
+    p.add_argument("--days", type=int, default=90,  help="Durata licenza in giorni (default 90)")
+    p.add_argument("--plan", default="beta",         help="Piano: beta|monthly|annual")
+    p.add_argument("--note", default="",             help="Nota (es. nome del tester)")
 
-    sub.add_parser("list-invites",  help="Lista codici invito")
+    sub.add_parser("list-invites", help="Lista codici invito")
 
     p = sub.add_parser("revoke-invite", help="Revoca codice invito")
     p.add_argument("code", help="Codice da revocare")
@@ -273,24 +274,31 @@ def main():
     p = sub.add_parser("log", help="Log accessi utente")
     p.add_argument("user_id", type=int)
 
+    # FIX: promote e demote ora registrati nel parser
+    p = sub.add_parser("promote", help="Promuovi utente ad admin")
+    p.add_argument("user_id", type=int)
+
+    p = sub.add_parser("demote", help="Rimuovi privilegi admin da utente")
+    p.add_argument("user_id", type=int)
+
     p = sub.add_parser("delete", help="Elimina utente (irreversibile)")
     p.add_argument("user_id", type=int)
 
-    args   = parser.parse_args()
-    cmds   = {
-        "stats"         : cmd_stats,
-        "list-users"    : cmd_list_users,
-        "create-invite" : cmd_create_invite,
-        "list-invites"  : cmd_list_invites,
-        "revoke-invite" : cmd_revoke_invite,
-        "extend"        : cmd_extend,
-        "suspend"       : cmd_suspend,
-        "activate"      : cmd_activate,
-        "notes"         : cmd_notes,
-        "log"           : cmd_log,
-        "promote"       : cmd_promote,
-        "demote"        : cmd_demote,
-        "delete"        : cmd_delete,
+    args = parser.parse_args()
+    cmds = {
+        "stats"        : cmd_stats,
+        "list-users"   : cmd_list_users,
+        "create-invite": cmd_create_invite,
+        "list-invites" : cmd_list_invites,
+        "revoke-invite": cmd_revoke_invite,
+        "extend"       : cmd_extend,
+        "suspend"      : cmd_suspend,
+        "activate"     : cmd_activate,
+        "notes"        : cmd_notes,
+        "log"          : cmd_log,
+        "promote"      : cmd_promote,
+        "demote"       : cmd_demote,
+        "delete"       : cmd_delete,
     }
     cmds[args.command](args)
 

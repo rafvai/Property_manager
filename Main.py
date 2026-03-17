@@ -1,15 +1,11 @@
 import sys
-import os
 from PySide6.QtWidgets import QApplication
 
-os.environ['APP_ENV'] = 'development'  # development | production | saas
+# ── Config è il primo import: carica .env prima di tutto il resto ──
+from config import Config
 
 from log_manager import LogManager
 from services.database_service import DatabaseService
-from services.property_service import PropertyService
-from services.transaction_service import TransactionService
-from services.document_service import DocumentService
-from services.deadline_service import DeadlineService
 from services.preferences_service import PreferencesService
 from services.supplier_service import SupplierService
 from services.translation_system_simple import TranslationManager
@@ -22,25 +18,39 @@ from ui_main import DashboardWindow
 class AppController:
     """
     Gestisce il ciclo di vita delle finestre e i passaggi tra di esse.
-    Mantiene i riferimenti vivi per evitare garbage collection.
 
-    Flusso:
+    Flusso production/saas:
         Login ──► Dashboard
           │
           └──► Register ──► Dashboard
+
+    Flusso development (DEV_SKIP_LOGIN=true):
+        Direttamente ──► Dashboard (is_admin=True)
     """
 
     def __init__(self, app, services: dict, logger):
         self.app      = app
         self.services = services
         self.logger   = logger
-        self._window  = None   # finestra attiva corrente
+        self._window  = None
 
     # ──────────────────────────────────────────────
     #  ENTRY POINT
     # ──────────────────────────────────────────────
     def start(self):
-        self._show_login()
+        if Config.is_development() and Config.DEV_SKIP_LOGIN:
+            self._skip_login()
+        else:
+            self._show_login()
+
+    # ──────────────────────────────────────────────
+    #  DEVELOPMENT — bypass login
+    # ──────────────────────────────────────────────
+    def _skip_login(self):
+        self.logger.warning("⚠️  DEV MODE: login bypassato (DEV_SKIP_LOGIN=true)")
+        win = self._build_dashboard(is_admin=True)
+        win.show()
+        self._window = win
 
     # ──────────────────────────────────────────────
     #  LOGIN
@@ -49,22 +59,22 @@ class AppController:
         win = LoginWindow(self.services['auth'], self.logger)
         win.login_successful.connect(self._on_login_ok)
         win.open_register.connect(self._show_register)
+
+        # In dev, pre-compila le credenziali se impostate nel .env
+        if Config.is_development():
+            if Config.DEV_LOGIN_EMAIL:
+                win.email_input.setText(Config.DEV_LOGIN_EMAIL)
+            if Config.DEV_LOGIN_PASSWORD:
+                win.password_input.setText(Config.DEV_LOGIN_PASSWORD)
+
         win.show()
         self._window = win
 
     def _on_login_ok(self, email: str, token: str, is_admin: bool):
         self.logger.info(f"AppController: accesso confermato per {email}, admin={is_admin}")
-        s = self.services
-        win = DashboardWindow(
-            s['db'],
-            s['prefs'],
-            s['supplier'],
-            s['translation'],
-            logger=self.logger,
-            is_admin=is_admin
-        )
+        win = self._build_dashboard(is_admin=is_admin)
         win.show()
-        self._window = win   # login già chiuso dal suo _proceed()
+        self._window = win
 
     # ──────────────────────────────────────────────
     #  REGISTER
@@ -79,17 +89,24 @@ class AppController:
     def _on_register_ok(self):
         self.logger.info("AppController: registrazione completata, ritorno al login")
         self._window.close()
+        # I nuovi utenti non sono mai admin
+        win = self._build_dashboard(is_admin=False)
+        win.show()
+        self._window = win
+
+    # ──────────────────────────────────────────────
+    #  HELPER
+    # ──────────────────────────────────────────────
+    def _build_dashboard(self, is_admin: bool) -> DashboardWindow:
         s = self.services
-        win = DashboardWindow(
+        return DashboardWindow(
             s['db'],
             s['prefs'],
             s['supplier'],
             s['translation'],
             logger=self.logger,
-            is_admin=False
+            is_admin=is_admin
         )
-        win.show()
-        self._window = win
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -98,6 +115,9 @@ class AppController:
 if __name__ == "__main__":
     log_manager = LogManager()
     logger = log_manager.setup_logging()
+
+    # Stampa riepilogo configurazione all'avvio
+    Config.print_summary(logger)
     logger.info("🚀 Property Manager avviato")
 
     app = QApplication(sys.argv)
@@ -106,7 +126,7 @@ if __name__ == "__main__":
     db_service = DatabaseService(logger=logger)
     db_service.initialize()
 
-    # Translation
+    # Traduzioni
     translation_manager = TranslationManager(
         db_path='shared/translations.db',
         default_language='it'
@@ -115,17 +135,12 @@ if __name__ == "__main__":
     translation_manager.set_language(prefs_service.get_language())
     logger.info(f"Translation Manager inizializzato (lingua: {translation_manager.get_current_language()})")
 
-    # Tutti i services raccolti in un dict
     services = {
         'auth'       : AuthService(logger),
         'db'         : db_service,
         'prefs'      : prefs_service,
         'supplier'   : SupplierService(logger),
         'translation': translation_manager,
-        'property'   : PropertyService(logger),
-        'transaction': TransactionService(logger),
-        'deadline'   : DeadlineService(logger),
-        'document'   : DocumentService(logger),
     }
 
     controller = AppController(app, services, logger)
