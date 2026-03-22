@@ -183,7 +183,7 @@ class AddDeadlineDialog(QDialog):
         return {
             "title": self.title_input.text().strip(),
             "description": self.description_input.toPlainText().strip() or None,
-            "due_date": self.due_date.date().toString("yyyy-MM-dd"),
+            "due_date": self.due_date.date().toPython(),
             "property_id": self.property_combo.currentData()
         }
 
@@ -347,20 +347,19 @@ class PlannerCalendarWidget(QWidget):
         self.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; color: {COLORE_BIANCO}")
         self.tm = tm
         self.logger = logger
+        self._cell_cache = {}
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(10)
 
-        # intestazione mese + pulsanti
         header = QHBoxLayout()
         self.month_label = QLabel()
         self.month_label.setStyleSheet("font-size:16px;font-weight: bold;color:white")
         header.addWidget(self.month_label)
         header.addStretch()
 
-        # Bottone per aggiungere scadenza generica
-        add_deadline_btn = QPushButton(f"+ {self.tm.get("PULSANTI", "AGGIUNGI")}")
+        add_deadline_btn = QPushButton(f"+ {self.tm.get('PULSANTI', 'AGGIUNGI')}")
         add_deadline_btn.setStyleSheet(default_aggiungi_button)
         add_deadline_btn.clicked.connect(lambda: self.add_deadline())
         header.addWidget(add_deadline_btn)
@@ -373,7 +372,6 @@ class PlannerCalendarWidget(QWidget):
         header.addWidget(next_btn)
         main_layout.addLayout(header)
 
-        # Giorni della settimana
         weekdays_layout = QHBoxLayout()
         weekdays = tm.get("LISTE", "WEEKDAYS_SHORT").split(";")
         for day in weekdays:
@@ -383,78 +381,80 @@ class PlannerCalendarWidget(QWidget):
             weekdays_layout.addWidget(day_label)
         main_layout.addLayout(weekdays_layout)
 
-        # griglia giorni
         self.grid = QGridLayout()
         self.grid.setSpacing(6)
         main_layout.addLayout(self.grid)
 
         self.current_date = QDate.currentDate()
-
         prev_btn.clicked.connect(self.prev_month)
         next_btn.clicked.connect(self.next_month)
 
         self.populate_month()
 
-    def add_deadline(self, preset_date=None):
-        """Apre dialog per aggiungere scadenza (con data opzionale preimpostata)"""
-        properties = self.property_service.get_all()
-        dialog = AddDeadlineDialog(self.tm, properties=properties, parent=self)
-
-        # Se viene passata una data, preimpostala nel dialog
-        if preset_date:
-            date_obj = QDate.fromString(preset_date, "yyyy-MM-dd")
-            if date_obj.isValid():
-                dialog.due_date.setDate(date_obj)
-
-        if dialog.exec():
-            data = dialog.get_data()
-            deadline_id = self.deadline_service.create(
-                title=data["title"],
-                description=data["description"],
-                due_date=data["due_date"],
-                property_id=data["property_id"]
-            )
-
-            if deadline_id:
-                QMessageBox.information(self, self.tm.get("MESSAGGI", "SUCCESSO"),self.tm.get("MESSAGGI","SALVATO"))
-                self.logger.info(f"{self.tm.get("MESSAGGI","SALVATO")} {data['title']}")
-                self.populate_month()  # Ricarica il calendario
-            else:
-                QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"), self.tm.get("MESSAGGI", "ERRORE"))
-                self.logger.error(f"{self.tm.get("MESSAGGI", "ERRORE")} {data['title']}")
-
-    def add_deadline_for_date(self, date_str):
-        """ Aggiunge scadenza per una data specifica (chiamato dal click sulla cella)"""
-        self.add_deadline(preset_date=date_str)
-
-    def populate_month(self):
-        # pulisci celle precedenti
+    def _clear_grid(self):
+        """
+        FIX: rimuove i widget dalla griglia senza distruggerli,
+        così possono essere riusati nel mese successivo.
+        """
         while self.grid.count():
             item = self.grid.takeAt(0)
             w = item.widget()
             if w:
-                w.deleteLater()
+                w.setParent(None)  # stacca senza deleteLater
+
+    def populate_month(self):
+        self._clear_grid()
 
         month = self.current_date.month()
-        year = self.current_date.year()
-        self.month_label.setText(self.tm.get("LISTE", "MONTHS_FULL").split(";")[month - 1])
-        first_day = QDate(year, month, 1)
-        start_col = first_day.dayOfWeek() - 1
-        days_in_month = first_day.daysInMonth()
+        year  = self.current_date.year()
+        self.month_label.setText(
+            self.tm.get("LISTE", "MONTHS_FULL").split(";")[month - 1]
+        )
+
+        first_day      = QDate(year, month, 1)
+        start_col      = first_day.dayOfWeek() - 1
+        days_in_month  = first_day.daysInMonth()
+
+        # FIX: carica TUTTE le scadenze del mese in una sola query
+        # invece di una query per ogni giorno
+        all_deadlines = self._load_month_deadlines(year, month, days_in_month)
 
         row, col = 0, start_col
         for day in range(1, days_in_month + 1):
-            date_str = f"{year:04d}-{month:02d}-{day:02d}"
-            deadlines = self.deadline_service.get_by_date(date_str)
+            date_str  = f"{year:04d}-{month:02d}-{day:02d}"
+            deadlines = all_deadlines.get(date_str, [])
 
-            # Cella cliccabile
             cell = ClickableDayCell(day, date_str, deadlines, self, self.tm)
-
             self.grid.addWidget(cell, row, col)
             col += 1
             if col > 6:
                 col = 0
                 row += 1
+
+    def _load_month_deadlines(self, year, month, days_in_month) -> dict:
+        """
+        FIX: carica tutte le scadenze del mese in una query sola
+        e le raggruppa per data. Prima c'era una query per ogni giorno.
+        Ritorna dict {date_str: [deadline, ...]}
+        """
+        result = {}
+        # get_all filtra già per tenant_id e include_completed=False
+        start = f"{year:04d}-{month:02d}-01"
+        end   = f"{year:04d}-{month:02d}-{days_in_month:02d}"
+
+        try:
+            # Se DeadlineService non ha get_by_range, usiamo get_all
+            # e filtriamo in memoria — comunque una sola query
+            all_deadlines = self.deadline_service.get_all(include_completed=False)
+            for d in all_deadlines:
+                due = d.get('due_date', '')
+                due_str = due if isinstance(due, str) else due.isoformat()
+                if start <= due_str <= end:
+                    result.setdefault(due_str, []).append(d)
+        except Exception as e:
+            self.logger.error(f"Errore caricamento scadenze mese: {e}")
+
+        return result
 
     def next_month(self):
         self.current_date = self.current_date.addMonths(1)

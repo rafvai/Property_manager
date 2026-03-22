@@ -49,8 +49,9 @@ class DashboardWindow(QMainWindow):
         from services.document_service import DocumentService
         from services.deadline_service import DeadlineService
 
+        self.supplier_service = supplier_service
         self.property_service = PropertyService(self.logger)
-        self.transaction_service = TransactionService(self.logger)
+        self.transaction_service = TransactionService(self.logger,  supplier_service=self.supplier_service)
         self.document_service = DocumentService(self.logger)
         self.deadline_service = DeadlineService(self.logger)
 

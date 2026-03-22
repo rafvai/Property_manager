@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 from security_manager import SecurityManager
 from config import Config
+from datetime import date as date_type
 
 
 def get_docs_dir() -> Path:
@@ -123,6 +124,12 @@ class DocumentService:
         except KeyError as e:
             raise ValueError(f"Metadata mancante: {e}")
 
+        if not isinstance(data_fattura, date_type):
+            raise ValueError(
+                f"data_fattura deve essere un oggetto datetime.date, "
+                f"ricevuto: {type(data_fattura).__name__}. "
+                f"Usa QDate.toPython() nel dialog."
+            )
         giorno = str(data_fattura.day).zfill(2)
         mese = str(data_fattura.month).zfill(2)
         anno = str(data_fattura.year)

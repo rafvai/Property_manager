@@ -8,6 +8,7 @@ from log_manager import LogManager
 from services.database_service import DatabaseService
 from services.preferences_service import PreferencesService
 from services.supplier_service import SupplierService
+from services.transaction_service import TransactionService
 from services.translation_system_simple import TranslationManager
 from services.auth_service import AuthService
 from ui_login import LoginWindow
@@ -162,11 +163,15 @@ if __name__ == "__main__":
         )
         prefs_service = PreferencesService(logger)
 
+    supplier_svc = SupplierService(logger)
+    transaction_svc = TransactionService(logger, supplier_service=supplier_svc)
+
     services = {
-        'auth'       : AuthService(logger),
-        'db'         : db_service,
-        'prefs'      : prefs_service,
-        'supplier'   : SupplierService(logger),
+        'auth': AuthService(logger),
+        'db': db_service,
+        'prefs': prefs_service,
+        'supplier': supplier_svc,
+        'transaction': transaction_svc,
         'translation': translation_manager,
     }
 

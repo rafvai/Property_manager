@@ -8,9 +8,10 @@ from config import Config
 class TransactionService:
     """Gestisce le operazioni sulle transazioni - ORM based"""
 
-    def __init__(self, logger):
+    def __init__(self, logger, supplier_service=None):
         self.logger = logger
         self.db     = DatabaseConnection()
+        self._supplier_service = supplier_service
 
     # ──────────────────────────────────────────────
     #  READ
@@ -154,21 +155,17 @@ class TransactionService:
             transaction_id = new_transaction.id
 
             # Aggiorna statistiche fornitore solo per le Uscite
-            if supplier_id and trans_type == 'Uscita':
+            if supplier_id and trans_type == 'Uscita' and self._supplier_service:
                 try:
-                    from services.supplier_service import SupplierService
-                    supplier_service = SupplierService(self.logger)
-                    # date può essere un oggetto date o una stringa
                     service_date = date.isoformat() if hasattr(date, 'isoformat') else str(date)
-                    supplier_service.update_service_stats(supplier_id, service_date, amount)
+                    self._supplier_service.update_service_stats(supplier_id, service_date, amount)
                 except Exception as e:
-                    # Non blocca il salvataggio della transazione
-                    self.logger.warning(f"Impossibile aggiornare stats fornitore: {e}")
+                    self.logger.warning(f"Impossibile aggiornare stats fornitore: {str(e)}")
 
             self.logger.info(
-                f"TransactionService: Transazione creata: {transaction_id} "
-                f"(fornitore: {supplier_id})"
-            )
+                    f"TransactionService: Transazione creata: {transaction_id} "
+                    f"(fornitore: {supplier_id})"
+                )
             return transaction_id
 
         except Exception as e:
