@@ -312,29 +312,32 @@ class ImportService:
                 self.logger.info(f"Fornitore collegato: {suppliers[0]['name']} (ID: {suppliers[0]['id']})")
         
         return validated
-    
+
     def generate_template(self, output_path=None):
         """
         Genera file Excel template per l'importazione
-        
+
         Args:
             output_path: Path dove salvare il template (opzionale)
-            
+
         Returns:
             str: Path del file generato
         """
         if output_path is None:
-            output_path = os.path.join('exports', f'template_importazione_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx')
-        
-        # Assicura che la directory esista
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        
+            output_path = os.path.join(
+                'exports',
+                f'template_importazione_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+            )
+
+        dir_name = os.path.dirname(output_path)
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
+
         try:
             workbook = openpyxl.Workbook()
             sheet = workbook.active
             sheet.title = "Transazioni"
-            
-            # Header
+
             headers = [
                 'Data (dd/MM/yyyy)*',
                 'Tipo (Entrata/Uscita)*',
@@ -343,7 +346,7 @@ class ImportService:
                 'Importo*',
                 'Nome Fornitore Esistente'
             ]
-            
+
             for col, header in enumerate(headers, start=1):
                 cell = sheet.cell(row=1, column=col, value=header)
                 cell.font = openpyxl.styles.Font(bold=True)
@@ -353,73 +356,69 @@ class ImportService:
                     fill_type="solid"
                 )
                 cell.font = openpyxl.styles.Font(color="FFFFFF", bold=True)
-            
-            # Esempi
+
             examples = [
                 ['15/01/2024', 'Uscita', 'Bolletta Luce', 'ENEL Energia', 150.50, ''],
                 ['20/01/2024', 'Entrata', 'Affitto', 'Inquilino Rossi', 800.00, ''],
                 ['25/01/2024', 'Uscita', 'Manutenzione', 'Idraulico Mario', 85.00, 'Idraulico Mario']
             ]
-            
+
             for row_idx, example in enumerate(examples, start=2):
                 for col_idx, value in enumerate(example, start=1):
                     sheet.cell(row=row_idx, column=col_idx, value=value)
-            
-            # Formattazione colonne
+
             sheet.column_dimensions['A'].width = 18
             sheet.column_dimensions['B'].width = 18
             sheet.column_dimensions['C'].width = 25
             sheet.column_dimensions['D'].width = 25
             sheet.column_dimensions['E'].width = 15
             sheet.column_dimensions['F'].width = 30
-            
-            # Istruzioni in un foglio separato
+
             instructions_sheet = workbook.create_sheet("Istruzioni")
-            
+
             instructions = [
-                ["ISTRUZIONI PER L'IMPORTAZIONE TRANSAZIONI",""],
-                ["",""],
+                ["ISTRUZIONI PER L'IMPORTAZIONE TRANSAZIONI", ""],
+                ["", ""],
                 ["Colonne obbligatorie (*):", ""],
                 ["1. Data", "Formato: dd/MM/yyyy (es: 15/01/2024)"],
                 ["2. Tipo", "Deve essere esattamente 'Entrata' o 'Uscita'"],
                 ["3. Categoria/Servizio", "Nome del servizio (es: Bolletta Luce, Affitto)"],
                 ["4. Fornitore", "Nome del fornitore/emittente"],
                 ["5. Importo", "Numero decimale (usa punto o virgola: 150.50 o 150,50)"],
-                ["",""],
+                ["", ""],
                 ["Colonna opzionale:", ""],
                 ["6. Nome Fornitore Esistente", "Se vuoi collegare a un fornitore già presente nel sistema"],
-                ["",""],
+                ["", ""],
                 ["Note importanti:", ""],
                 ["- La prima riga (header) verrà ignorata", ""],
                 ["- Righe vuote verranno ignorate", ""],
                 ["- Puoi usare sia Excel (.xlsx) che CSV", ""],
                 ["- Gli importi devono essere positivi", ""],
                 ["- Le date devono essere nel formato dd/MM/yyyy", ""],
-                ["",""],
+                ["", ""],
                 ["In caso di errori:", ""],
                 ["- Riceverai un report dettagliato con le righe che hanno causato problemi", ""],
                 ["- Le transazioni valide verranno comunque importate", ""],
             ]
-            
+
             for row_idx, (label, value) in enumerate(instructions, start=1):
                 cell_label = instructions_sheet.cell(row=row_idx, column=1, value=label)
-                cell_value = instructions_sheet.cell(row=row_idx, column=2, value=value)
-                
+                instructions_sheet.cell(row=row_idx, column=2, value=value)
+
                 if row_idx == 1:
                     cell_label.font = openpyxl.styles.Font(bold=True, size=14)
-                elif "obbligatorie" in label or "opzionale" in label or "importanti" in label or "errori" in label:
+                elif any(kw in label for kw in ("obbligatorie", "opzionale", "importanti", "errori")):
                     cell_label.font = openpyxl.styles.Font(bold=True, size=12)
-            
+
             instructions_sheet.column_dimensions['A'].width = 35
             instructions_sheet.column_dimensions['B'].width = 60
-            
-            # Salva
+
             workbook.save(output_path)
             workbook.close()
-            
+
             self.logger.info(f"Template generato: {output_path}")
             return output_path
-            
+
         except Exception as e:
             self.logger.error(f"Errore generazione template: {e}")
             raise ValueError(f"Impossibile generare template: {str(e)}")

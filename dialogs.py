@@ -15,6 +15,7 @@ from styles import COLORE_SECONDARIO, COLORE_WIDGET_2, COLORE_RIGA_1, COLORE_ITE
     default_aggiungi_button, default_selector_date_export, default_export_button, COLORE_ERROR, default_dialog_style, \
     COLORE_ITEM_SELEZIONATO, COLORE_BIANCO
 from validation_utils import parse_decimal, validate_required_text, validate_date, ValidationError
+from transaction_types import label_to_canonical
 
 
 DOCS_DIR = "docs"
@@ -107,7 +108,7 @@ class DocumentMetadataDialog(QDialog):
     def get_data(self):
         """Restituisce i dati validati"""
         return {
-            "tipo": self.type_box.currentText(),
+            "tipo": label_to_canonical(self.type_box.currentText(), self.tm),
             "provider": self.emittente_input.text().strip(),
             "service": self.service_input.text().strip(),
             "importo": self.importo_input.text().strip(),  # Verrà parsato dal service
@@ -983,7 +984,7 @@ class TransactionDialogWithSuppliers(QDialog):
     def get_data(self):
         """Ritorna i dati della transazione"""
         return {
-            "tipo": self.type_box.currentText(),
+            "tipo": label_to_canonical(self.type_box.currentText(), self.tm),
             "property_id": self.property_combo.currentData(),
             "service": self.service_combo.currentText().strip(),
             "provider": self.provider_input.text().strip(),

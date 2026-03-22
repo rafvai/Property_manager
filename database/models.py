@@ -15,7 +15,6 @@ class Property(Base):
     address = Column(String(500), nullable=False)
     owner = Column(String(200), nullable=False)
 
-    # Relazioni
     transactions = relationship("Transaction", back_populates="property", cascade="all, delete-orphan")
     deadlines = relationship("Deadline", back_populates="property", cascade="all, delete-orphan")
 
@@ -42,10 +41,7 @@ class Transaction(Base):
     provider = Column(String(200), nullable=False)
     service = Column(String(200), nullable=False)
 
-    # Relazioni
     property = relationship("Property", back_populates="transactions")
-
-    # AGGIUNGI QUESTA RELAZIONE:
     supplier = relationship("Supplier")
 
     def to_dict(self):
@@ -74,7 +70,6 @@ class Deadline(Base):
     completed = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Relazione
     property = relationship("Property", back_populates="deadlines")
 
     def to_dict(self):
@@ -84,7 +79,7 @@ class Deadline(Base):
             'property_id': self.property_id,
             'title': self.title,
             'description': self.description,
-            'due_date': self.date.isoformat() if self.due_date else None,
+            'due_date': self.due_date.isoformat() if self.due_date else None,
             'completed': self.completed,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
@@ -102,17 +97,14 @@ class Supplier(Base):
     email = Column(String(200), nullable=True)
     address = Column(String(500), nullable=True)
     notes = Column(Text, nullable=True)
-    rating = Column(Integer, nullable=True)  # Valutazione 1-5 stelle
-    last_service_date = Column(Date, nullable=True)  # Formato: yyyy-MM-dd
-    total_spent = Column(Float, default=0.0)  # Totale speso con questo fornitore
-    service_count = Column(Integer, default=0)  # Numero di servizi utilizzati
+    rating = Column(Integer, nullable=True)
+    last_service_date = Column(Date, nullable=True)
+    total_spent = Column(Float, default=0.0)
+    service_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
-    # Relazioni
     property = relationship("Property", backref="suppliers")
-
-    # AGGIUNGI QUESTE DUE RELAZIONI:
     documents = relationship("SupplierDocument", back_populates="supplier", cascade="all, delete-orphan")
     reviews = relationship("SupplierReview", back_populates="supplier", cascade="all, delete-orphan")
 
@@ -128,27 +120,26 @@ class Supplier(Base):
             'address': self.address,
             'notes': self.notes,
             'rating': self.rating,
-            'last_service_date': self.date.isoformat() if self.last_service_date else None,
+            'last_service_date': self.last_service_date.isoformat() if self.last_service_date else None,
             'total_spent': self.total_spent,
             'service_count': self.service_count,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
+
 class SupplierDocument(Base):
-    """Documenti associati a un fornitore (contratti, preventivi, fatture)"""
     __tablename__ = 'supplier_documents'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     tenant_id = Column(String(64), nullable=False, index=True)
     supplier_id = Column(Integer, ForeignKey('suppliers.id'), nullable=False)
-    document_type = Column(String(50), nullable=False)  # 'contratto', 'preventivo', 'fattura', 'altro'
+    document_type = Column(String(50), nullable=False)
     title = Column(String(200), nullable=False)
     file_path = Column(String(500), nullable=False)
     upload_date = Column(DateTime, default=datetime.utcnow)
     notes = Column(Text, nullable=True)
 
-    # Relazione
     supplier = relationship("Supplier", back_populates="documents")
 
     def to_dict(self):
@@ -163,20 +154,19 @@ class SupplierDocument(Base):
             'notes': self.notes
         }
 
+
 class SupplierReview(Base):
-    """Recensioni/valutazioni dei fornitori"""
     __tablename__ = 'supplier_reviews'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     tenant_id = Column(String(64), nullable=False, index=True)
     supplier_id = Column(Integer, ForeignKey('suppliers.id'), nullable=False)
-    rating = Column(Integer, nullable=False)  # 1-5 stelle
+    rating = Column(Integer, nullable=False)
     title = Column(String(200), nullable=True)
     comment = Column(Text, nullable=True)
-    service_date = Column(Date, nullable=True)  # Data del servizio recensito
+    service_date = Column(Date, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    # Relazione
     supplier = relationship("Supplier", back_populates="reviews")
 
     def to_dict(self):
@@ -187,6 +177,6 @@ class SupplierReview(Base):
             'rating': self.rating,
             'title': self.title,
             'comment': self.comment,
-            'service_date': self.date.isoformat() if self.service_date else None,
+            'service_date': self.service_date.isoformat() if self.service_date else None,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }

@@ -1,3 +1,4 @@
+from config import Config
 from database.models import Supplier, Property, SupplierDocument, SupplierReview
 from database.connection import DatabaseConnection
 from sqlalchemy import func, desc
@@ -121,6 +122,7 @@ class SupplierService:
         session = self.db.get_session()
         try:
             new_supplier = Supplier(
+                tenant_id=Config.CURRENT_TENANT_ID,
                 property_id=property_id,
                 name=name,
                 category=category,
@@ -362,6 +364,7 @@ class SupplierService:
         session = self.db.get_session()
         try:
             review = SupplierReview(
+                tenant_id=Config.CURRENT_TENANT_ID,
                 supplier_id=supplier_id,
                 rating=rating,
                 title=title,
@@ -425,6 +428,7 @@ class SupplierService:
         session = self.db.get_session()
         try:
             document = SupplierDocument(
+                tenant_id=Config.CURRENT_TENANT_ID,
                 supplier_id=supplier_id,
                 document_type=document_type,
                 title=title,

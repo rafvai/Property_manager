@@ -1,5 +1,5 @@
 import sys
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QMessageBox
 
 # ── Config è il primo import: carica .env prima di tutto il resto ──
 from config import Config
@@ -60,7 +60,6 @@ class AppController:
         win.login_successful.connect(self._on_login_ok)
         win.open_register.connect(self._show_register)
 
-        # In dev, pre-compila le credenziali se impostate nel .env
         if Config.is_development():
             if Config.DEV_LOGIN_EMAIL:
                 win.email_input.setText(Config.DEV_LOGIN_EMAIL)
@@ -89,7 +88,6 @@ class AppController:
     def _on_register_ok(self):
         self.logger.info("AppController: registrazione completata, ritorno al login")
         self._window.close()
-        # I nuovi utenti non sono mai admin
         win = self._build_dashboard(is_admin=False)
         win.show()
         self._window = win
@@ -114,26 +112,55 @@ class AppController:
 # ──────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     log_manager = LogManager()
-    logger = log_manager.setup_logging()
+    logger      = log_manager.setup_logging()
 
-    # Stampa riepilogo configurazione all'avvio
     Config.print_summary(logger)
     logger.info("🚀 Property Manager avviato")
 
+    # QApplication deve esistere prima di mostrare qualsiasi dialog
     app = QApplication(sys.argv)
 
-    # Database
-    db_service = DatabaseService(logger=logger)
-    db_service.initialize()
+    # ── Inizializzazione database con error handling ──────────────
+    # FIX: prima mancava completamente — un DB corrotto o locked
+    # causava un crash senza alcun messaggio all'utente.
+    try:
+        db_service = DatabaseService(logger=logger)
+        db_service.initialize()
+    except Exception as e:
+        logger.critical(f"Impossibile inizializzare il database: {e}")
+        QMessageBox.critical(
+            None,
+            "Errore avvio — Property Manager",
+            f"Impossibile aprire il database:\n\n{e}\n\n"
+            "Possibili cause:\n"
+            "• Il file .db è corrotto\n"
+            "• Il file è aperto da un altro processo\n"
+            "• Permessi insufficienti sulla directory\n\n"
+            f"Path database: {Config.get_database_config().get('path', 'N/D')}"
+        )
+        sys.exit(1)
 
-    # Traduzioni
-    translation_manager = TranslationManager(
-        db_path='shared/translations.db',
-        default_language='it'
-    )
-    prefs_service = PreferencesService(logger)
-    translation_manager.set_language(prefs_service.get_language())
-    logger.info(f"Translation Manager inizializzato (lingua: {translation_manager.get_current_language()})")
+    # ── Traduzioni ────────────────────────────────────────────────
+    try:
+        translation_manager = TranslationManager(
+            db_path='shared/translations.db',
+            default_language='it'
+        )
+        prefs_service = PreferencesService(logger)
+        translation_manager.set_language(prefs_service.get_language())
+        logger.info(
+            f"Translation Manager inizializzato "
+            f"(lingua: {translation_manager.get_current_language()})"
+        )
+    except Exception as e:
+        logger.error(f"Errore inizializzazione traduzioni: {e} — uso fallback italiano")
+        # Le traduzioni non sono bloccanti: l'app può avviarsi
+        # mostrando le chiavi come placeholder
+        translation_manager = TranslationManager(
+            db_path='shared/translations.db',
+            default_language='it'
+        )
+        prefs_service = PreferencesService(logger)
 
     services = {
         'auth'       : AuthService(logger),
