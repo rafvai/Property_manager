@@ -24,7 +24,7 @@ class AppController:
           │
           └──► Register ──► Dashboard
 
-    Flusso development (DEV_SKIP_LOGIN=true):
+    Flusso development (DEV_SKIP_LOGIN=true nel .env):
         Direttamente ──► Dashboard (is_admin=True)
     """
 

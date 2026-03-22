@@ -123,14 +123,9 @@ class DocumentService:
         except KeyError as e:
             raise ValueError(f"Metadata mancante: {e}")
 
-        try:
-            parts = data_fattura.split("/")
-            if len(parts) != 3:
-                raise ValueError("Formato data non valido")
-            giorno, mese, anno = parts
-            int(giorno), int(mese), int(anno)
-        except (ValueError, IndexError) as e:
-            raise ValueError(f"Data non valida: {e}")
+        giorno = str(data_fattura.day).zfill(2)
+        mese = str(data_fattura.month).zfill(2)
+        anno = str(data_fattura.year)
 
         trimestre    = str((int(mese) - 1) // 3 + 1)
         sub_directory = os.path.join(service, anno, f"{trimestre}T")

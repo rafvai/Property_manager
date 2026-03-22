@@ -61,9 +61,9 @@ class DocumentsView(BaseView):
 
         # Messaggio se non ci sono proprietà
         if not self.proprieta:
-            no_prop_label = QLabel(f"⚠️  {self.tm.get('ETICHETTE', 'NESSUNA_PROPRIETA_TROVATA')}")
+            no_prop_label = QLabel(self.tm.get('ETICHETTE', 'NESSUNA_PROPRIETA_TROVATA'))
             no_prop_label.setStyleSheet(
-                f"color: {COLORE_WARNING}; font-size: 14px; padding: 20px;"
+                f"color: {COLORE_BIANCO}; font-size: 14px; padding: 20px;"
             )
             no_prop_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             main_layout.addWidget(no_prop_label)
@@ -248,7 +248,7 @@ class DocumentsView(BaseView):
                         QMessageBox.information(
                             self,
                             f"✅ {self.tm.get('MESSAGGI', 'SUCCESSO')}",
-                            f"Documento salvato correttamente!\n\n"
+                            f"{self.tm.get('MESSAGGI', 'DOCUMENTO_AGGIUNTO')}\n\n"
                             f"📄 {os.path.basename(dest_path)}\n"
                             f"💰 {importo_float:,.2f}€"
                         )
@@ -256,7 +256,7 @@ class DocumentsView(BaseView):
                     self.logger.error(f"Impossibile salvare la transazione nel database")
                     QMessageBox.warning(
                         self,
-                        f"⚠️ {self.tm.get('common', 'error')}",
+                        self.tm.get('MESSAGGI', 'ERRORE'),
                         "Impossibile salvare la transazione nel database"
                     )
 
@@ -265,15 +265,15 @@ class DocumentsView(BaseView):
                 QMessageBox.warning(
                     self,
                     "⚠️ Validazione fallita",
-                    f"Errore nell'importo del documento '{filename}':\n\n{str(e)}"
+                    f"{self.tm.get('MESSAGGI', 'ERRORE_IMPORTO')} '{filename}':\n\n{str(e)}"
                 )
                 continue
             except Exception as e:
                 self.logger.exception(f"Errore durante il salvataggio {str(e)}")
                 QMessageBox.critical(
                     self,
-                    f"❌ {self.tm.get('common', 'error')}",
-                    f"Errore durante il salvataggio:\n\n{str(e)}"
+                    self.tm.get('MESSAGGI', 'ERRORE'),
+                    f"{self.tm.get('MESSAGGI', 'ERRORE_SALVATAGGIO')}:\n\n{str(e)}"
                 )
                 continue
 

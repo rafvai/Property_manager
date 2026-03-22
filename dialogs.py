@@ -111,7 +111,7 @@ class DocumentMetadataDialog(QDialog):
             "provider": self.emittente_input.text().strip(),
             "service": self.service_input.text().strip(),
             "importo": self.importo_input.text().strip(),  # Verrà parsato dal service
-            "data_fattura": self.data_fattura.date().toString("dd/MM/yyyy"),
+            "data_fattura": self.data_fattura.date().toPython(),
         }
 
 

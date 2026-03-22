@@ -74,7 +74,7 @@ class DashboardView(BaseView):
         prop_layout.setContentsMargins(0, 0, 0, 0)
 
         label_select = QLabel(self.tm.get("ETICHETTE", "SELEZIONA_PROPRIETA"))
-        label_select.setStyleSheet("color: white; font-size: 14px;")
+        label_select.setStyleSheet(default_style_text)
         prop_layout.addWidget(label_select)
 
         self.property_selector = QComboBox()
@@ -170,16 +170,16 @@ class DashboardView(BaseView):
         info_layout.setSpacing(8)
 
         info_title = QLabel(self.tm.get("ETICHETTE", "INFORMAZIONI_PROPRIETA"))
-        info_title.setStyleSheet("font-size: 14px; font-weight: bold; color: white;")
+        info_title.setStyleSheet(default_style_text)
         info_layout.addWidget(info_title)
 
         self.info_name = QLabel()
         self.info_address = QLabel()
         self.info_owner = QLabel()
 
-        self.info_name.setStyleSheet("color: white; font-size: 13px;")
-        self.info_address.setStyleSheet("color: white; font-size: 13px;")
-        self.info_owner.setStyleSheet("color: white; font-size: 13px;")
+        self.info_name.setStyleSheet(default_style_text)
+        self.info_address.setStyleSheet(default_style_text)
+        self.info_owner.setStyleSheet(default_style_text)
 
         self.update_info_display()
 
@@ -202,14 +202,14 @@ class DashboardView(BaseView):
         deadline_layout.setSpacing(8)
 
         deadline_title = QLabel(self.tm.get("ETICHETTE", "PROSSIMA_SCADENZA"))
-        deadline_title.setStyleSheet("font-size: 14px; font-weight: bold; color: white;")
+        deadline_title.setStyleSheet(default_style_text)
         deadline_layout.addWidget(deadline_title)
 
         self.deadline_title_label = QLabel()
         self.deadline_date_label = QLabel()
         self.deadline_desc_label = QLabel()
 
-        self.deadline_title_label.setStyleSheet("color: white; font-size: 13px; font-weight: bold;")
+        self.deadline_title_label.setStyleSheet(default_style_text)
         self.deadline_date_label.setStyleSheet("color: #e74c3c; font-size: 12px;")
         self.deadline_desc_label.setStyleSheet("color: #bdc3c7; font-size: 11px;")
         self.deadline_desc_label.setWordWrap(True)

@@ -134,7 +134,7 @@ class PropertiesView(BaseView):
         # Data prima transazione (data di inizio gestione)
         start_date = None
         if transactions:
-            dates = [datetime.strptime(t['date'], '%d/%m/%Y') for t in transactions]
+            dates = [t['date'] if hasattr(t['date'], 'year') else datetime.strptime(str(t['date']), '%Y-%m-%d').date() for t in transactions]
             start_date = min(dates)
 
         # Calcola saldo
@@ -161,7 +161,7 @@ class PropertiesView(BaseView):
         # Calcola mesi di gestione
         mesi_gestione = 0
         if start_date:
-            delta = datetime.now() - start_date
+            delta = datetime.now().date() - start_date
             mesi_gestione = max(1, delta.days // 30)
 
         media_entrate = entrate_totali / mesi_gestione if mesi_gestione > 0 else 0

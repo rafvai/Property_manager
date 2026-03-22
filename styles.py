@@ -290,3 +290,5 @@ default_style_search_line = f"""
                 border: 2px solid {COLORE_ITEM_SELEZIONATO};
             }}
         """
+
+default_style_text = f"color: {COLORE_BIANCO}; font-size: 14px;"
