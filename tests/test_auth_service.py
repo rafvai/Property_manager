@@ -77,7 +77,7 @@ def _make_cache_payload(email="test@email.com", password="password123",
     }
 
     payload = json.dumps(cache, sort_keys=True).encode()
-    signature = hmac.new(_HMAC_KEY, payload, hashlib.sha256).hexdigest()
+    signature = hmac.digest(_HMAC_KEY, payload, "sha256").hex()
     return json.dumps({"payload": cache, "sig": signature})
 
 

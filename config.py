@@ -75,13 +75,27 @@ class Config:
             EXPORTS_DIR = Path('exports').absolute()
             LOGS_DIR    = Path('logs').absolute()
 
-        for _dir in [DOCS_DIR, EXPORTS_DIR, LOGS_DIR]:
-            if _dir:
-                _dir.mkdir(parents=True, exist_ok=True)
-
     # ────────────────────────────────────────────────────────────
     #  METODI STATICI
     # ────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def initialize_directories() -> list:
+        """
+        Crea le directory necessarie all'avvio.
+        Va chiamato dopo QApplication, così gli errori
+        possono essere mostrati all'utente.
+        """
+        errors = []
+        dirs = [Config.BASE_DIR, Config.DOCS_DIR, Config.EXPORTS_DIR, Config.LOGS_DIR]
+        for d in dirs:
+            if d is None:
+                continue
+            try:
+                Path(d).mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                errors.append(f"{d}: {e}")
+        return errors
 
     @staticmethod
     def is_development() -> bool:

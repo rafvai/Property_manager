@@ -8,8 +8,7 @@ Gestisce:
 """
 import json
 import os
-import hashlib
-import hmac  # FIX: hmac è un modulo standard, ok
+import hmac, hashlib
 from pathlib import Path
 from datetime import datetime, timedelta
 from typing import Optional
@@ -195,7 +194,7 @@ class AuthService:
             "cached_at"  : datetime.utcnow().isoformat()
         }
         payload   = json.dumps(cache, sort_keys=True).encode()
-        signature = hmac.new(_HMAC_KEY, payload, hashlib.sha256).hexdigest()
+        signature = hmac.digest(_HMAC_KEY, payload, "sha256").hex()
         _CACHE_FILE.write_text(json.dumps({"payload": cache, "sig": signature}), encoding="utf-8")
         try:
             _CACHE_FILE.chmod(0o600)
@@ -208,8 +207,7 @@ class AuthService:
         try:
             data      = json.loads(_CACHE_FILE.read_text(encoding="utf-8"))
             payload   = json.dumps(data["payload"], sort_keys=True).encode()
-            # FIX: stessa correzione del _save_cache
-            expected  = hmac.new(_HMAC_KEY, payload, hashlib.sha256).hexdigest()
+            expected = hmac.digest(_HMAC_KEY, payload, "sha256").hex()
             if not hmac.compare_digest(data["sig"], expected):
                 self.logger.warning("AuthService: Cache locale manomessa, ignorata")
                 return None

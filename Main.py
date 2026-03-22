@@ -121,9 +121,17 @@ if __name__ == "__main__":
     # QApplication deve esistere prima di mostrare qualsiasi dialog
     app = QApplication(sys.argv)
 
+    dir_errors = Config.initialize_directories()
+    if dir_errors:
+        QMessageBox.critical(
+            None,
+            "Errore avvio — Property Manager",
+            "Impossibile creare le directory necessarie:\n\n" +
+            "\n".join(dir_errors)
+        )
+        sys.exit(1)
+
     # ── Inizializzazione database con error handling ──────────────
-    # FIX: prima mancava completamente — un DB corrotto o locked
-    # causava un crash senza alcun messaggio all'utente.
     try:
         db_service = DatabaseService(logger=logger)
         db_service.initialize()
