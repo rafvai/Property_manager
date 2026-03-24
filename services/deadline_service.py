@@ -11,6 +11,43 @@ class DeadlineService:
         self.logger = logger
         self.db = DatabaseConnection()
 
+    def get_by_month(self, year: int, month: int) -> dict:
+        """
+        Carica tutte le scadenze di un mese specifico in una sola query SQL.
+        Ritorna dict {date_str: [deadline_dict, ...]} pronto per il calendario.
+        """
+        session = self.db.get_session()
+        try:
+            from datetime import date
+            first_day = date(year, month, 1)
+            # calcola l'ultimo giorno del mese senza dipendenze esterne
+            if month == 12:
+                last_day = date(year + 1, 1, 1).replace(day=1)
+            else:
+                last_day = date(year, month + 1, 1)
+            # last_day è il primo giorno del mese successivo — usiamo < invece di <=
+
+            deadlines = session.query(Deadline).filter(
+                Deadline.tenant_id == Config.CURRENT_TENANT_ID,
+                Deadline.completed == False,
+                Deadline.due_date >= first_day,
+                Deadline.due_date < last_day
+            ).order_by(Deadline.due_date.asc(), Deadline.title.asc()).all()
+
+            result = {}
+            for d in deadlines:
+                due = d.due_date
+                due_str = due if isinstance(due, str) else due.isoformat()
+                result.setdefault(due_str, []).append(d.to_dict())
+
+            return result
+
+        except Exception as e:
+            self.logger.error(f"DeadlineService: Errore get_by_month {year}/{month}: {e}")
+            return {}
+        finally:
+            self.db.close_session(session)
+
     def get_all(self, property_id=None, include_completed=False):
         """Recupera tutte le scadenze con filtri opzionali"""
         session = self.db.get_session()

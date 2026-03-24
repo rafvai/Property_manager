@@ -157,8 +157,7 @@ class DashboardView(BaseView):
         left_column.setSpacing(15)
 
         # Info proprietà - CLICCABILE
-        info_frame = ClickableFrame(
-            on_click=lambda: self.main_window.navigate_to_section(self.tm.get("menu", "properties")))
+        info_frame = ClickableFrame(on_click=lambda: self.main_window.navigate_to_section("PROPERTIES"))
         info_frame.setStyleSheet(f"""
             QFrame {{
                 background: {COLORE_WIDGET_2}; 
@@ -189,8 +188,7 @@ class DashboardView(BaseView):
         info_layout.addStretch()
 
         # Widget Prossima Scadenza - CLICCABILE
-        deadline_frame = ClickableFrame(
-            on_click=lambda: self.main_window.navigate_to_section(self.tm.get("menu", "calendar")))
+        deadline_frame = ClickableFrame(on_click=lambda: self.main_window.navigate_to_section("CALENDAR"))
         deadline_frame.setStyleSheet(f"""
             QFrame {{
                 background: {COLORE_WIDGET_2}; 
@@ -223,8 +221,7 @@ class DashboardView(BaseView):
         left_column.addWidget(deadline_frame, stretch=1)
 
         # --- Grafico Donut - CLICCABILE ---
-        chart_frame = ClickableFrame(
-            on_click=lambda: self.main_window.navigate_to_section(self.tm.get("menu", "accounting")))
+        chart_frame = ClickableFrame(on_click=lambda: self.main_window.navigate_to_section("FINANZE"))
         chart_frame.setStyleSheet(f"""
             QFrame {{
                 background: {COLORE_WIDGET_2}; 
@@ -247,8 +244,7 @@ class DashboardView(BaseView):
         layout.addLayout(middle_layout)
 
         # ========== SEZIONE INFERIORE - CLICCABILE ========== #
-        bottom_frame = ClickableFrame(
-            on_click=lambda: self.main_window.navigate_to_section(self.tm.get("menu", "documents")))
+        bottom_frame = ClickableFrame(on_click=lambda: self.main_window.navigate_to_section("DOCUMENTS"))
         bottom_frame.setStyleSheet(f"""
             QFrame {{
                 background: {COLORE_WIDGET_2}; 

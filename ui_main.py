@@ -231,25 +231,29 @@ class DashboardWindow(QMainWindow):
                 parent=self
             ))
 
-    def navigate_to_section(self, section_name):
-        """Naviga a una sezione specifica tramite nome"""
-        # Mappa i nomi tradotti agli indici
-        section_indices = {
-            self.tm.get("menu", "dashboard"): 0,
-            self.tm.get("menu", "properties"): 1,
-            self.tm.get("menu", "documents"): 2,
-            self.tm.get("menu", "accounting"): 3,
-            self.tm.get("menu", "report"): 4,
-            self.tm.get("menu", "calendar"): 5,
-            self.tm.get("report", "supplier"): 6,
-            self.tm.get("menu", "settings"): 7,
-            self.tm.get("menu", "Traduzioni"): 8,
+    def navigate_to_section(self, section_key: str):
+        """
+        Naviga tramite chiave canonica — indipendente da lingua e ordine del menu.
+        Usa le stesse chiavi di update_menu_items().
+        """
+        section_map = {
+            "DASHBOARD": 0,
+            "PROPERTIES": 1,
+            "DOCUMENTS": 2,
+            "FINANZE": 3,
+            "TRANSAZIONI": 4,
+            "CALENDAR": 5,
+            "FORNITORI": 6,
+            "IMPOSTAZIONI": 7,
         }
 
-        if section_name in section_indices:
-            index = section_indices[section_name]
-            self.menu.setCurrentRow(index)
-            self.menu_navigation(index)
+        index = section_map.get(section_key)
+        if index is None:
+            self.logger.warning(f"navigate_to_section: chiave sconosciuta '{section_key}'")
+            return
+
+        self.menu.setCurrentRow(index)
+        self.menu_navigation(index)
 
     def resizeEvent(self, event):
         """Ridimensiona il menu laterale"""

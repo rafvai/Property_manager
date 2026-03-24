@@ -415,9 +415,8 @@ class PlannerCalendarWidget(QWidget):
         start_col      = first_day.dayOfWeek() - 1
         days_in_month  = first_day.daysInMonth()
 
-        # FIX: carica TUTTE le scadenze del mese in una sola query
-        # invece di una query per ogni giorno
-        all_deadlines = self._load_month_deadlines(year, month, days_in_month)
+        # carica TUTTE le scadenze del mese in una sola query
+        all_deadlines = self._load_month_deadlines(year, month)
 
         row, col = 0, start_col
         for day in range(1, days_in_month + 1):
@@ -431,30 +430,13 @@ class PlannerCalendarWidget(QWidget):
                 col = 0
                 row += 1
 
-    def _load_month_deadlines(self, year, month, days_in_month) -> dict:
-        """
-        FIX: carica tutte le scadenze del mese in una query sola
-        e le raggruppa per data. Prima c'era una query per ogni giorno.
-        Ritorna dict {date_str: [deadline, ...]}
-        """
-        result = {}
-        # get_all filtra già per tenant_id e include_completed=False
-        start = f"{year:04d}-{month:02d}-01"
-        end   = f"{year:04d}-{month:02d}-{days_in_month:02d}"
-
+    def _load_month_deadlines(self, year, month) -> dict:
+        """Delega al service che esegue una sola query SQL filtrata sul mese."""
         try:
-            # Se DeadlineService non ha get_by_range, usiamo get_all
-            # e filtriamo in memoria — comunque una sola query
-            all_deadlines = self.deadline_service.get_all(include_completed=False)
-            for d in all_deadlines:
-                due = d.get('due_date', '')
-                due_str = due if isinstance(due, str) else due.isoformat()
-                if start <= due_str <= end:
-                    result.setdefault(due_str, []).append(d)
+            return self.deadline_service.get_by_month(year, month)
         except Exception as e:
             self.logger.error(f"Errore caricamento scadenze mese: {e}")
-
-        return result
+            return {}
 
     def next_month(self):
         self.current_date = self.current_date.addMonths(1)
@@ -475,7 +457,7 @@ class ExportDialog(QDialog):
         self.export_service = export_service
         self.tm = tm
 
-        self.setWindowTitle(self.tm.get("report", "export"))
+        self.setWindowTitle(self.tm.get("ETICHETTE", "ESPORTA_DATI"))
         self.setMinimumSize(500, 400)
         self.setStyleSheet(f"QDialog {{ background-color: #131b23; }}")
 
@@ -484,12 +466,12 @@ class ExportDialog(QDialog):
         main_layout.setContentsMargins(25, 25, 25, 25)
 
         # Titolo
-        title = QLabel(f"📥 {self.tm.get("report", "export_transactions")}")
+        title = QLabel(f"📥 {self.tm.get("ETICHETTE", "ESPORTA_DATI")}")
         title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
         main_layout.addWidget(title)
 
         # === SELEZIONE PROPRIETÀ ===
-        property_group = QGroupBox(self.tm.get("common", "property"))
+        property_group = QGroupBox(self.tm.get("ETICHETTE", "PROPRIETA"))
         property_group.setStyleSheet("""
             QGroupBox {
                 color: white;
@@ -524,7 +506,7 @@ class ExportDialog(QDialog):
             }
         """)
 
-        self.property_combo.addItem(self.tm.get("common", "all_properties"), None)
+        self.property_combo.addItem(self.tm.get("ETICHETTE", "ALL_PROPERTIES"), None)
         properties = self.property_service.get_all()
         for prop in properties:
             self.property_combo.addItem(f"{prop['name']}", prop['id'])
@@ -533,7 +515,7 @@ class ExportDialog(QDialog):
         main_layout.addWidget(property_group)
 
         # === SELEZIONE PERIODO ===
-        period_group = QGroupBox(self.tm.get("common", "period"))
+        period_group = QGroupBox(self.tm.get("ETICHETTE", "PERIODO"))
         period_group.setStyleSheet("""
             QGroupBox {
                 color: white;
@@ -554,7 +536,7 @@ class ExportDialog(QDialog):
         # Date pickers
         dates_layout = QHBoxLayout()
 
-        start_label = QLabel("Da:")
+        start_label = QLabel(self.tm.get("ETICHETTE","DAL"))
         start_label.setStyleSheet("color: white;")
         dates_layout.addWidget(start_label)
 
@@ -565,7 +547,7 @@ class ExportDialog(QDialog):
         self.start_date.setStyleSheet(default_selector_date_export)
         dates_layout.addWidget(self.start_date)
 
-        end_label = QLabel("A:")
+        end_label = QLabel(self.tm.get("ETICHETTE","AL"))
         end_label.setStyleSheet("color: white;")
         dates_layout.addWidget(end_label)
 
@@ -649,7 +631,7 @@ class ExportDialog(QDialog):
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
 
-        cancel_btn = QPushButton(f"❌ {self.tm.get("common", "cancel")}")
+        cancel_btn = QPushButton(f"❌ {self.tm.get("PULSANTI", "ANNULLA")}")
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {COLORE_ERROR};
@@ -666,7 +648,7 @@ class ExportDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         buttons_layout.addWidget(cancel_btn)
 
-        export_btn = QPushButton(f"📥 {self.tm.get("report", "export")}")
+        export_btn = QPushButton(f"📥 {self.tm.get("PULSANTI", "ESPORTA")}")
         export_btn.setStyleSheet(default_export_button)
         export_btn.clicked.connect(self.do_export)
         buttons_layout.addWidget(export_btn)
