@@ -158,13 +158,7 @@ class DashboardView(BaseView):
 
         # Info proprietà - CLICCABILE
         info_frame = ClickableFrame(on_click=lambda: self.main_window.navigate_to_section("PROPERTIES"))
-        info_frame.setStyleSheet(f"""
-            QFrame {{
-                background: {COLORE_WIDGET_2}; 
-                border-radius: 12px; 
-                padding: 12px;
-            }}
-        """)
+        info_frame.setStyleSheet(default_dashboard_widget)
         info_layout = QVBoxLayout(info_frame)
         info_layout.setSpacing(8)
 
@@ -189,13 +183,7 @@ class DashboardView(BaseView):
 
         # Widget Prossima Scadenza - CLICCABILE
         deadline_frame = ClickableFrame(on_click=lambda: self.main_window.navigate_to_section("CALENDAR"))
-        deadline_frame.setStyleSheet(f"""
-            QFrame {{
-                background: {COLORE_WIDGET_2}; 
-                border-radius: 12px; 
-                padding: 15px;
-            }}
-        """)
+        deadline_frame.setStyleSheet(default_dashboard_widget)
         deadline_layout = QVBoxLayout(deadline_frame)
         deadline_layout.setSpacing(8)
 
@@ -222,13 +210,7 @@ class DashboardView(BaseView):
 
         # --- Grafico Donut - CLICCABILE ---
         chart_frame = ClickableFrame(on_click=lambda: self.main_window.navigate_to_section("FINANZE"))
-        chart_frame.setStyleSheet(f"""
-            QFrame {{
-                background: {COLORE_WIDGET_2}; 
-                border-radius: 12px; 
-                padding: 20px;
-            }}
-        """)
+        chart_frame.setStyleSheet(default_dashboard_widget)
         chart_layout = QVBoxLayout(chart_frame)
         chart_layout.setSpacing(10)
 
@@ -245,13 +227,7 @@ class DashboardView(BaseView):
 
         # ========== SEZIONE INFERIORE - CLICCABILE ========== #
         bottom_frame = ClickableFrame(on_click=lambda: self.main_window.navigate_to_section("DOCUMENTS"))
-        bottom_frame.setStyleSheet(f"""
-            QFrame {{
-                background: {COLORE_WIDGET_2}; 
-                border-radius: 12px; 
-                padding: 15px;
-            }}
-        """)
+        bottom_frame.setStyleSheet(default_dashboard_widget)
         bottom_layout = QVBoxLayout(bottom_frame)
         bottom_label = QLabel(self.tm.get("ETICHETTE", "DOCUMENTS"))
         bottom_label.setStyleSheet("color: white; font-size: 14px;")
@@ -316,8 +292,6 @@ class DashboardView(BaseView):
         elif self.selected_property is None:
             num_prop = len(self.proprieta)
             self.info_name.setText(f"🏡 {num_prop} {self.tm.get('ETICHETTE', 'PROPRIETA_TOTALI')}")
-            self.info_address.setText(self.tm.get("dashboard", "aggregate_view")) # todo: vedere cosa fare qui, che info mettere
-            self.info_owner.setText(self.tm.get("dashboard", "click_to_manage"))
         else:
             p = self.selected_property
             self.info_name.setText(f"🏡 {p['name']}")

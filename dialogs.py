@@ -446,6 +446,37 @@ class PlannerCalendarWidget(QWidget):
         self.current_date = self.current_date.addMonths(-1)
         self.populate_month()
 
+    def add_deadline(self, preset_date=None):
+        """Apre dialog per aggiungere scadenza (con data opzionale preimpostata)"""
+        properties = self.property_service.get_all()
+        dialog = AddDeadlineDialog(self.tm, properties=properties, parent=self)
+
+        if preset_date:
+            date_obj = QDate.fromString(preset_date, "yyyy-MM-dd")
+            if date_obj.isValid():
+                dialog.due_date.setDate(date_obj)
+
+        if dialog.exec():
+            data = dialog.get_data()
+            deadline_id = self.deadline_service.create(
+                title=data["title"],
+                description=data["description"],
+                due_date=data["due_date"],
+                property_id=data["property_id"]
+            )
+
+            if deadline_id:
+                QMessageBox.information(self, self.tm.get("MESSAGGI", "SUCCESSO"), self.tm.get("MESSAGGI", "SALVATO"))
+                self.logger.info(f"{self.tm.get('MESSAGGI', 'SALVATO')} {data['title']}")
+                self.populate_month()
+            else:
+                QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"), self.tm.get("MESSAGGI", "ERRORE"))
+                self.logger.error(f"{self.tm.get('MESSAGGI', 'ERRORE')} {data['title']}")
+
+    def add_deadline_for_date(self, date_str):
+        """Aggiunge scadenza per una data specifica (chiamato dal click sulla cella)"""
+        self.add_deadline(preset_date=date_str)
+
 
 class ExportDialog(QDialog):
     """Dialog per esportare transazioni in PDF/Excel"""

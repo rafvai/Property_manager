@@ -533,7 +533,7 @@ class ReportView(BaseView):
 
             # Bottone elimina
             del_btn = QPushButton("🗑")
-            del_btn.setFixedSize(28, 28)
+            del_btn.setFixedSize(20, 20)
             del_btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: transparent;

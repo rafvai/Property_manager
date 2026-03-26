@@ -215,7 +215,7 @@ class SettingsView(BaseView):
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(20)
 
-        title = QLabel(self.tm.get('settings', 'title'))
+        title = QLabel(self.tm.get('ETICHETTE', 'IMPOSTAZIONI'))
         title.setStyleSheet(default_title_style)
         main_layout.addWidget(title)
 
@@ -252,22 +252,12 @@ class SettingsView(BaseView):
         scroll_layout.setSpacing(25)
         scroll_layout.setContentsMargins(0, 0, 10, 0)
 
-        # === SEZIONE LINGUA ===
-        lang_section = SettingsSection(self.tm.get("settings", "language_section"))
-        lang_section.add_item(SettingItem(
-            "🌐",
-            self.tm.get("settings", "change_language"),
-            self.tm.get("settings", "change_language_desc"),
-            self.change_language
-        ))
-        scroll_layout.addWidget(lang_section)
-
         # === SEZIONE DATABASE ===
-        db_section = SettingsSection(self.tm.get("settings", "database_section"))
+        db_section = SettingsSection(self.tm.get("ETICHETTE", "BACKUP_DB"))
         db_section.add_item(SettingItem(
             "💾",
-            self.tm.get("settings", "backup_db"),
-            self.tm.get("settings", "backup_db_desc"),
+            self.tm.get("ETICHETTE", "BACKUP_DB"),
+            self.tm.get("ETICHETTE", "CREA_UN_BACKUP_DEL_DB"),
             self.backup_database
         ))
         db_section.add_item(SettingItem(
@@ -315,18 +305,14 @@ class SettingsView(BaseView):
         info_layout = QHBoxLayout(info_frame)
         info_layout.setSpacing(15)
 
-        app_icon = QLabel("🏠")
-        app_icon.setStyleSheet("font-size: 32px; background: transparent;")
+        app_icon = QLabel("🏠 Property Manager")
+        app_icon.setStyleSheet("font-size: 14px; background: transparent;")
         info_layout.addWidget(app_icon)
 
         text_container = QWidget()
         text_layout = QVBoxLayout(text_container)
         text_layout.setContentsMargins(0, 0, 0, 0)
         text_layout.setSpacing(2)
-
-        app_name = QLabel("Property Manager")
-        app_name.setStyleSheet("color: white; font-size: 14px; font-weight: bold; background: transparent;")
-        text_layout.addWidget(app_name)
 
         version = QLabel(self.tm.get("settings", "version"))
         version.setStyleSheet("color: #95a5a6; font-size: 11px; background: transparent;")
@@ -340,93 +326,13 @@ class SettingsView(BaseView):
         main_layout.addWidget(scroll)
 
     # ── azioni ────────────────────────────────────────────────────────────────
-
-    def change_language(self):
-        from PySide6.QtWidgets import QButtonGroup, QRadioButton
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle(self.tm.get("settings", "change_language"))
-        dialog.setMinimumWidth(350)
-        dialog.setStyleSheet(f"QDialog {{ background-color: {COLORE_BACKGROUND}; }}")
-
-        layout = QVBoxLayout(dialog)
-        layout.setSpacing(20)
-
-        title = QLabel(self.tm.get("settings", "select_language"))
-        title.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
-        layout.addWidget(title)
-
-        lang_group = QButtonGroup(dialog)
-        languages = [("it", "🇮🇹 Italiano"), ("es", "🇪🇸 Español"), ("en", "🇬🇧 English")]
-        current_lang = self.tm.current_language
-
-        for lang_code, lang_name in languages:
-            radio = QRadioButton(lang_name)
-            radio.setStyleSheet("""
-                QRadioButton { color: white; font-size: 14px; padding: 8px; }
-                QRadioButton::indicator { width: 18px; height: 18px; }
-            """)
-            radio.setProperty("lang_code", lang_code)
-            if lang_code == current_lang:
-                radio.setChecked(True)
-            lang_group.addButton(radio)
-            layout.addWidget(radio)
-
-        buttons_layout = QHBoxLayout()
-        buttons_layout.addStretch()
-
-        cancel_btn = QPushButton(self.tm.get("common", "cancel"))
-        cancel_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {COLORE_SECONDARIO}; color: white;
-                padding: 8px 20px; border-radius: 6px; font-size: 13px;
-            }}
-            QPushButton:hover {{ background-color: {COLORE_ITEM_HOVER}; }}
-        """)
-        cancel_btn.clicked.connect(dialog.reject)
-        buttons_layout.addWidget(cancel_btn)
-
-        save_btn = QPushButton(self.tm.get("common", "save"))
-        save_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {COLORE_ITEM_SELEZIONATO}; color: white;
-                padding: 8px 20px; border-radius: 6px; font-size: 13px;
-            }}
-            QPushButton:hover {{ background-color: {COLORE_ITEM_HOVER}; }}
-        """)
-        save_btn.clicked.connect(dialog.accept)
-        buttons_layout.addWidget(save_btn)
-        layout.addLayout(buttons_layout)
-
-        if dialog.exec():
-            selected_lang = None
-            for button in lang_group.buttons():
-                if button.isChecked():
-                    selected_lang = button.property("lang_code")
-                    break
-
-            if selected_lang and selected_lang != current_lang:
-                from services.preferences_service import PreferencesService
-                prefs = PreferencesService(logger=self.logger)
-                prefs.set_language(selected_lang)
-                QMessageBox.information(
-                    self,
-                    self.tm.get("common", "success"),
-                    self.tm.get("settings", "language_changed")
-                )
-                QMessageBox.information(
-                    self,
-                    self.tm.get("settings", "restart_required"),
-                    self.tm.get("settings", "restart_required_desc")
-                )
-
     def backup_database(self):
         """Crea backup del database — usa il path corretto da Config."""
         try:
             db_path = self._db_path()
             if not db_path.exists():
-                QMessageBox.warning(self, self.tm.get("common", "error"),
-                                    f"Database non trovato:\n{db_path}")
+                QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"),
+                                    f"{self.tm.get("MESSAGGI", "DATABASE_NON_TROVATO")}:\n{db_path}")
                 return
 
             timestamp    = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -440,12 +346,12 @@ class SettingsView(BaseView):
             if backup_path:
                 shutil.copy2(str(db_path), backup_path)
                 QMessageBox.information(
-                    self, "✅ Backup Completato",
+                    self, f"✅ {self.tm.get("MESSAGGI", "BACKUP_COMPLETATO")}",
                     f"Database salvato con successo!\n\n📁 {backup_path}"
                 )
 
         except Exception as e:
-            QMessageBox.critical(self, self.tm.get("common", "error"),
+            QMessageBox.critical(self, self.tm.get("MESSAGGI", "ERRORE"),
                                  f"Errore durante il backup:\n{str(e)}")
 
     def restore_database(self):

@@ -291,4 +291,12 @@ default_style_search_line = f"""
             }}
         """
 
+default_dashboard_widget = f"""
+        QFrame {{
+                background: {COLORE_WIDGET_2}; 
+                border-radius: 12px; 
+                padding: 12px;
+            }}
+        """
+
 default_style_text = f"color: {COLORE_BIANCO}; font-size: 14px;"
