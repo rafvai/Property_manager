@@ -3,12 +3,11 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, Property, QPoint
+from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFrame, QMessageBox, QFileDialog, QWidget, QGraphicsDropShadowEffect, QDialog
-)
+from PySide6.QtWidgets import (QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, QFrame, QMessageBox, QFileDialog, QWidget,
+                               QGraphicsDropShadowEffect, QDialog, QDialogButtonBox, QComboBox, QFormLayout, QLineEdit,
+                               QPushButton, QTextEdit)
 
 from config import Config
 from views.base_view import BaseView
@@ -181,8 +180,10 @@ class SettingsSection(QWidget):
 class SettingsView(BaseView):
     """View per le impostazioni dell'applicazione"""
 
-    def __init__(self, property_service, transaction_service, translation_service, logger, parent=None):
+    def __init__(self, property_service, transaction_service, translation_service,auth_service, user_prefs_service, logger, parent=None):
         self.tm = translation_service
+        self.auth_service = auth_service
+        self.user_prefs_service  = user_prefs_service
         self.logger = logger
         super().__init__(property_service, transaction_service, None, parent)
 
@@ -192,7 +193,6 @@ class SettingsView(BaseView):
     def _db_path() -> Path:
         """
         Ritorna il path corretto del DB in base all'ambiente.
-        FIX: prima era hardcodato a "property_manager.db" nella cwd,
         ora usa Config.get_database_config() come il resto dell'app.
         """
         db_config = Config.get_database_config()
@@ -202,7 +202,6 @@ class SettingsView(BaseView):
     def _exports_dir() -> Path:
         """
         Ritorna la directory exports corretta in base all'ambiente.
-        FIX: prima era hardcodato a "exports" nella cwd.
         """
         exports = Config.EXPORTS_DIR or Path('exports').absolute()
         Path(exports).mkdir(parents=True, exist_ok=True)
@@ -218,8 +217,6 @@ class SettingsView(BaseView):
         title = QLabel(self.tm.get('ETICHETTE', 'IMPOSTAZIONI'))
         title.setStyleSheet(default_title_style)
         main_layout.addWidget(title)
-
-        from PySide6.QtWidgets import QScrollArea
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -262,33 +259,81 @@ class SettingsView(BaseView):
         ))
         db_section.add_item(SettingItem(
             "📥",
-            self.tm.get("settings", "restore_db"),
-            self.tm.get("settings", "restore_db_desc"),
+            self.tm.get("ETICHETTE", "RIPRISTINA_DB"),
+            self.tm.get("ETICHETTE", "restore_db_desc"),
             self.restore_database
         ))
         scroll_layout.addWidget(db_section)
 
         # === SEZIONE GESTIONE FILE ===
-        files_section = SettingsSection(self.tm.get("settings", "files_section"))
+        files_section = SettingsSection(self.tm.get("ETICHETTE", "files_section"))
         files_section.add_item(SettingItem(
             "📊",
-            self.tm.get("settings", "open_exports"),
-            self.tm.get("settings", "open_exports_desc"),
+            self.tm.get("ETICHETTE", "open_exports"),
+            self.tm.get("ETICHETTE", "open_exports_desc"),
             self.open_exports_folder
         ))
         files_section.add_item(SettingItem(
             "🗑️",
-            self.tm.get("settings", "clean_exports"),
-            self.tm.get("settings", "clean_exports_desc"),
+            self.tm.get("ETICHETTE", "clean_exports"),
+            self.tm.get("ETICHETTE", "clean_exports_desc"),
             self.clean_old_exports
         ))
-        files_section.add_item(SettingItem(
-            "🗂️",
-            self.tm.get("settings", "clean_orphaned"),
-            self.tm.get("settings", "clean_orphaned_desc"),
-            self.clean_orphaned_folders
-        ))
+
         scroll_layout.addWidget(files_section)
+        # === SEZIONE PREFERENZE ===
+        prefs_section = SettingsSection(self.tm.get("settings", "preferences_section") or "Preferenze")
+        prefs_section.add_item(SettingItem(
+            "🔔",
+            self.tm.get("settings", "deadline_warning") or "Preavviso Scadenze",
+            self.tm.get("settings", "deadline_warning_desc") or "Giorni di anticipo per le notifiche di scadenza",
+            self.open_deadline_warning_dialog
+        ))
+        prefs_section.add_item(SettingItem(
+            "💱",
+            self.tm.get("settings", "currency") or "Valuta",
+            self.tm.get("settings", "currency_desc") or "Simbolo valuta usato nell'app",
+            self.open_currency_dialog
+        ))
+        scroll_layout.addWidget(prefs_section)
+
+        # === SEZIONE ACCOUNT & LICENZA ===
+        account_section = SettingsSection(self.tm.get("settings", "account_section") or "Account & Licenza")
+        account_section.add_item(SettingItem(
+            "🔑",
+            self.tm.get("settings", "change_password") or "Cambia Password",
+            self.tm.get("settings", "change_password_desc") or "Modifica la password del tuo account",
+            self.open_change_password_dialog
+        ))
+        account_section.add_item(SettingItem(
+            "📋",
+            self.tm.get("settings", "license_info") or "Informazioni Licenza",
+            self.tm.get("settings", "license_info_desc") or "Visualizza stato e scadenza della licenza",
+            self.open_license_info_dialog
+        ))
+        scroll_layout.addWidget(account_section)
+
+        # === SEZIONE LOG & DIAGNOSTICA ===
+        log_section = SettingsSection(self.tm.get("settings", "log_section") or "Log & Diagnostica")
+        log_section.add_item(SettingItem(
+            "📄",
+            self.tm.get("settings", "view_logs") or "Visualizza Log",
+            self.tm.get("settings", "view_logs_desc") or "Mostra le ultime righe del log applicazione",
+            self.open_log_viewer_dialog
+        ))
+        log_section.add_item(SettingItem(
+            "🔄",
+            self.tm.get("settings", "rotate_logs") or "Ruota Log",
+            self.tm.get("settings", "rotate_logs_desc") or "Archivia i log correnti se superano la dimensione massima",
+            self.rotate_logs
+        ))
+        log_section.add_item(SettingItem(
+            "🗜️",
+            self.tm.get("settings", "archive_logs") or "Archivia Log Vecchi",
+            self.tm.get("settings", "archive_logs_desc") or "Comprimi e archivia i log più vecchi di 30 giorni",
+            self.archive_logs
+        ))
+        scroll_layout.addWidget(log_section)
 
         scroll_layout.addStretch()
 
@@ -306,7 +351,7 @@ class SettingsView(BaseView):
         info_layout.setSpacing(15)
 
         app_icon = QLabel("🏠 Property Manager")
-        app_icon.setStyleSheet("font-size: 14px; background: transparent;")
+        app_icon.setStyleSheet(default_style_text)
         info_layout.addWidget(app_icon)
 
         text_container = QWidget()
@@ -314,8 +359,8 @@ class SettingsView(BaseView):
         text_layout.setContentsMargins(0, 0, 0, 0)
         text_layout.setSpacing(2)
 
-        version = QLabel(self.tm.get("settings", "version"))
-        version.setStyleSheet("color: #95a5a6; font-size: 11px; background: transparent;")
+        version = QLabel(self.tm.get("ETICHETTE", "VERSIONE"))
+        version.setStyleSheet(default_style_text_small)
         text_layout.addWidget(version)
 
         info_layout.addWidget(text_container)
@@ -421,97 +466,411 @@ class SettingsView(BaseView):
             QMessageBox.critical(self, self.tm.get("common", "error"),
                                  f"Errore durante la pulizia:\n{str(e)}")
 
-    def clean_orphaned_folders(self):
-        """Pulisce cartelle documenti senza proprietà associate."""
+
+
+    # ── PREFERENZE ────────────────────────────────────────────────
+
+    def open_deadline_warning_dialog(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Preavviso Scadenze")
+        dialog.setMinimumWidth(360)
+        dialog.setStyleSheet(default_dialog_style)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(16)
+        layout.setContentsMargins(24, 24, 24, 24)
+
+        lbl = QLabel("Quanti giorni prima vuoi ricevere il preavviso per le scadenze?")
+        lbl.setStyleSheet("color: white; font-size: 13px;")
+        lbl.setWordWrap(True)
+        layout.addWidget(lbl)
+
+        combo = QComboBox()
+        combo.setStyleSheet(default_combo_box_style)
+        options = [1, 3, 7, 14, 30]
+        for d in options:
+            combo.addItem(f"{d} giorn{'o' if d == 1 else 'i'}", d)
+
+        current = self.user_prefs_service.get_deadline_warning_days()
+        idx = options.index(current) if current in options else 2
+        combo.setCurrentIndex(idx)
+        layout.addWidget(combo)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.setStyleSheet("color: white;")
+        layout.addWidget(buttons)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+
+        if dialog.exec():
+            self.user_prefs_service.set_deadline_warning_days(combo.currentData())
+            QMessageBox.information(self, "✅ Salvato",
+                                    f"Preavviso impostato a {combo.currentData()} "
+                                    f"giorn{'o' if combo.currentData() == 1 else 'i'}.")
+
+    def open_currency_dialog(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Valuta")
+        dialog.setMinimumWidth(320)
+        dialog.setStyleSheet(default_dialog_style)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(16)
+        layout.setContentsMargins(24, 24, 24, 24)
+
+        lbl = QLabel("Seleziona il simbolo di valuta da usare nell'applicazione:")
+        lbl.setStyleSheet("color: white; font-size: 13px;")
+        lbl.setWordWrap(True)
+        layout.addWidget(lbl)
+
+        combo = QComboBox()
+        combo.setStyleSheet(default_combo_box_style)
+        currencies = [("€  Euro", "€"), ("$  Dollaro", "$"), ("£  Sterlina", "£")]
+        for label, symbol in currencies:
+            combo.addItem(label, symbol)
+
+        current = self.user_prefs_service.get_currency()
+        for i, (_, s) in enumerate(currencies):
+            if s == current:
+                combo.setCurrentIndex(i)
+                break
+        layout.addWidget(combo)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        layout.addWidget(buttons)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+
+        if dialog.exec():
+            self.user_prefs_service.set_currency(combo.currentData())
+            QMessageBox.information(self, "✅ Salvato",
+                                    f"Valuta impostata a {combo.currentData()}.")
+
+    # ── ACCOUNT & LICENZA ─────────────────────────────────────────
+
+    def open_change_password_dialog(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Cambia Password")
+        dialog.setMinimumWidth(400)
+        dialog.setStyleSheet(default_dialog_style)
+
+        layout = QFormLayout(dialog)
+        layout.setSpacing(14)
+        layout.setContentsMargins(24, 24, 24, 24)
+
+        current_pwd = QLineEdit()
+        current_pwd.setEchoMode(QLineEdit.EchoMode.Password)
+        current_pwd.setPlaceholderText("Password attuale")
+        layout.addRow("Password attuale*:", current_pwd)
+
+        new_pwd = QLineEdit()
+        new_pwd.setEchoMode(QLineEdit.EchoMode.Password)
+        new_pwd.setPlaceholderText("Minimo 8 caratteri")
+        layout.addRow("Nuova password*:", new_pwd)
+
+        confirm_pwd = QLineEdit()
+        confirm_pwd.setEchoMode(QLineEdit.EchoMode.Password)
+        confirm_pwd.setPlaceholderText("Ripeti la nuova password")
+        layout.addRow("Conferma password*:", confirm_pwd)
+
+        msg_lbl = QLabel("")
+        msg_lbl.setStyleSheet(f"color: {COLORE_ERROR}; font-size: 12px;")
+        msg_lbl.setWordWrap(True)
+        layout.addRow(msg_lbl)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        layout.addRow(buttons)
+        buttons.rejected.connect(dialog.reject)
+
+        def on_accept():
+            if not current_pwd.text():
+                msg_lbl.setText("Inserisci la password attuale.")
+                return
+            if len(new_pwd.text()) < 8:
+                msg_lbl.setText("La nuova password deve essere di almeno 8 caratteri.")
+                return
+            if new_pwd.text() != confirm_pwd.text():
+                msg_lbl.setText("Le password non coincidono.")
+                return
+            dialog.accept()
+
+        buttons.accepted.connect(on_accept)
+
+        if dialog.exec():
+            try:
+                import requests
+                from services.auth_service import _CACHE_FILE, _HMAC_KEY
+                import json, hmac
+
+                cache_file = _CACHE_FILE
+                if not cache_file.exists():
+                    QMessageBox.warning(self, "⚠️ Errore",
+                                        "Nessuna sessione attiva. Effettua il login e riprova.")
+                    return
+
+                raw = json.loads(cache_file.read_text(encoding="utf-8"))
+                payload = json.dumps(raw["payload"], sort_keys=True).encode()
+                expected = hmac.digest(_HMAC_KEY, payload, "sha256").hex()
+                if not hmac.compare_digest(raw["sig"], expected):
+                    QMessageBox.warning(self, "⚠️ Errore", "Cache non valida.")
+                    return
+
+                token = raw["payload"].get("token")
+                if not token:
+                    QMessageBox.warning(self, "⚠️ Errore", "Token non trovato.")
+                    return
+
+                resp = requests.post(
+                    f"{self.auth_service.server_url}/auth/change-password",
+                    json={
+                        "current_password": current_pwd.text(),
+                        "new_password": new_pwd.text()
+                    },
+                    headers={"Authorization": f"Bearer {token}"},
+                    timeout=10
+                )
+
+                if resp.status_code == 200:
+                    QMessageBox.information(self, "✅ Password Aggiornata",
+                                            "Password cambiata con successo!")
+                else:
+                    detail = resp.json().get("detail", "Errore sconosciuto")
+                    QMessageBox.warning(self, "❌ Errore", detail)
+
+            except requests.exceptions.ConnectionError:
+                QMessageBox.critical(self, "❌ Errore di connessione",
+                                     "Server non raggiungibile. Verifica la connessione.")
+            except Exception as e:
+                self.logger.error(f"SettingsView: cambio password: {e}")
+                QMessageBox.critical(self, "❌ Errore", str(e))
+
+    def open_license_info_dialog(self):
+        """Mostra info licenza leggendo dalla cache locale."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Informazioni Licenza")
+        dialog.setMinimumWidth(420)
+        dialog.setStyleSheet(default_dialog_style)
+
+        layout = QVBoxLayout(dialog)
+        layout.setSpacing(12)
+        layout.setContentsMargins(24, 24, 24, 24)
+
         try:
-            from services.document_service import get_docs_dir
-            docs_dir = get_docs_dir()
+            from services.auth_service import _CACHE_FILE
+            import json, hmac
+            from services.auth_service import _HMAC_KEY
 
-            if not docs_dir.exists():
-                QMessageBox.information(self, "Info", "Nessuna cartella documenti trovata.")
-                return
+            if not _CACHE_FILE.exists():
+                raise FileNotFoundError
 
-            properties         = self.property_service.get_all()
-            valid_property_ids = {prop['id'] for prop in properties}
+            raw = json.loads(_CACHE_FILE.read_text(encoding="utf-8"))
+            payload_bytes = json.dumps(raw["payload"], sort_keys=True).encode()
+            expected_sig = hmac.digest(_HMAC_KEY, payload_bytes, "sha256").hex()
+            if not hmac.compare_digest(raw["sig"], expected_sig):
+                raise ValueError("Cache manomessa")
 
-            orphaned_folders = []
-            total_size       = 0
+            cache = raw["payload"]
+            email = cache.get("email", "—")
+            expires_at = cache.get("expires_at", "")
+            days_left = cache.get("days_left", 0)
+            is_admin = cache.get("is_admin", False)
+            grace_mode = cache.get("grace_mode", False)
+            cached_at = cache.get("cached_at", "")
 
-            for folder_path in docs_dir.iterdir():
-                if not folder_path.is_dir():
-                    continue
-                if not folder_path.name.startswith("property_"):
-                    continue
-                try:
-                    property_id = int(folder_path.name.split("_")[1])
-                    if property_id not in valid_property_ids:
-                        folder_size = sum(
-                            f.stat().st_size
-                            for f in folder_path.rglob('*') if f.is_file()
-                        )
-                        orphaned_folders.append({
-                            'name'       : folder_path.name,
-                            'path'       : folder_path,
-                            'size'       : folder_size,
-                            'property_id': property_id
-                        })
-                        total_size += folder_size
-                except (ValueError, IndexError):
-                    continue
+            # Calcola giorni rimasti in tempo reale
+            try:
+                from datetime import datetime as dt
+                exp_dt = dt.fromisoformat(expires_at)
+                days_left = max(0, (exp_dt - dt.utcnow()).days)
+                expires_str = exp_dt.strftime("%d/%m/%Y")
+            except Exception:
+                expires_str = expires_at[:10] if expires_at else "—"
 
-            if not orphaned_folders:
-                QMessageBox.information(
-                    self, f"✅ {self.tm.get('common', 'success')}",
-                    "Non sono state trovate cartelle documenti orfane.\n\n"
-                    "Tutte le cartelle corrispondono a proprietà esistenti."
-                )
-                return
+            try:
+                cached_str = dt.fromisoformat(cached_at).strftime("%d/%m/%Y %H:%M")
+            except Exception:
+                cached_str = "—"
 
-            def fmt(b):
-                units, size = ['B', 'KB', 'MB', 'GB'], float(b)
-                i = 0
-                while size >= 1024 and i < len(units) - 1:
-                    size /= 1024; i += 1
-                return f"{size:.2f} {units[i]}"
+            rows = [
+                ("👤 Account", email),
+                ("📋 Piano", "Admin" if is_admin else "Beta"),
+                ("📅 Scadenza", expires_str),
+                ("⏳ Giorni rimasti",
+                 f"{days_left} gg {'(periodo di grazia)' if grace_mode else ''}".strip()),
+                ("🔄 Ultimo sync", cached_str),
+            ]
 
-            orphaned_list = "\n".join(
-                f"  • {f['name']} ({fmt(f['size'])})" for f in orphaned_folders
-            )
-
-            reply = QMessageBox.question(
-                self, "🗑️ Cartelle Orfane Trovate",
-                f"Trovate {len(orphaned_folders)} cartelle senza proprietà associate:\n\n"
-                f"{orphaned_list}\n\n"
-                f"Spazio totale occupato: {fmt(total_size)}\n\n"
-                f"⚠️ Vuoi eliminarle definitivamente?",
-                QMessageBox.Yes | QMessageBox.No, QMessageBox.No
-            )
-
-            if reply == QMessageBox.Yes:
-                deleted_count = 0
-                deleted_size  = 0
-                errors        = []
-
-                for folder_info in orphaned_folders:
-                    try:
-                        shutil.rmtree(folder_info['path'])
-                        deleted_count += 1
-                        deleted_size  += folder_info['size']
-                    except Exception as e:
-                        errors.append(f"{folder_info['name']}: {str(e)}")
-
-                result_message = (
-                    f"✅ Pulizia completata!\n\n"
-                    f"Cartelle eliminate: {deleted_count}/{len(orphaned_folders)}\n"
-                    f"Spazio liberato: {fmt(deleted_size)}"
-                )
-                if errors:
-                    result_message += f"\n\n⚠️ Errori:\n" + "\n".join(errors)
-
-                QMessageBox.information(self, "Pulizia Completata", result_message)
-
+        except FileNotFoundError:
+            rows = [("⚠️ Stato", "Nessuna sessione trovata. Effettua il login.")]
         except Exception as e:
-            QMessageBox.critical(
-                self, f"❌ {self.tm.get('common', 'error')}",
-                f"Errore durante la pulizia:\n\n{str(e)}"
-            )
+            rows = [("❌ Errore", str(e))]
+
+        # Rendering righe
+        for label, value in rows:
+            row_frame = QFrame()
+            row_frame.setStyleSheet(f"""
+                QFrame {{
+                    background-color: {COLORE_SECONDARIO};
+                    border-radius: 8px;
+                }}
+            """)
+            row_layout = QHBoxLayout(row_frame)
+            row_layout.setContentsMargins(16, 10, 16, 10)
+
+            lbl_w = QLabel(label)
+            lbl_w.setStyleSheet("color: #95a5a6; font-size: 13px; background: transparent;")
+            lbl_w.setFixedWidth(140)
+            row_layout.addWidget(lbl_w)
+
+            val_w = QLabel(value)
+            val_w.setStyleSheet("color: white; font-size: 13px; font-weight: 600; background: transparent;")
+            val_w.setWordWrap(True)
+            row_layout.addWidget(val_w, stretch=1)
+
+            layout.addWidget(row_frame)
+
+        # Giorni rimasti: barra colorata
+        if rows and rows[0][0] != "⚠️ Stato" and rows[0][0] != "❌ Errore":
+            try:
+                bar_color = COLORE_SUCCESS if days_left > 14 else (COLORE_WARNING if days_left > 7 else COLORE_ERROR)
+                bar_frame = QFrame()
+                bar_frame.setStyleSheet(f"""
+                    QFrame {{
+                        background: qlineargradient(
+                            x1:0, y1:0, x2:1, y2:0,
+                            stop:0 {bar_color},
+                            stop:{min(days_left / 90, 1.0):.2f} {bar_color},
+                            stop:{min(days_left / 90 + 0.001, 1.0):.3f} {COLORE_SECONDARIO},
+                            stop:1 {COLORE_SECONDARIO}
+                        );
+                        border-radius: 4px;
+                        min-height: 6px;
+                        max-height: 6px;
+                    }}
+                """)
+                layout.addWidget(bar_frame)
+            except Exception:
+                pass
+
+        close_btn = QPushButton("Chiudi")
+        close_btn.setStyleSheet(default_aggiungi_button)
+        close_btn.clicked.connect(dialog.accept)
+        layout.addWidget(close_btn)
+
+        dialog.exec()
+
+    # ── LOG & DIAGNOSTICA ─────────────────────────────────────────
+
+    def open_log_viewer_dialog(self):
+        """Mostra le ultime 100 righe di app.log."""
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Log Applicazione")
+        dialog.setMinimumSize(700, 500)
+        dialog.setStyleSheet(default_dialog_style)
+
+        layout = QVBoxLayout(dialog)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
+
+        # Header con stats
+        from log_manager import LogManager
+        lm = LogManager()
+        stats = lm.get_log_stats()
+
+        stats_lbl = QLabel(
+            f"📄 {stats['log_files']} file log  •  "
+            f"💾 {stats['total_log_size_mb']} MB  •  "
+            f"🗜️ {stats['archives']} archivi ({stats['total_archive_size_mb']} MB)"
+        )
+        stats_lbl.setStyleSheet(f"color: {COLORE_GRIGIO}; font-size: 12px;")
+        layout.addWidget(stats_lbl)
+
+        # Area testo log
+        log_text = QTextEdit()
+        log_text.setReadOnly(True)
+        log_text.setStyleSheet(f"""
+            QTextEdit {{
+                background-color: {COLORE_BACKGROUND};
+                color: #a8c7a8;
+                font-family: 'Courier New', monospace;
+                font-size: 11px;
+                border: 1px solid {COLORE_SECONDARIO};
+                border-radius: 6px;
+                padding: 8px;
+            }}
+        """)
+
+        log_path = Path("logs") / "app.log"
+        if log_path.exists():
+            try:
+                with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                    lines = f.readlines()
+                last_lines = lines[-100:] if len(lines) > 100 else lines
+                log_text.setPlainText("".join(last_lines))
+                # Scroll in fondo
+                cursor = log_text.textCursor()
+                cursor.movePosition(cursor.MoveOperation.End)
+                log_text.setTextCursor(cursor)
+            except Exception as e:
+                log_text.setPlainText(f"Errore lettura log: {e}")
+        else:
+            log_text.setPlainText("Nessun file log trovato.")
+
+        layout.addWidget(log_text)
+
+        btn_row = QHBoxLayout()
+        refresh_btn = QPushButton("🔄 Aggiorna")
+        refresh_btn.setStyleSheet(default_style_secondary_buttons)
+        refresh_btn.clicked.connect(lambda: self._refresh_log_text(log_text, log_path))
+        btn_row.addWidget(refresh_btn)
+        btn_row.addStretch()
+
+        close_btn = QPushButton("Chiudi")
+        close_btn.setStyleSheet(default_aggiungi_button)
+        close_btn.clicked.connect(dialog.accept)
+        btn_row.addWidget(close_btn)
+
+        layout.addLayout(btn_row)
+        dialog.exec()
+
+    def _refresh_log_text(self, text_edit: QTextEdit, log_path: Path):
+        if log_path.exists():
+            try:
+                with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                    lines = f.readlines()
+                last_lines = lines[-100:] if len(lines) > 100 else lines
+                text_edit.setPlainText("".join(last_lines))
+                cursor = text_edit.textCursor()
+                cursor.movePosition(cursor.MoveOperation.End)
+                text_edit.setTextCursor(cursor)
+            except Exception as e:
+                text_edit.setPlainText(f"Errore lettura log: {e}")
+
+    def rotate_logs(self):
+        try:
+            from log_manager import LogManager
+            lm = LogManager()
+            rotated = lm.rotate_logs()
+            if rotated:
+                QMessageBox.information(self, "✅ Log Ruotati",
+                                        f"Ruotati {len(rotated)} file:\n" +
+                                        "\n".join(r.name for r in rotated))
+            else:
+                QMessageBox.information(self, "ℹ️ Nessuna Rotazione",
+                                        "Nessun log supera la dimensione massima configurata.")
+        except Exception as e:
+            QMessageBox.critical(self, "❌ Errore", str(e))
+
+    def archive_logs(self):
+        try:
+            from log_manager import LogManager
+            lm = LogManager()
+            count = lm.archive_old_logs()
+            if count:
+                QMessageBox.information(self, "✅ Log Archiviati",
+                                        f"Archiviati {count} file log.")
+            else:
+                QMessageBox.information(self, "ℹ️ Nessun Archivio",
+                                        "Nessun log abbastanza vecchio da archiviare (< 30 giorni).")
+        except Exception as e:
+            QMessageBox.critical(self, "❌ Errore", str(e))

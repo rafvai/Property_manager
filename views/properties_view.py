@@ -473,6 +473,7 @@ class PropertiesView(BaseView):
                         success_message
                     )
                     self.load_properties()
+                    self._clean_orphaned_document_folders()
                 else:
                     QMessageBox.warning(
                         self,
@@ -492,3 +493,40 @@ class PropertiesView(BaseView):
     def filter_properties(self, text):
         """Filtra le proprietà in base al testo di ricerca"""
         self.load_properties(search_text=text)
+
+    def _clean_orphaned_document_folders(self):
+        """
+        Rimuove silenziosamente le cartelle documenti rimaste
+        senza proprietà associate. Chiamata automaticamente
+        dopo ogni eliminazione di proprietà.
+        """
+        try:
+            from services.document_service import get_docs_dir
+            docs_dir = get_docs_dir()
+
+            if not docs_dir.exists():
+                return
+
+            valid_ids = {p['id'] for p in self.property_service.get_all()}
+
+            for tenant_dir in docs_dir.iterdir():
+                if not tenant_dir.is_dir():
+                    continue
+                for folder_path in tenant_dir.iterdir():
+                    if not folder_path.is_dir():
+                        continue
+                    if not folder_path.name.startswith("property_"):
+                        continue
+                    try:
+                        prop_id = int(folder_path.name.split("_")[1])
+                        if prop_id not in valid_ids:
+                            import shutil
+                            shutil.rmtree(folder_path)
+                            self.logger.info(
+                                f"Cartella orfana rimossa automaticamente: {folder_path.name}"
+                            )
+                    except (ValueError, IndexError, Exception) as e:
+                        self.logger.warning(f"Impossibile rimuovere cartella orfana: {e}")
+
+        except Exception as e:
+            self.logger.warning(f"Pulizia cartelle orfane fallita silenziosamente: {e}")

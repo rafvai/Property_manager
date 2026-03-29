@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean, Text, Date
+from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean, Text, Date, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -180,3 +180,15 @@ class SupplierReview(Base):
             'service_date': self.service_date.isoformat() if self.service_date else None,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }
+
+class UserPreference(Base):
+    __tablename__ = 'user_preferences'
+
+    id         = Column(Integer, primary_key=True, autoincrement=True)
+    tenant_id  = Column(String(64), nullable=False, index=True)
+    key        = Column(String(100), nullable=False)
+    value      = Column(String(500), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint('tenant_id', 'key', name='uq_preference_tenant_key'),
+    )

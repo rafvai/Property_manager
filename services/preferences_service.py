@@ -47,3 +47,21 @@ class PreferencesService:
             self.preferences["language"] = lang_code
             return self.save_preferences()
         return False
+
+    def get_deadline_warning_days(self) -> int:
+        return self.preferences.get("deadline_warning_days", 7)
+
+    def set_deadline_warning_days(self, days: int) -> bool:
+        if days in [1, 3, 7, 14, 30]:
+            self.preferences["deadline_warning_days"] = days
+            return self.save_preferences()
+        return False
+
+    def get_currency(self) -> str:
+        return self.preferences.get("currency", "€")
+
+    def set_currency(self, symbol: str) -> bool:
+        if symbol in ["€", "$", "£"]:
+            self.preferences["currency"] = symbol
+            return self.save_preferences()
+        return False

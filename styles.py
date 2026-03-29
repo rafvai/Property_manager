@@ -299,4 +299,5 @@ default_dashboard_widget = f"""
             }}
         """
 
-default_style_text = f"color: {COLORE_BIANCO}; font-size: 14px;"
+default_style_text = f"color: {COLORE_BIANCO}; font-size: 14px;background: transparent;"
+default_style_text_small = f"color:{COLORE_BIANCO}; font-size: 11px; background: transparent;"

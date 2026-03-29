@@ -195,7 +195,7 @@ class TranslationsAdminView(BaseView):
         self.table = QTableWidget()
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels([
-            'Categoria', 'Chiave', '🇮🇹 Italiano', '🇬🇧 English', '🇪🇸 Español', 'Azioni'
+            'Categoria', 'Chiave', 'Italiano', 'English', 'Español', 'Azioni'
         ])
         
         # Stile tabella
@@ -231,7 +231,14 @@ class TranslationsAdminView(BaseView):
         header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
         self.table.setColumnWidth(5, 120)
-        
+
+        # Nascondi i numeri di riga a sinistra (opzionale, rende la UI più pulita)
+        self.table.verticalHeader().setVisible(False)
+
+        # Imposta l'altezza minima
+        self.table.verticalHeader().setMinimumSectionSize(25)
+        self.table.verticalHeader().setDefaultSectionSize(35)
+
         # Selezione
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
@@ -243,7 +250,7 @@ class TranslationsAdminView(BaseView):
     def populate_categories(self):
         """Popola selettore categorie"""
         self.category_selector.clear()
-        self.category_selector.addItem("Tutte le categorie", None)
+        self.category_selector.addItem(self.tm.get('ETICHETTE','TUTTE_LE_CATEGORIE'), None)
         
         categories = self.translation_db.get_all_categories()
         for cat in categories:
@@ -318,7 +325,7 @@ class TranslationsAdminView(BaseView):
             actions_layout.setSpacing(5)
             
             edit_btn = QPushButton("✏️")
-            edit_btn.setFixedSize(30, 30)
+            edit_btn.setFixedSize(20, 20)
             edit_btn.setStyleSheet("""
                 QPushButton {
                     background-color: #3498db;
@@ -334,7 +341,7 @@ class TranslationsAdminView(BaseView):
             actions_layout.addWidget(edit_btn)
             
             delete_btn = QPushButton("🗑️")
-            delete_btn.setFixedSize(30, 30)
+            delete_btn.setFixedSize(20, 20)
             delete_btn.setStyleSheet(f"""
                 QPushButton {{
                     background-color: {COLORE_ERROR};

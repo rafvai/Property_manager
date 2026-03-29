@@ -28,7 +28,7 @@ from views.suppliers_view import SuppliersView
 
 
 class DashboardWindow(QMainWindow):
-    def __init__(self, db_service, preferences_service, supplier_service, translation_manager, logger, is_admin=False):
+    def __init__(self, db_service, preferences_service, supplier_service, translation_manager, auth_service, user_prefs_service, logger, is_admin=False):
         super().__init__()
 
         # Logger
@@ -54,6 +54,8 @@ class DashboardWindow(QMainWindow):
         self.transaction_service = TransactionService(self.logger,  supplier_service=self.supplier_service)
         self.document_service = DocumentService(self.logger)
         self.deadline_service = DeadlineService(self.logger)
+        self.auth_service = auth_service
+        self.user_prefs_service = user_prefs_service
 
         # Finestra principale
         self.setWindowTitle("Property Manager MVP")
@@ -220,6 +222,8 @@ class DashboardWindow(QMainWindow):
                 property_service=self.property_service,
                 transaction_service=self.transaction_service,
                 translation_service=self.tm,
+                auth_service=self.auth_service,
+                user_prefs_service=self.user_prefs_service,
                 logger=self.logger,
                 parent=self
             ))

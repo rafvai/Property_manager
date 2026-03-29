@@ -11,6 +11,7 @@ from services.supplier_service import SupplierService
 from services.transaction_service import TransactionService
 from services.translation_system_simple import TranslationManager
 from services.auth_service import AuthService
+from services.user_preference_service import UserPreferenceService
 from ui_login import LoginWindow
 from ui_register import RegisterWindow
 from ui_main import DashboardWindow
@@ -103,6 +104,8 @@ class AppController:
             s['prefs'],
             s['supplier'],
             s['translation'],
+            s['auth'],
+            s['user_prefs'],
             logger=self.logger,
             is_admin=is_admin
         )
@@ -181,6 +184,7 @@ if __name__ == "__main__":
         'supplier': supplier_svc,
         'transaction': transaction_svc,
         'translation': translation_manager,
+        'user_prefs': UserPreferenceService(logger),
     }
 
     controller = AppController(app, services, logger)
