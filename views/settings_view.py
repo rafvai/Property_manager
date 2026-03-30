@@ -260,13 +260,13 @@ class SettingsView(BaseView):
         db_section.add_item(SettingItem(
             "📥",
             self.tm.get("ETICHETTE", "RIPRISTINA_DB"),
-            self.tm.get("ETICHETTE", "restore_db_desc"),
+            self.tm.get("ETICHETTE", "RIPRISTINA_DB_DESCR"),
             self.restore_database
         ))
         scroll_layout.addWidget(db_section)
 
         # === SEZIONE GESTIONE FILE ===
-        files_section = SettingsSection(self.tm.get("ETICHETTE", "files_section"))
+        files_section = SettingsSection(self.tm.get("ETICHETTE", "SEZIONE_FILES"))
         files_section.add_item(SettingItem(
             "📊",
             self.tm.get("ETICHETTE", "open_exports"),
@@ -282,55 +282,55 @@ class SettingsView(BaseView):
 
         scroll_layout.addWidget(files_section)
         # === SEZIONE PREFERENZE ===
-        prefs_section = SettingsSection(self.tm.get("settings", "preferences_section") or "Preferenze")
+        prefs_section = SettingsSection(self.tm.get("ETICHETTE", "PREFERENZE"))
         prefs_section.add_item(SettingItem(
             "🔔",
-            self.tm.get("settings", "deadline_warning") or "Preavviso Scadenze",
-            self.tm.get("settings", "deadline_warning_desc") or "Giorni di anticipo per le notifiche di scadenza",
+            self.tm.get("ETICHETTE", "TEMPO_PREAVVISO"),
+            self.tm.get("ETICHETTE", "TEMPO_PREAVVISO_NOTIFICHE_DESCR"),
             self.open_deadline_warning_dialog
         ))
         prefs_section.add_item(SettingItem(
             "💱",
-            self.tm.get("settings", "currency") or "Valuta",
-            self.tm.get("settings", "currency_desc") or "Simbolo valuta usato nell'app",
+            self.tm.get("ETICHETTE", "VALUTA"),
+            self.tm.get("ETICHETTE", "MODIFICA_VALUTA"),
             self.open_currency_dialog
         ))
         scroll_layout.addWidget(prefs_section)
 
         # === SEZIONE ACCOUNT & LICENZA ===
-        account_section = SettingsSection(self.tm.get("settings", "account_section") or "Account & Licenza")
+        account_section = SettingsSection(self.tm.get("ETICHETTE", "account_section"))
         account_section.add_item(SettingItem(
             "🔑",
-            self.tm.get("settings", "change_password") or "Cambia Password",
-            self.tm.get("settings", "change_password_desc") or "Modifica la password del tuo account",
+            self.tm.get("ETICHETTE", "CAMBIA_PASSWORD"),
+            self.tm.get("ETICHETTE", "change_password_desc"),
             self.open_change_password_dialog
         ))
         account_section.add_item(SettingItem(
             "📋",
-            self.tm.get("settings", "license_info") or "Informazioni Licenza",
-            self.tm.get("settings", "license_info_desc") or "Visualizza stato e scadenza della licenza",
+            self.tm.get("ETICHETTE", "license_info"),
+            self.tm.get("ETICHETTE", "license_info_desc"),
             self.open_license_info_dialog
         ))
         scroll_layout.addWidget(account_section)
 
         # === SEZIONE LOG & DIAGNOSTICA ===
-        log_section = SettingsSection(self.tm.get("settings", "log_section") or "Log & Diagnostica")
+        log_section = SettingsSection(self.tm.get("ETICHETTE", "log_section"))
         log_section.add_item(SettingItem(
             "📄",
-            self.tm.get("settings", "view_logs") or "Visualizza Log",
-            self.tm.get("settings", "view_logs_desc") or "Mostra le ultime righe del log applicazione",
+            self.tm.get("ETICHETTE", "LOGS"),
+            self.tm.get("ETICHETTE", "view_logs_desc"),
             self.open_log_viewer_dialog
         ))
         log_section.add_item(SettingItem(
             "🔄",
-            self.tm.get("settings", "rotate_logs") or "Ruota Log",
-            self.tm.get("settings", "rotate_logs_desc") or "Archivia i log correnti se superano la dimensione massima",
+            self.tm.get("ETICHETTE", "rotate_logs"),
+            self.tm.get("ETICHETTE", "rotate_logs_desc"),
             self.rotate_logs
         ))
         log_section.add_item(SettingItem(
             "🗜️",
-            self.tm.get("settings", "archive_logs") or "Archivia Log Vecchi",
-            self.tm.get("settings", "archive_logs_desc") or "Comprimi e archivia i log più vecchi di 30 giorni",
+            self.tm.get("ETICHETTE", "archive_logs"),
+            self.tm.get("ETICHETTE", "archive_logs_desc"),
             self.archive_logs
         ))
         scroll_layout.addWidget(log_section)
@@ -480,8 +480,8 @@ class SettingsView(BaseView):
         layout.setSpacing(16)
         layout.setContentsMargins(24, 24, 24, 24)
 
-        lbl = QLabel("Quanti giorni prima vuoi ricevere il preavviso per le scadenze?")
-        lbl.setStyleSheet("color: white; font-size: 13px;")
+        lbl = QLabel(self.tm.get("ETICHETTE", "GIORNI_PREAVVISO_MESSAGGIO"))
+        lbl.setStyleSheet(default_style_text)
         lbl.setWordWrap(True)
         layout.addWidget(lbl)
 
@@ -504,13 +504,13 @@ class SettingsView(BaseView):
 
         if dialog.exec():
             self.user_prefs_service.set_deadline_warning_days(combo.currentData())
-            QMessageBox.information(self, "✅ Salvato",
+            QMessageBox.information(self, self.tm.get("MESSAGGI", "SALVATO"),
                                     f"Preavviso impostato a {combo.currentData()} "
                                     f"giorn{'o' if combo.currentData() == 1 else 'i'}.")
 
     def open_currency_dialog(self):
         dialog = QDialog(self)
-        dialog.setWindowTitle("Valuta")
+        dialog.setWindowTitle(self.tm.get("ETICHETTE","VALUTA"))
         dialog.setMinimumWidth(320)
         dialog.setStyleSheet(default_dialog_style)
 
@@ -519,7 +519,7 @@ class SettingsView(BaseView):
         layout.setContentsMargins(24, 24, 24, 24)
 
         lbl = QLabel("Seleziona il simbolo di valuta da usare nell'applicazione:")
-        lbl.setStyleSheet("color: white; font-size: 13px;")
+        lbl.setStyleSheet(default_style_text)
         lbl.setWordWrap(True)
         layout.addWidget(lbl)
 
@@ -543,7 +543,7 @@ class SettingsView(BaseView):
 
         if dialog.exec():
             self.user_prefs_service.set_currency(combo.currentData())
-            QMessageBox.information(self, "✅ Salvato",
+            QMessageBox.information(self, self.tm.get("MESSAGGI", "SALVATO"),
                                     f"Valuta impostata a {combo.currentData()}.")
 
     # ── ACCOUNT & LICENZA ─────────────────────────────────────────
