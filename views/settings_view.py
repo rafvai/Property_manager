@@ -518,7 +518,7 @@ class SettingsView(BaseView):
         layout.setSpacing(16)
         layout.setContentsMargins(24, 24, 24, 24)
 
-        lbl = QLabel("Seleziona il simbolo di valuta da usare nell'applicazione:")
+        lbl = QLabel(self.tm.get("MESSAGGI", "SELEZIONA_VALUTA"))
         lbl.setStyleSheet(default_style_text)
         lbl.setWordWrap(True)
         layout.addWidget(lbl)
@@ -544,13 +544,13 @@ class SettingsView(BaseView):
         if dialog.exec():
             self.user_prefs_service.set_currency(combo.currentData())
             QMessageBox.information(self, self.tm.get("MESSAGGI", "SALVATO"),
-                                    f"Valuta impostata a {combo.currentData()}.")
+                                    f"{self.tm.get("MESSAGGI", "VALUTA_IMPOSTATA_A")} {combo.currentData()}.")
 
     # ── ACCOUNT & LICENZA ─────────────────────────────────────────
 
     def open_change_password_dialog(self):
         dialog = QDialog(self)
-        dialog.setWindowTitle("Cambia Password")
+        dialog.setWindowTitle(self.tm.get("ETICHETTE","CAMBIA_PASSWORD"))
         dialog.setMinimumWidth(400)
         dialog.setStyleSheet(default_dialog_style)
 
@@ -560,13 +560,13 @@ class SettingsView(BaseView):
 
         current_pwd = QLineEdit()
         current_pwd.setEchoMode(QLineEdit.EchoMode.Password)
-        current_pwd.setPlaceholderText("Password attuale")
-        layout.addRow("Password attuale*:", current_pwd)
+        current_pwd.setPlaceholderText(self.tm.get("ETICHETTE", "PASSWORD_ATTUALE"))
+        layout.addRow(f"{self.tm.get("ETICHETTE", "PASSWORD_ATTUALE")}*:", current_pwd)
 
         new_pwd = QLineEdit()
         new_pwd.setEchoMode(QLineEdit.EchoMode.Password)
         new_pwd.setPlaceholderText("Minimo 8 caratteri")
-        layout.addRow("Nuova password*:", new_pwd)
+        layout.addRow(f"{self.tm.get("ETICHETTE", "NUOVA_PASSWORD")}*:", new_pwd)
 
         confirm_pwd = QLineEdit()
         confirm_pwd.setEchoMode(QLineEdit.EchoMode.Password)

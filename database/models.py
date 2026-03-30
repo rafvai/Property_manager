@@ -188,6 +188,7 @@ class UserPreference(Base):
     tenant_id  = Column(String(64), nullable=False, index=True)
     key        = Column(String(100), nullable=False)
     value      = Column(String(500), nullable=True)
+    currency   = Column(String(5), nullable=False, default="€")
 
     __table_args__ = (
         UniqueConstraint('tenant_id', 'key', name='uq_preference_tenant_key'),
