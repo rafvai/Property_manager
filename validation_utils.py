@@ -258,20 +258,21 @@ def validate_date_string(date_str, field_name="Data"):
     return date_str
 
 
-def format_currency(value, decimals=2):
+def format_currency(value, decimals=2, symbol: str = "€") -> str:
     """
-    Formatta un valore numerico come valuta (es: 1.234,56 €)
-    CON VALIDAZIONE
+    Formatta un valore numerico come valuta italiana (es: 1.234,56 €).
 
     Args:
-        value: Valore numerico
-        decimals: Numero di decimali
+        value:    Valore numerico
+        decimals: Numero di decimali (default 2)
+        symbol:   Simbolo valuta (default "€"; usa UserPreferenceService.get_currency()
+                  per passare la preferenza dell'utente)
 
     Returns:
-        str: Stringa formattata
+        str: Stringa formattata, es. "1.234,56 €" oppure "1.234,56 $"
     """
     if value is None:
-        return "0,00 €"
+        return f"0,00 {symbol}"
 
     try:
         # SICUREZZA: Assicura che sia float
@@ -281,18 +282,18 @@ def format_currency(value, decimals=2):
         if value < -1_000_000_000 or value > 1_000_000_000:
             return "VALORE NON VALIDO"
 
-        # Formatta con separatore migliaia e decimali
+        # Formatta con separatore migliaia e decimali stile US
         formatted = f"{value:,.{decimals}f}"
 
-        # Inverti separatori per formato italiano
+        # Inverti separatori → stile italiano (. migliaia, , decimali)
         formatted = formatted.replace(',', 'TEMP')
         formatted = formatted.replace('.', ',')
         formatted = formatted.replace('TEMP', '.')
 
-        return f"{formatted} €"
+        return f"{formatted} {symbol}"
 
     except (ValueError, TypeError):
-        return "0,00 €"
+        return f"0,00 {symbol}"
 
 
 def sanitize_filename(filename, max_length=200):

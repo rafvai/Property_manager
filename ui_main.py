@@ -28,7 +28,9 @@ from views.suppliers_view import SuppliersView
 
 
 class DashboardWindow(QMainWindow):
-    def __init__(self, db_service, preferences_service, supplier_service, translation_manager, auth_service, user_prefs_service, logger, is_admin=False):
+    def __init__(self, db_service, preferences_service, supplier_service,
+                 translation_manager, auth_service, user_prefs_service,
+                 logger, is_admin=False):
         super().__init__()
 
         # Logger
@@ -44,17 +46,13 @@ class DashboardWindow(QMainWindow):
         self.supplier_service = supplier_service
 
         # Inizializza i services INTERNAMENTE
-        from services.property_service import PropertyService
-        from services.transaction_service import TransactionService
-        from services.document_service import DocumentService
-        from services.deadline_service import DeadlineService
-
-        self.supplier_service = supplier_service
-        self.property_service = PropertyService(self.logger)
-        self.transaction_service = TransactionService(self.logger,  supplier_service=self.supplier_service)
+        self.property_service    = PropertyService(self.logger)
+        self.transaction_service = TransactionService(
+            self.logger, supplier_service=self.supplier_service
+        )
         self.document_service = DocumentService(self.logger)
         self.deadline_service = DeadlineService(self.logger)
-        self.auth_service = auth_service
+        self.auth_service     = auth_service
         self.user_prefs_service = user_prefs_service
 
         # Finestra principale
@@ -93,7 +91,9 @@ class DashboardWindow(QMainWindow):
 
         # Area contenuti
         self.content_area = QWidget()
-        self.content_area.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.content_area.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
         self.content_area.setLayout(QVBoxLayout())
 
         # Aggiungi al layout
@@ -105,7 +105,21 @@ class DashboardWindow(QMainWindow):
         container.setStyleSheet(f"background-color: {COLORE_BACKGROUND};")
 
         # Mostra dashboard di default
-        self.show_view(DashboardView(
+        self.show_view(self._build_dashboard_view())
+
+        # SCHERMO INTERO DI DEFAULT
+        self.showMaximized()
+
+    # ──────────────────────────────────────────────
+    #  Helpers privati
+    # ──────────────────────────────────────────────
+
+    def _currency(self) -> str:
+        """Simbolo valuta corrente — unica fonte di verità per tutte le view."""
+        return self.user_prefs_service.get_currency()
+
+    def _build_dashboard_view(self):
+        return DashboardView(
             property_service=self.property_service,
             transaction_service=self.transaction_service,
             deadline_service=self.deadline_service,
@@ -113,29 +127,32 @@ class DashboardWindow(QMainWindow):
             main_window=self,
             translation_manager=self.tm,
             logger=self.logger,
-            parent=self
-        ))
+            user_prefs_service=self.user_prefs_service,
+            parent=self,
+        )
 
-        # SCHERMO INTERO DI DEFAULT
-        self.showMaximized()
+    # ──────────────────────────────────────────────
+    #  Menu
+    # ──────────────────────────────────────────────
 
     def update_menu_items(self):
         """Aggiorna le voci del menu con le traduzioni"""
         self.menu.clear()
 
         menu_items = [
-            ("icons/homepage.png", self.tm.get("ETICHETTE", "DASHBOARD")),
-            ("icons/property.png", self.tm.get("ETICHETTE", "PROPERTIES")),
-            ("icons/document.png", self.tm.get("ETICHETTE", "DOCUMENTS")),
+            ("icons/homepage.png",  self.tm.get("ETICHETTE", "DASHBOARD")),
+            ("icons/property.png",  self.tm.get("ETICHETTE", "PROPERTIES")),
+            ("icons/document.png",  self.tm.get("ETICHETTE", "DOCUMENTS")),
             ("icons/bar-chart.png", self.tm.get("ETICHETTE", "FINANZE")),
             ("icons/pie-chart.png", self.tm.get("ETICHETTE", "TRANSAZIONI")),
-            ("icons/calendar.png", self.tm.get("ETICHETTE", "CALENDAR")),
-            ("icons/security.png", self.tm.get("ETICHETTE", "FORNITORI")),
-            ("icons/settings.png", self.tm.get("ETICHETTE", "IMPOSTAZIONI"))
+            ("icons/calendar.png",  self.tm.get("ETICHETTE", "CALENDAR")),
+            ("icons/security.png",  self.tm.get("ETICHETTE", "FORNITORI")),
+            ("icons/settings.png",  self.tm.get("ETICHETTE", "IMPOSTAZIONI")),
         ]
-        # La voce Traduzioni è visibile solo agli admin
         if self.is_admin:
-            menu_items.append(("icons/settings.png", self.tm.get("MENU", "TRADUZIONI")))
+            menu_items.append(
+                ("icons/settings.png", self.tm.get("MENU", "TRADUZIONI"))
+            )
 
         for icon_path, text in menu_items:
             item = QListWidgetItem(QIcon(icon_path), text)
@@ -148,23 +165,14 @@ class DashboardWindow(QMainWindow):
             item = layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
-
         layout.addWidget(view)
 
     def menu_navigation(self, index):
         """Gestisce la navigazione del menu"""
-        if index == 0:  # Dashboard
-            self.show_view(DashboardView(
-                property_service=self.property_service,
-                transaction_service=self.transaction_service,
-                deadline_service=self.deadline_service,
-                preferences_service=self.preferences_service,
-                main_window=self,
-                translation_manager=self.tm,
-                logger=self.logger,
-                parent=self
-            ))
-        elif index == 1:  # Properties
+        if index == 0:
+            self.show_view(self._build_dashboard_view())
+
+        elif index == 1:
             self.show_view(PropertiesView(
                 property_service=self.property_service,
                 transaction_service=self.transaction_service,
@@ -172,52 +180,61 @@ class DashboardWindow(QMainWindow):
                 deadline_service=self.deadline_service,
                 translation_service=self.tm,
                 logger=self.logger,
-                parent=self
+                user_prefs_service=self.user_prefs_service,
+                parent=self,
             ))
-        elif index == 2:  # Documents
+
+        elif index == 2:
             self.show_view(DocumentsView(
                 property_service=self.property_service,
                 transaction_service=self.transaction_service,
                 document_service=self.document_service,
                 translation_service=self.tm,
                 logger=self.logger,
-                parent=self
+                parent=self,
             ))
-        elif index == 3:  # Accounting
+
+        elif index == 3:
             self.show_view(AccountingView(
                 property_service=self.property_service,
                 transaction_service=self.transaction_service,
                 translation_service=self.tm,
                 logger=self.logger,
-                parent=self
+                user_prefs_service=self.user_prefs_service,
+                parent=self,
             ))
-        elif index == 4:  # Report
+
+        elif index == 4:
             self.show_view(ReportView(
                 property_service=self.property_service,
                 transaction_service=self.transaction_service,
                 supplier_service=self.supplier_service,
                 translation_service=self.tm,
                 logger=self.logger,
-                parent=self
+                user_prefs_service=self.user_prefs_service,
+                parent=self,
             ))
-        elif index == 5:  # Calendar
+
+        elif index == 5:
             self.show_view(CalendarView(
                 property_service=self.property_service,
                 transaction_service=self.transaction_service,
                 deadline_service=self.deadline_service,
                 translation_service=self.tm,
                 logger=self.logger,
-                parent=self
+                parent=self,
             ))
-        elif index == 6:  # Fornitori
+
+        elif index == 6:
             self.show_view(SuppliersView(
                 supplier_service=self.supplier_service,
                 property_service=self.property_service,
                 translation_service=self.tm,
                 logger=self.logger,
-                parent=self
+                parent=self,
             ))
-        elif index == 7:  # Settings
+
+        elif index == 7:
             self.show_view(SettingsView(
                 property_service=self.property_service,
                 transaction_service=self.transaction_service,
@@ -225,37 +242,37 @@ class DashboardWindow(QMainWindow):
                 auth_service=self.auth_service,
                 user_prefs_service=self.user_prefs_service,
                 logger=self.logger,
-                parent=self
+                parent=self,
             ))
-        elif index == 8 and self.is_admin:  # Traduzioni
+
+        elif index == 8 and self.is_admin:
             from views.translations_admin_view_simple import TranslationsAdminView
             self.show_view(TranslationsAdminView(
                 translation_manager=self.tm,
                 logger=self.logger,
-                parent=self
+                parent=self,
             ))
 
     def navigate_to_section(self, section_key: str):
         """
         Naviga tramite chiave canonica — indipendente da lingua e ordine del menu.
-        Usa le stesse chiavi di update_menu_items().
         """
         section_map = {
-            "DASHBOARD": 0,
-            "PROPERTIES": 1,
-            "DOCUMENTS": 2,
-            "FINANZE": 3,
-            "TRANSAZIONI": 4,
-            "CALENDAR": 5,
-            "FORNITORI": 6,
+            "DASHBOARD":    0,
+            "PROPERTIES":   1,
+            "DOCUMENTS":    2,
+            "FINANZE":      3,
+            "TRANSAZIONI":  4,
+            "CALENDAR":     5,
+            "FORNITORI":    6,
             "IMPOSTAZIONI": 7,
         }
-
         index = section_map.get(section_key)
         if index is None:
-            self.logger.warning(f"navigate_to_section: chiave sconosciuta '{section_key}'")
+            self.logger.warning(
+                f"navigate_to_section: chiave sconosciuta '{section_key}'"
+            )
             return
-
         self.menu.setCurrentRow(index)
         self.menu_navigation(index)
 

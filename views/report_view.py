@@ -15,7 +15,7 @@ from dialogs_import import ImportDialog
 from services.import_service import ImportService
 from services.export_service import ExportService
 from styles import *
-from validation_utils import parse_decimal, ValidationError
+from validation_utils import parse_decimal, format_currency, ValidationError
 from views.base_view import BaseView
 
 
@@ -23,12 +23,13 @@ class ReportView(BaseView):
     """View per la sezione Report con categorie"""
 
     def __init__(self, property_service, transaction_service, supplier_service,
-                 translation_service, logger, parent=None):
+                 translation_service, logger, user_prefs_service=None, parent=None):
         self.categories_gastos    = set()
         self.categories_ganancias = set()
         self.tm                   = translation_service
         self.logger               = logger
         self.supplier_service     = supplier_service
+        self.user_prefs_service   = user_prefs_service
         self.current_transactions = []
 
         super().__init__(property_service, transaction_service, None, parent)
@@ -40,6 +41,16 @@ class ReportView(BaseView):
             self.supplier_service,
             self.logger
         )
+
+    # ── helper valuta ──────────────────────────────────────────────
+    def _currency(self) -> str:
+        if self.user_prefs_service:
+            return self.user_prefs_service.get_currency()
+        return "€"
+
+    def _fmt(self, value: float) -> str:
+        """Formatta un importo con la valuta dell'utente."""
+        return format_currency(value, symbol=self._currency())
 
     # ──────────────────────────────────────────────────────────────
     #  SETUP UI
@@ -190,10 +201,6 @@ class ReportView(BaseView):
         self.update_report()
 
     def _build_category_panel(self, accent_color: str, label: str):
-        """
-        Costruisce il pannello categoria (Spese o Guadagni).
-        Ritorna (frame, table, total_label).
-        """
         frame = QFrame()
         frame.setStyleSheet(
             f"background-color: {COLORE_WIDGET_2}; border-radius: 10px;"
@@ -202,7 +209,6 @@ class ReportView(BaseView):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        # ── Header pannello ──────────────────────────────────────
         header_widget = QWidget()
         header_widget.setStyleSheet(
             f"background-color: {COLORE_BACKGROUND}; border-radius: 10px 10px 0 0;"
@@ -211,7 +217,6 @@ class ReportView(BaseView):
         header_layout.setContentsMargins(16, 14, 20, 14)
         header_layout.setSpacing(12)
 
-        # Barra colorata verticale
         accent_bar = QFrame()
         accent_bar.setFixedSize(4, 36)
         accent_bar.setStyleSheet(
@@ -228,7 +233,7 @@ class ReportView(BaseView):
         )
         text_col.addWidget(lbl_small)
 
-        total_label = QLabel("€ 0,00")
+        total_label = QLabel(f"0,00 {self._currency()}")
         total_label.setStyleSheet(
             f"font-size: 20px; font-weight: 600; color: {accent_color};"
         )
@@ -238,7 +243,6 @@ class ReportView(BaseView):
         header_layout.addStretch()
         layout.addWidget(header_widget)
 
-        # ── Tabella ───────────────────────────────────────────────
         table = QTableWidget()
         table.setColumnCount(3)
         table.horizontalHeader().setVisible(False)
@@ -309,8 +313,9 @@ class ReportView(BaseView):
         total_gastos    = sum(gastos.values())
         total_ganancias = sum(ganancias.values())
 
-        self.gastos_total_label.setText(f"€ {total_gastos:,.2f}")
-        self.ganancias_total_label.setText(f"€ {total_ganancias:,.2f}")
+        # Aggiorna totali con simbolo valuta corrente
+        self.gastos_total_label.setText(self._fmt(total_gastos))
+        self.ganancias_total_label.setText(self._fmt(total_ganancias))
 
         self.update_category_table(self.gastos_table,    gastos,    COLORE_ERROR,   total_gastos)
         self.update_category_table(self.ganancias_table, ganancias, COLORE_SUCCESS, total_ganancias)
@@ -320,7 +325,6 @@ class ReportView(BaseView):
 
     def update_category_table(self, table: QTableWidget, data: dict,
                                accent_color: str, grand_total: float):
-        """Popola la tabella categorie con il nuovo stile."""
         table.clearContents()
         table.setRowCount(0)
 
@@ -335,7 +339,6 @@ class ReportView(BaseView):
             return
 
         sorted_data = sorted(data.items(), key=lambda x: x[1], reverse=True)
-        # +1 per la riga totale in fondo
         table.setRowCount(len(sorted_data) + 1)
 
         ROW_H = 42
@@ -343,7 +346,6 @@ class ReportView(BaseView):
         for i, (category, amount) in enumerate(sorted_data):
             percentage = (amount / grand_total * 100) if grand_total > 0 else 0
 
-            # ── Colonna 0: dot + nome categoria ─────────────────
             cat_widget = QWidget()
             cat_layout = QHBoxLayout(cat_widget)
             cat_layout.setContentsMargins(20, 0, 8, 0)
@@ -364,8 +366,8 @@ class ReportView(BaseView):
 
             table.setCellWidget(i, 0, cat_widget)
 
-            # ── Colonna 1: importo ───────────────────────────────
-            amount_item = QTableWidgetItem(f"€ {amount:,.2f}")
+            # Importo con simbolo valuta corretto
+            amount_item = QTableWidgetItem(self._fmt(amount))
             amount_item.setForeground(QColor(accent_color))
             amount_item.setTextAlignment(
                 Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
@@ -373,7 +375,6 @@ class ReportView(BaseView):
             amount_item.setFont(QFont("", -1, QFont.Weight.Medium))
             table.setItem(i, 1, amount_item)
 
-            # ── Colonna 2: barra progresso + percentuale ─────────
             bar_widget = QWidget()
             bar_layout = QHBoxLayout(bar_widget)
             bar_layout.setContentsMargins(8, 0, 16, 0)
@@ -406,7 +407,7 @@ class ReportView(BaseView):
             table.setCellWidget(i, 2, bar_widget)
             table.setRowHeight(i, ROW_H)
 
-        # ── Riga totale ──────────────────────────────────────────
+        # Riga totale
         tot_row = len(sorted_data)
 
         tot_widget = QWidget()
@@ -419,7 +420,7 @@ class ReportView(BaseView):
         tot_layout.addWidget(tot_lbl)
         table.setCellWidget(tot_row, 0, tot_widget)
 
-        total_item = QTableWidgetItem(f"€ {grand_total:,.2f}")
+        total_item = QTableWidgetItem(self._fmt(grand_total))
         total_item.setForeground(QColor(COLORE_BIANCO))
         total_item.setTextAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
@@ -467,10 +468,9 @@ class ReportView(BaseView):
         ]
         filtered.sort(key=lambda x: x['date'], reverse=True)
 
-        # riga 0 = header finto
         self.transactions_table.setRowCount(len(filtered) + 1)
 
-        # ── Header ────────────────────────────────────────────────
+        # Header finto
         headers = [
             self.tm.get("ETICHETTE", "DATA"),
             self.tm.get("ETICHETTE", "IMPORTO"),
@@ -486,14 +486,12 @@ class ReportView(BaseView):
             item.setBackground(QColor(COLORE_BACKGROUND))
             item.setTextAlignment(
                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-                if col == 2 else
-                Qt.AlignmentFlag.AlignCenter
+                if col == 2 else Qt.AlignmentFlag.AlignCenter
             )
             self.transactions_table.setItem(0, col, item)
         self.transactions_table.setRowHeight(0, 36)
         self.transactions_table.setColumnWidth(5, 48)
 
-        # ── Righe dati ────────────────────────────────────────────
         for i, trans in enumerate(filtered, start=1):
             date_val = trans['date']
             date_str = (date_val.strftime("%d/%m/%Y")
@@ -511,9 +509,10 @@ class ReportView(BaseView):
                 return item
 
             self.transactions_table.setItem(i, 0, _cell(date_str))
+            # Importo con simbolo valuta corretto
             self.transactions_table.setItem(
                 i, 1,
-                _cell(f"€ {trans['amount']:,.2f}",
+                _cell(self._fmt(trans['amount']),
                       Qt.AlignmentFlag.AlignRight, amount_color)
             )
             self.transactions_table.setItem(
@@ -531,7 +530,6 @@ class ReportView(BaseView):
                 _cell(trans['type'], color=amount_color)
             )
 
-            # Bottone elimina
             del_btn = QPushButton("🗑")
             del_btn.setFixedSize(20, 20)
             del_btn.setStyleSheet(f"""
@@ -614,7 +612,7 @@ class ReportView(BaseView):
                         self,
                         self.tm.get("MESSAGGI", "TRANSAZIONE_AGGIUNTA"),
                         f"{self.tm.get('ETICHETTE', 'CATEGORIA')}: {data['service']}\n"
-                        f"{self.tm.get('ETICHETTE', 'IMPORTO')}: {amount:,.2f}€"
+                        f"{self.tm.get('ETICHETTE', 'IMPORTO')}: {self._fmt(amount)}"
                     )
                     self.update_report()
                 else:
