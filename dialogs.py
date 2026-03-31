@@ -1,6 +1,7 @@
 # dialogs.py
 import os
 import shutil
+from datetime import date, timedelta
 
 from PySide6.QtCore import Qt, QDate, QPoint, QUrl
 from PySide6.QtGui import QIcon, QDesktopServices
@@ -13,7 +14,7 @@ from PySide6.QtWidgets import (
 
 from styles import COLORE_SECONDARIO, COLORE_WIDGET_2, COLORE_RIGA_1, COLORE_ITEM_HOVER, default_button_main_header, \
     default_aggiungi_button, default_selector_date_export, default_export_button, COLORE_ERROR, default_dialog_style, \
-    COLORE_ITEM_SELEZIONATO, COLORE_BIANCO
+    COLORE_ITEM_SELEZIONATO, COLORE_BIANCO, COLORE_WARNING
 from validation_utils import parse_decimal, validate_required_text, validate_date, ValidationError
 from transaction_types import label_to_canonical
 
@@ -281,28 +282,48 @@ class CustomTitleBar(QWidget):
 
 
 class ClickableDayCell(QFrame):
-    """Cella giorno cliccabile per aggiungere scadenze"""
+    """
+    Cella giorno del calendario.
 
-    def __init__(self, day, date_str, deadlines, parent_calendar, tm):
+    Bordi colorati:
+      - Blu (default)     → giorno normale
+      - Arancione         → almeno una scadenza cade entro warning_days
+      - Hover: sempre blu chiaro
+    """
+
+    def __init__(self, day, date_str, deadlines, parent_calendar, tm,
+                 is_upcoming: bool = False, is_today: bool = False):
         super().__init__()
         self.day = day
         self.date_str = date_str
         self.deadlines = deadlines
         self.parent_calendar = parent_calendar
         self.tm = tm
+        self.is_upcoming = is_upcoming
+        self.is_today = is_today
+
+        # Colore bordo basato sullo stato
+        if is_today:
+            border = f"2px solid {COLORE_ITEM_HOVER}"
+        elif is_upcoming and deadlines:
+            border = f"2px solid {COLORE_WARNING}"  # arancione = imminente
+        elif deadlines:
+            border = f"1px solid {COLORE_SECONDARIO}"
+        else:
+            border = "1px solid transparent"
 
         self.setStyleSheet(f"""
             QFrame {{
-                background-color: {COLORE_RIGA_1}; 
+                background-color: {COLORE_RIGA_1};
                 border-radius: 6px;
+                border: {border};
             }}
             QFrame:hover {{
                 background-color: {COLORE_ITEM_HOVER};
-                border: 2px solid #007BFF;
+                border: 2px solid {COLORE_ITEM_HOVER};
             }}
         """)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-
         self.setToolTip(self.tm.get("calendar", "click_add_deadline"))
 
         layout = QVBoxLayout(self)
@@ -310,56 +331,76 @@ class ClickableDayCell(QFrame):
         layout.setSpacing(2)
 
         # Numero del giorno
+        day_color = COLORE_ITEM_HOVER if is_today else "white"
         label = QLabel(str(day))
-        label.setStyleSheet("font-size: 14px; color: white; font-weight: bold;")
+        label.setStyleSheet(
+            f"font-size: 14px; color: {day_color}; font-weight: bold;"
+        )
         label.setAlignment(Qt.AlignmentFlag.AlignLeft)
         layout.addWidget(label)
 
-        # Mostra scadenze
-        if deadlines:
-            for deadline in deadlines:
-                deadline_label = QLabel(f"📌 {deadline['title']}")
-                deadline_label.setStyleSheet(f"""
-                    font-size: 10px; 
-                    color: white; 
-                    background-color: {COLORE_SECONDARIO}; 
-                    padding: 2px 4px; 
-                    border-radius: 3px;
-                    margin-top: 2px;
-                """)
-                deadline_label.setWordWrap(True)
-                layout.addWidget(deadline_label)
+        # Scadenze
+        for deadline in deadlines:
+            # Etichetta colorata in arancione se imminente, altrimenti blu
+            bg = COLORE_WARNING if is_upcoming else COLORE_SECONDARIO
+            deadline_label = QLabel(f"📌 {deadline['title']}")
+            deadline_label.setStyleSheet(f"""
+                font-size: 10px;
+                color: white;
+                background-color: {bg};
+                padding: 2px 4px;
+                border-radius: 3px;
+                margin-top: 2px;
+            """)
+            deadline_label.setWordWrap(True)
+            layout.addWidget(deadline_label)
 
         layout.addStretch()
 
     def mousePressEvent(self, event):
-        """Click sulla cella = apri dialog nuova scadenza"""
         if event.button() == Qt.MouseButton.LeftButton:
             self.parent_calendar.add_deadline_for_date(self.date_str)
         super().mousePressEvent(event)
 
 
 class PlannerCalendarWidget(QWidget):
-    def __init__(self, deadline_service, property_service, tm, logger):
+    """
+    Calendario scadenze mensile.
+
+    Parametri aggiuntivi rispetto alla versione originale:
+        user_prefs_service — opzionale; se fornito, la finestra di preavviso
+                             viene letta dal DB invece di usare il default 7.
+    """
+
+    def __init__(self, deadline_service, property_service, tm, logger,
+                 user_prefs_service=None):
         super().__init__()
         self.deadline_service = deadline_service
         self.property_service = property_service
-        self.setStyleSheet(f"background-color: {COLORE_WIDGET_2}; color: {COLORE_BIANCO}")
         self.tm = tm
         self.logger = logger
-        self._cell_cache = {}
+        self.user_prefs_service = user_prefs_service
+
+        self.setStyleSheet(
+            f"background-color: {COLORE_WIDGET_2}; color: {COLORE_BIANCO}"
+        )
 
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(10, 10, 10, 10)
         main_layout.setSpacing(10)
 
+        # Header
         header = QHBoxLayout()
         self.month_label = QLabel()
-        self.month_label.setStyleSheet("font-size:16px;font-weight: bold;color:white")
+        self.month_label.setStyleSheet(
+            "font-size:16px; font-weight: bold; color:white"
+        )
         header.addWidget(self.month_label)
         header.addStretch()
 
-        add_deadline_btn = QPushButton(f"+ {self.tm.get('PULSANTI', 'AGGIUNGI')}")
+        add_deadline_btn = QPushButton(
+            f"+ {self.tm.get('PULSANTI', 'AGGIUNGI')}"
+        )
         add_deadline_btn.setStyleSheet(default_aggiungi_button)
         add_deadline_btn.clicked.connect(lambda: self.add_deadline())
         header.addWidget(add_deadline_btn)
@@ -372,11 +413,14 @@ class PlannerCalendarWidget(QWidget):
         header.addWidget(next_btn)
         main_layout.addLayout(header)
 
+        # Giorni della settimana
         weekdays_layout = QHBoxLayout()
         weekdays = tm.get("LISTE", "WEEKDAYS_SHORT").split(";")
         for day in weekdays:
             day_label = QLabel(day)
-            day_label.setStyleSheet("font-size: 12px; color: white; font-weight: bold;")
+            day_label.setStyleSheet(
+                "font-size: 12px; color: white; font-weight: bold;"
+            )
             day_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             weekdays_layout.addWidget(day_label)
         main_layout.addLayout(weekdays_layout)
@@ -391,39 +435,64 @@ class PlannerCalendarWidget(QWidget):
 
         self.populate_month()
 
+    # ──────────────────────────────────────────────────────────────
+    #  Helper preferenze
+    # ──────────────────────────────────────────────────────────────
+
+    def _warning_days(self) -> int:
+        """Giorni di preavviso letti dal DB tramite user_prefs_service."""
+        if self.user_prefs_service:
+            return self.user_prefs_service.get_deadline_warning_days()
+        return 7
+
+    # ──────────────────────────────────────────────────────────────
+    #  Calendario
+    # ──────────────────────────────────────────────────────────────
+
     def _clear_grid(self):
-        """
-        FIX: rimuove i widget dalla griglia senza distruggerli,
-        così possono essere riusati nel mese successivo.
-        """
         while self.grid.count():
             item = self.grid.takeAt(0)
             w = item.widget()
             if w:
-                w.setParent(None)  # stacca senza deleteLater
+                w.setParent(None)
 
     def populate_month(self):
         self._clear_grid()
 
         month = self.current_date.month()
-        year  = self.current_date.year()
+        year = self.current_date.year()
         self.month_label.setText(
             self.tm.get("LISTE", "MONTHS_FULL").split(";")[month - 1]
         )
 
-        first_day      = QDate(year, month, 1)
-        start_col      = first_day.dayOfWeek() - 1
-        days_in_month  = first_day.daysInMonth()
+        first_day = QDate(year, month, 1)
+        start_col = first_day.dayOfWeek() - 1
+        days_in_month = first_day.daysInMonth()
 
-        # carica TUTTE le scadenze del mese in una sola query
+        # Carica scadenze del mese in una query
         all_deadlines = self._load_month_deadlines(year, month)
+
+        # Calcola finestra imminente
+        warning_days = self._warning_days()
+        today = date.today()
+        upcoming_limit = today + timedelta(days=warning_days)
 
         row, col = 0, start_col
         for day in range(1, days_in_month + 1):
-            date_str  = f"{year:04d}-{month:02d}-{day:02d}"
+            date_obj = date(year, month, day)
+            date_str = date_obj.isoformat()  # "YYYY-MM-DD"
             deadlines = all_deadlines.get(date_str, [])
 
-            cell = ClickableDayCell(day, date_str, deadlines, self, self.tm)
+            # La cella è "imminente" se la data cade entro la finestra
+            # e ci sono scadenze quel giorno
+            is_upcoming = bool(deadlines) and (today <= date_obj <= upcoming_limit)
+            is_today = (date_obj == today)
+
+            cell = ClickableDayCell(
+                day, date_str, deadlines, self, self.tm,
+                is_upcoming=is_upcoming,
+                is_today=is_today,
+            )
             self.grid.addWidget(cell, row, col)
             col += 1
             if col > 6:
@@ -431,7 +500,6 @@ class PlannerCalendarWidget(QWidget):
                 row += 1
 
     def _load_month_deadlines(self, year, month) -> dict:
-        """Delega al service che esegue una sola query SQL filtrata sul mese."""
         try:
             return self.deadline_service.get_by_month(year, month)
         except Exception as e:
@@ -446,8 +514,12 @@ class PlannerCalendarWidget(QWidget):
         self.current_date = self.current_date.addMonths(-1)
         self.populate_month()
 
+    # ──────────────────────────────────────────────────────────────
+    #  Aggiungi scadenza
+    # ──────────────────────────────────────────────────────────────
+
     def add_deadline(self, preset_date=None):
-        """Apre dialog per aggiungere scadenza (con data opzionale preimpostata)"""
+        from dialogs import AddDeadlineDialog  # import locale per evitare circolarità
         properties = self.property_service.get_all()
         dialog = AddDeadlineDialog(self.tm, properties=properties, parent=self)
 
@@ -462,19 +534,29 @@ class PlannerCalendarWidget(QWidget):
                 title=data["title"],
                 description=data["description"],
                 due_date=data["due_date"],
-                property_id=data["property_id"]
+                property_id=data["property_id"],
             )
-
             if deadline_id:
-                QMessageBox.information(self, self.tm.get("MESSAGGI", "SUCCESSO"), self.tm.get("MESSAGGI", "SALVATO"))
-                self.logger.info(f"{self.tm.get('MESSAGGI', 'SALVATO')} {data['title']}")
+                QMessageBox.information(
+                    self,
+                    self.tm.get("MESSAGGI", "SUCCESSO"),
+                    self.tm.get("MESSAGGI", "SALVATO"),
+                )
+                self.logger.info(
+                    f"{self.tm.get('MESSAGGI', 'SALVATO')} {data['title']}"
+                )
                 self.populate_month()
             else:
-                QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"), self.tm.get("MESSAGGI", "ERRORE"))
-                self.logger.error(f"{self.tm.get('MESSAGGI', 'ERRORE')} {data['title']}")
+                QMessageBox.warning(
+                    self,
+                    self.tm.get("MESSAGGI", "ERRORE"),
+                    self.tm.get("MESSAGGI", "ERRORE"),
+                )
+                self.logger.error(
+                    f"{self.tm.get('MESSAGGI', 'ERRORE')} {data['title']}"
+                )
 
     def add_deadline_for_date(self, date_str):
-        """Aggiunge scadenza per una data specifica (chiamato dal click sulla cella)"""
         self.add_deadline(preset_date=date_str)
 
 

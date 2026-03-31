@@ -40,7 +40,7 @@ class DashboardView(BaseView):
         self.tm                  = translation_manager
         self.user_prefs_service  = user_prefs_service
 
-        self.proprieta        = property_service.get_all()
+        self.proprieta         = property_service.get_all()
         self.selected_property = None
 
         self._saved_property_index = 0
@@ -48,7 +48,10 @@ class DashboardView(BaseView):
 
         super().__init__(property_service, transaction_service, None, parent)
 
-    # ── helper valuta ──────────────────────────────────────────────
+    # ──────────────────────────────────────────────────────────────
+    #  Helpers preferenze
+    # ──────────────────────────────────────────────────────────────
+
     def _currency(self) -> str:
         if self.user_prefs_service:
             return self.user_prefs_service.get_currency()
@@ -56,6 +59,19 @@ class DashboardView(BaseView):
 
     def _fmt(self, value: float) -> str:
         return format_currency(value, symbol=self._currency())
+
+    def _warning_days(self) -> int:
+        """
+        Giorni di preavviso scadenze letti dal DB.
+        Default 7 se non impostato o user_prefs_service non disponibile.
+        """
+        if self.user_prefs_service:
+            return self.user_prefs_service.get_deadline_warning_days()
+        return 7
+
+    # ──────────────────────────────────────────────────────────────
+    #  UI
+    # ──────────────────────────────────────────────────────────────
 
     def setup_ui(self):
         layout = self.layout()
@@ -103,8 +119,8 @@ class DashboardView(BaseView):
 
         self.language_combo = QComboBox()
         self.language_combo.addItem(QIcon("icons/flag-it.png"), "Italiano", "it")
-        self.language_combo.addItem(QIcon("icons/flag-uk.png"), "English", "en")
-        self.language_combo.addItem(QIcon("icons/flag-es.png"), "Español", "es")
+        self.language_combo.addItem(QIcon("icons/flag-uk.png"), "English",  "en")
+        self.language_combo.addItem(QIcon("icons/flag-es.png"), "Español",  "es")
         self.language_combo.setIconSize(QSize(20, 20))
         self.language_combo.setFixedWidth(150)
 
@@ -152,6 +168,7 @@ class DashboardView(BaseView):
         left_column = QVBoxLayout()
         left_column.setSpacing(15)
 
+        # Info proprietà
         info_frame = ClickableFrame(
             on_click=lambda: self.main_window.navigate_to_section("PROPERTIES")
         )
@@ -166,15 +183,15 @@ class DashboardView(BaseView):
         self.info_name    = QLabel()
         self.info_address = QLabel()
         self.info_owner   = QLabel()
-        self.info_name.setStyleSheet(default_style_text)
-        self.info_address.setStyleSheet(default_style_text)
-        self.info_owner.setStyleSheet(default_style_text)
+        for lbl in (self.info_name, self.info_address, self.info_owner):
+            lbl.setStyleSheet(default_style_text)
         self.update_info_display()
         info_layout.addWidget(self.info_name)
         info_layout.addWidget(self.info_address)
         info_layout.addWidget(self.info_owner)
         info_layout.addStretch()
 
+        # Prossima scadenza
         deadline_frame = ClickableFrame(
             on_click=lambda: self.main_window.navigate_to_section("CALENDAR")
         )
@@ -182,9 +199,9 @@ class DashboardView(BaseView):
         deadline_layout = QVBoxLayout(deadline_frame)
         deadline_layout.setSpacing(8)
 
-        deadline_title = QLabel(self.tm.get("ETICHETTE", "PROSSIMA_SCADENZA"))
-        deadline_title.setStyleSheet(default_style_text)
-        deadline_layout.addWidget(deadline_title)
+        deadline_title_label = QLabel(self.tm.get("ETICHETTE", "PROSSIMA_SCADENZA"))
+        deadline_title_label.setStyleSheet(default_style_text)
+        deadline_layout.addWidget(deadline_title_label)
 
         self.deadline_title_label = QLabel()
         self.deadline_date_label  = QLabel()
@@ -201,6 +218,7 @@ class DashboardView(BaseView):
         left_column.addWidget(info_frame, stretch=1)
         left_column.addWidget(deadline_frame, stretch=1)
 
+        # Grafico donut
         chart_frame = ClickableFrame(
             on_click=lambda: self.main_window.navigate_to_section("FINANZE")
         )
@@ -218,6 +236,7 @@ class DashboardView(BaseView):
         middle_layout.addWidget(chart_frame, 3)
         layout.addLayout(middle_layout)
 
+        # Bottom
         bottom_frame = ClickableFrame(
             on_click=lambda: self.main_window.navigate_to_section("DOCUMENTS")
         )
@@ -230,6 +249,10 @@ class DashboardView(BaseView):
 
         self.update_chart()
         self.update_next_deadline()
+
+    # ──────────────────────────────────────────────────────────────
+    #  Lingua
+    # ──────────────────────────────────────────────────────────────
 
     def on_language_changed(self):
         self.change_language(self.language_combo.currentData())
@@ -261,9 +284,15 @@ class DashboardView(BaseView):
                 elif item.layout():
                     self.clear_layout(item.layout())
 
+    # ──────────────────────────────────────────────────────────────
+    #  Info proprietà
+    # ──────────────────────────────────────────────────────────────
+
     def update_info_display(self):
         if not self.proprieta:
-            self.info_name.setText(self.tm.get("ETICHETTE", "NESSUNA_PROPRIETA_TROVATA"))
+            self.info_name.setText(
+                self.tm.get("ETICHETTE", "NESSUNA_PROPRIETA_TROVATA")
+            )
             self.info_address.setText("")
             self.info_owner.setText("")
         elif self.selected_property is None:
@@ -277,50 +306,84 @@ class DashboardView(BaseView):
             self.info_address.setText(f"📍 {p['address']}")
             self.info_owner.setText(f"👤 {p['owner']}")
 
+    # ──────────────────────────────────────────────────────────────
+    #  Prossima scadenza — usa warning_days dal DB
+    # ──────────────────────────────────────────────────────────────
+
     def update_next_deadline(self):
+        """
+        Aggiorna il widget della prossima scadenza.
+
+        Logica colori basata su warning_days letto dal DB:
+          - Scaduta (days_left < 0)      → rosso    🔴
+          - Oggi (days_left == 0)        → rosso    🔴
+          - Entro warning_days giorni    → arancione 🟠  ← preferenza utente dal DB
+          - Oltre warning_days giorni    → verde    🟢
+        """
         property_id   = self.selected_property["id"] if self.selected_property else None
         next_deadline = self.deadline_service.get_next_deadline(property_id)
+        warning_days  = self._warning_days()   # ← letto dal DB
 
-        if next_deadline:
-            self.deadline_title_label.setText(f"📌 {next_deadline['title']}")
-            due_date  = datetime.strptime(next_deadline['due_date'], "%Y-%m-%d")
-            days_left = (due_date - datetime.now()).days
+        if not next_deadline:
+            self.deadline_title_label.setText(
+                self.tm.get("ETICHETTE", "NESSUNA_SCADENZA")
+            )
+            self.deadline_date_label.setStyleSheet(
+                "color: #2ecc71; font-size: 12px;"
+            )
+            self.deadline_date_label.setText("")
+            self.deadline_desc_label.setText("")
+            return
 
-            if days_left < 0:
-                date_text = f"⚠️ Scaduta {abs(days_left)} giorni fa"
-                self.deadline_date_label.setStyleSheet(
-                    "color: #e74c3c; font-size: 12px; font-weight: bold;"
-                )
-            elif days_left == 0:
-                date_text = self.tm.get("ETICHETTE", "OGGI")
-                self.deadline_date_label.setStyleSheet(
-                    "color: #e74c3c; font-size: 12px; font-weight: bold;"
-                )
-            elif days_left == 1:
+        self.deadline_title_label.setText(f"📌 {next_deadline['title']}")
+
+        due_date  = datetime.strptime(next_deadline['due_date'], "%Y-%m-%d")
+        days_left = (due_date - datetime.now()).days
+
+        if days_left < 0:
+            # Scaduta
+            date_text = f"⚠️ Scaduta {abs(days_left)} giorni fa"
+            color     = "#e74c3c"   # rosso
+            weight    = "bold"
+        elif days_left == 0:
+            # Oggi
+            date_text = self.tm.get("ETICHETTE", "OGGI")
+            color     = "#e74c3c"   # rosso
+            weight    = "bold"
+        elif days_left <= warning_days:
+            # Imminente: entro la finestra di preavviso scelta dall'utente
+            if days_left == 1:
                 date_text = self.tm.get("ETICHETTE", "DOMANI")
-                self.deadline_date_label.setStyleSheet(
-                    "color: #f39c12; font-size: 12px; font-weight: bold;"
-                )
             else:
                 date_text = (
                     self.tm.get("ETICHETTE", "IN_X_GIORNI")
                     .replace('XXX', str(days_left))
                 )
-                self.deadline_date_label.setStyleSheet(
-                    "color: #f39c12; font-size: 12px; font-weight: bold;"
-                )
-
-            self.deadline_date_label.setText(
-                f"{date_text} - {due_date.strftime('%d/%m/%Y')}"
-            )
-            self.deadline_desc_label.setText(
-                next_deadline.get('description')
-                or self.tm.get("ETICHETTE", "NESSUNA_DESCRIZIONE")
-            )
+            color  = "#f59e0b"  # arancione COLORE_WARNING
+            weight = "bold"
         else:
-            self.deadline_title_label.setText(self.tm.get("ETICHETTE", "NESSUNA_SCADENZA"))
-            self.deadline_date_label.setStyleSheet("color: #2ecc71; font-size: 12px;")
-            self.deadline_desc_label.setText("")
+            # Scadenza lontana, tutto ok
+            date_text = (
+                self.tm.get("ETICHETTE", "IN_X_GIORNI")
+                .replace('XXX', str(days_left))
+            )
+            color  = "#2ecc71"  # verde
+            weight = "normal"
+
+        self.deadline_date_label.setStyleSheet(
+            f"color: {color}; font-size: 12px; font-weight: {weight};"
+        )
+        self.deadline_date_label.setText(
+            f"{date_text} - {due_date.strftime('%d/%m/%Y')}"
+        )
+        self.deadline_desc_label.setText(
+            next_deadline.get('description')
+            or self.tm.get("ETICHETTE", "NESSUNA_DESCRIZIONE")
+        )
+
+    # ──────────────────────────────────────────────────────────────
+    #  Grafico donut
+    # ──────────────────────────────────────────────────────────────
 
     def update_chart(self):
         self._saved_period_index = self.period_selector.currentIndex()
@@ -337,7 +400,6 @@ class DashboardView(BaseView):
         start_date = end_date - timedelta(days=30 * mesi)
 
         property_id = self.selected_property["id"] if self.selected_property else None
-
         rows    = self.transaction_service.get_all(
             property_id=property_id,
             start_date=start_date.strftime("%Y-%m-%d"),
@@ -349,7 +411,6 @@ class DashboardView(BaseView):
         self.ax.clear()
         sizes  = [entrate, uscite]
         colors = [COLORE_ITEM_SELEZIONATO, COLORE_GRIGIO]
-        symbol = self._currency()
 
         if sum(sizes) == 0:
             self.ax.pie([1], colors=[COLORE_GRIGIO], startangle=90,
@@ -359,8 +420,8 @@ class DashboardView(BaseView):
         else:
             self.ax.pie(sizes, colors=colors, startangle=90,
                         wedgeprops=dict(width=0.4))
-            saldo_str = self._fmt(entrate - uscite)
-            self.ax.text(0, 0, saldo_str, ha='center', va='center',
+            self.ax.text(0, 0, self._fmt(entrate - uscite),
+                         ha='center', va='center',
                          fontsize=14, fontweight='bold', color=COLORE_BIANCO)
 
             labels      = [self.tm.get("ETICHETTE", "GUADAGNI"),
@@ -377,9 +438,9 @@ class DashboardView(BaseView):
                     (x + dot_offset, y_text), dot_size, color=c,
                     transform=self.ax.transData, clip_on=False)
                 )
-                self.ax.text(x, y_text, f"{label} {p}", ha='left', va='center',
+                self.ax.text(x, y_text, f"{label} {p}",
+                             ha='left', va='center',
                              color=COLORE_BIANCO, fontsize=10)
-
             self.ax.set_aspect('equal')
 
         centre_circle = mpatches.Circle((0, 0), 0.70, fc=COLORE_WIDGET_2)
@@ -387,9 +448,12 @@ class DashboardView(BaseView):
         self.ax.set_title(self.tm.get("ETICHETTE", "SALDO"), color=COLORE_BIANCO, y=1)
         self.chart_canvas.draw()
 
+    # ──────────────────────────────────────────────────────────────
+    #  Selezione proprietà
+    # ──────────────────────────────────────────────────────────────
+
     def update_info_box(self, index):
         self._saved_property_index = index
-
         if index == 0:
             self.selected_property = None
         elif 0 < index <= len(self.proprieta):

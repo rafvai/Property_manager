@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, date
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -6,7 +7,6 @@ from PySide6.QtWidgets import (
     QFrame, QScrollArea, QWidget, QLineEdit, QDialog,
     QFormLayout, QDialogButtonBox, QMessageBox
 )
-from datetime import datetime
 
 from validation_utils import format_currency
 from styles import *
@@ -26,7 +26,10 @@ class PropertiesView(BaseView):
         self.user_prefs_service = user_prefs_service
         super().__init__(property_service, transaction_service, document_service, parent)
 
-    # ── helper valuta ──────────────────────────────────────────────
+    # ──────────────────────────────────────────────────────────────
+    #  Helpers preferenze
+    # ──────────────────────────────────────────────────────────────
+
     def _currency(self) -> str:
         if self.user_prefs_service:
             return self.user_prefs_service.get_currency()
@@ -35,12 +38,22 @@ class PropertiesView(BaseView):
     def _fmt(self, value: float) -> str:
         return format_currency(value, symbol=self._currency())
 
+    def _warning_days(self) -> int:
+        """Giorni di preavviso scadenze letti dal DB."""
+        if self.user_prefs_service:
+            return self.user_prefs_service.get_deadline_warning_days()
+        return 7
+
+    # ──────────────────────────────────────────────────────────────
+    #  UI
+    # ──────────────────────────────────────────────────────────────
+
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(20)
 
-        # --- HEADER ---
+        # Header
         header_layout = QHBoxLayout()
         title = QLabel(self.tm.get("ETICHETTE", "LE_MIE_PROPRIETA"))
         title.setStyleSheet(default_title_style)
@@ -54,7 +67,7 @@ class PropertiesView(BaseView):
         header_layout.addWidget(add_btn)
         main_layout.addLayout(header_layout)
 
-        # --- BARRA RICERCA ---
+        # Barra ricerca
         search_layout = QHBoxLayout()
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText(self.tm.get("PLACEHOLDER", "CERCA"))
@@ -63,7 +76,7 @@ class PropertiesView(BaseView):
         search_layout.addWidget(self.search_input)
         main_layout.addLayout(search_layout)
 
-        # --- AREA SCROLLABILE ---
+        # Area scrollabile
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setStyleSheet(f"""
@@ -103,15 +116,22 @@ class PropertiesView(BaseView):
             ]
 
         if not properties:
-            no_data_label = QLabel(self.tm.get("ETICHETTE", "NESSUNA_PROPRIETA_TROVATA"))
-            no_data_label.setStyleSheet("color: #bdc3c7; font-size: 16px; padding: 40px;")
+            no_data_label = QLabel(
+                self.tm.get("ETICHETTE", "NESSUNA_PROPRIETA_TROVATA")
+            )
+            no_data_label.setStyleSheet(
+                "color: #bdc3c7; font-size: 16px; padding: 40px;"
+            )
             no_data_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.cards_layout.addWidget(no_data_label)
             self.cards_layout.addStretch()
             return
 
+        # Legge warning_days una sola volta per tutto il loop
+        warning_days = self._warning_days()
+
         for index, prop in enumerate(properties):
-            card = self.create_property_card(prop, index)
+            card = self.create_property_card(prop, index, warning_days)
             self.cards_layout.addWidget(card)
 
         self.cards_layout.addStretch()
@@ -128,24 +148,26 @@ class PropertiesView(BaseView):
             ]
             start_date = min(dates)
 
-        saldo       = self.transaction_service.get_balance(property_id=property_id)
-        num_entrate = len([t for t in transactions if t['type'] == 'Entrata'])
-        num_uscite  = len([t for t in transactions if t['type'] == 'Uscita'])
+        saldo = self.transaction_service.get_balance(property_id=property_id)
 
-        docs         = self.document_service.list_documents(property_id)
-        num_docs     = len(docs)
+        docs     = self.document_service.list_documents(property_id)
+        num_docs = len(docs)
 
         deadlines_active = self.deadline_service.get_all(
             property_id=property_id, include_completed=False
         )
-        deadlines_total  = self.deadline_service.get_all(
+        deadlines_total = self.deadline_service.get_all(
             property_id=property_id, include_completed=True
         )
         num_deadlines_active    = len(deadlines_active)
         num_deadlines_completed = len(deadlines_total) - num_deadlines_active
 
-        entrate_totali = sum(t['amount'] for t in transactions if t['type'] == 'Entrata')
-        uscite_totali  = sum(t['amount'] for t in transactions if t['type'] == 'Uscita')
+        entrate_totali = sum(
+            t['amount'] for t in transactions if t['type'] == 'Entrata'
+        )
+        uscite_totali = sum(
+            t['amount'] for t in transactions if t['type'] == 'Uscita'
+        )
 
         mesi_gestione = 0
         if start_date:
@@ -158,8 +180,6 @@ class PropertiesView(BaseView):
         return {
             'saldo':                    saldo,
             'start_date':               start_date,
-            'num_entrate':              num_entrate,
-            'num_uscite':               num_uscite,
             'num_docs':                 num_docs,
             'num_deadlines_active':     num_deadlines_active,
             'num_deadlines_completed':  num_deadlines_completed,
@@ -168,7 +188,41 @@ class PropertiesView(BaseView):
             'mesi_gestione':            mesi_gestione,
         }
 
-    def create_property_card(self, prop, index):
+    def _count_upcoming_deadlines(self, property_id, warning_days: int) -> int:
+        """
+        Conta le scadenze imminenti (entro warning_days) per questa proprietà.
+        Usa DeadlineService.get_upcoming() se disponibile, altrimenti filtra
+        manualmente le scadenze attive.
+        """
+        try:
+            # get_upcoming è il nuovo metodo aggiunto a DeadlineService
+            upcoming = self.deadline_service.get_upcoming(
+                warning_days=warning_days,
+                property_id=property_id,
+            )
+            return len(upcoming)
+        except AttributeError:
+            # Fallback compatibile con versioni precedenti del service
+            today    = date.today()
+            from datetime import timedelta
+            deadline_limit = today + timedelta(days=warning_days)
+            all_active = self.deadline_service.get_all(
+                property_id=property_id, include_completed=False
+            )
+            return sum(
+                1 for d in all_active
+                if d.get('due_date') and today <= _parse_date(d['due_date']) <= deadline_limit
+            )
+
+    def create_property_card(self, prop, index, warning_days: int):
+        """
+        Crea una card per una proprietà.
+
+        Il badge scadenze usa tre colori:
+          - Rosso   → ci sono scadenze già scadute
+          - Arancione → ci sono scadenze entro warning_days giorni (preferenza DB)
+          - Grigio  → nessuna scadenza imminente
+        """
         bg_color = COLORE_RIGA_1 if index % 2 == 0 else COLORE_RIGA_2
 
         card = QFrame()
@@ -198,7 +252,8 @@ class PropertiesView(BaseView):
         edit_btn.setStyleSheet("""
             QPushButton {
                 background-color: #3498db; color: white; border: none;
-                border-radius: 5px; padding: 4px 12px; font-size: 12px; font-weight: 500;
+                border-radius: 5px; padding: 4px 12px;
+                font-size: 12px; font-weight: 500;
             }
             QPushButton:hover { background-color: #2980b9; }
         """)
@@ -210,7 +265,8 @@ class PropertiesView(BaseView):
         delete_btn.setStyleSheet("""
             QPushButton {
                 background-color: #e74c3c; color: white; border: none;
-                border-radius: 5px; padding: 4px 12px; font-size: 12px; font-weight: 500;
+                border-radius: 5px; padding: 4px 12px;
+                font-size: 12px; font-weight: 500;
             }
             QPushButton:hover { background-color: #c0392b; }
         """)
@@ -238,7 +294,7 @@ class PropertiesView(BaseView):
         info_row.addStretch()
         main_layout.addLayout(info_row)
 
-        # RIGA 3: Statistiche con valuta corretta
+        # RIGA 3: Statistiche con valuta e colore scadenze corretti
         stats     = self.get_property_stats(prop['id'])
         stats_row = QHBoxLayout()
         stats_row.setSpacing(25)
@@ -249,11 +305,29 @@ class PropertiesView(BaseView):
             managed_label.setStyleSheet("color: #95a5a6; font-size: 11px;")
             stats_row.addWidget(managed_label)
 
-        deadline_color = "#e74c3c" if stats['num_deadlines_active'] > 0 else "#95a5a6"
+        # Badge scadenze — colore basato su overdue/upcoming/nessuna
+        num_active   = stats['num_deadlines_active']
+        num_overdue  = len(self.deadline_service.get_overdue(property_id=prop['id']))
+        num_upcoming = self._count_upcoming_deadlines(prop['id'], warning_days)
+
+        if num_overdue > 0:
+            deadline_color = "#e74c3c"  # rosso — scadute
+            deadline_icon  = "⚠️"
+        elif num_upcoming > 0:
+            deadline_color = "#f59e0b"  # arancione — imminenti entro warning_days
+            deadline_icon  = "🔔"
+        else:
+            deadline_color = "#95a5a6"  # grigio — tutto ok
+            deadline_icon  = ""
+
         deadline_label = QLabel(
-            f"{self.tm.get('ETICHETTE', 'SCADENZE')}: {stats['num_deadlines_active']}"
+            f"{deadline_icon} {self.tm.get('ETICHETTE', 'SCADENZE')}: {num_active}"
+            .strip()
         )
-        deadline_label.setStyleSheet(f"color: {deadline_color}; font-size: 11px;")
+        deadline_label.setStyleSheet(
+            f"color: {deadline_color}; font-size: 11px;"
+            + (" font-weight: bold;" if num_overdue > 0 or num_upcoming > 0 else "")
+        )
         stats_row.addWidget(deadline_label)
 
         if stats['mesi_gestione'] > 0:
@@ -279,7 +353,9 @@ class PropertiesView(BaseView):
 
         return card
 
-    # ── CRUD ──────────────────────────────────────────────────────
+    # ──────────────────────────────────────────────────────────────
+    #  CRUD
+    # ──────────────────────────────────────────────────────────────
 
     def add_property(self):
         dialog = QDialog(self)
@@ -288,13 +364,18 @@ class PropertiesView(BaseView):
         dialog.setStyleSheet(default_dialog_style)
 
         layout = QFormLayout(dialog)
-
         name_input    = QLineEdit()
-        name_input.setPlaceholderText(self.tm.get("PLACEHOLDER", "55_BEATIFUL_APARTMENT"))
+        name_input.setPlaceholderText(
+            self.tm.get("PLACEHOLDER", "55_BEATIFUL_APARTMENT")
+        )
         address_input = QLineEdit()
-        address_input.setPlaceholderText(self.tm.get("PLACEHOLDER", "VIA_APPARTAMENTO"))
+        address_input.setPlaceholderText(
+            self.tm.get("PLACEHOLDER", "VIA_APPARTAMENTO")
+        )
         owner_input   = QLineEdit()
-        owner_input.setPlaceholderText(self.tm.get("PLACEHOLDER", "PROPRIETARIO_NOME"))
+        owner_input.setPlaceholderText(
+            self.tm.get("PLACEHOLDER", "PROPRIETARIO_NOME")
+        )
 
         layout.addRow(f"{self.tm.get('ETICHETTE', 'NOME_PROPRIETA')}*:", name_input)
         layout.addRow(f"{self.tm.get('ETICHETTE', 'INDIRIZZO')}*:", address_input)
@@ -339,7 +420,6 @@ class PropertiesView(BaseView):
         dialog.setStyleSheet(default_dialog_style)
 
         layout = QFormLayout(dialog)
-
         name_input    = QLineEdit(prop['name'])
         address_input = QLineEdit(prop['address'])
         owner_input   = QLineEdit(prop['owner'])
@@ -382,11 +462,9 @@ class PropertiesView(BaseView):
         deadlines    = self.deadline_service.get_all(
             property_id=prop['id'], include_completed=True
         )
-
         folder_size_bytes = self.document_service.get_property_folder_size(prop['id'])
         folder_size_str   = self.document_service.format_size(folder_size_bytes)
         property_folder   = self.document_service.get_property_folder(prop['id'])
-        has_documents     = os.path.exists(property_folder)
 
         warning_message = (
             self.tm.get("MESSAGGI", "CONFERMA_ELIMINA")
@@ -398,9 +476,8 @@ class PropertiesView(BaseView):
             self.tm.get("MESSAGGI", "CONFERMA_ELIMINA"),
             warning_message,
             QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.No,
         )
-
         if reply != QMessageBox.Yes:
             return
 
@@ -444,7 +521,9 @@ class PropertiesView(BaseView):
                 if error_messages:
                     success_message += "\n\n⚠️ Avvisi:\n" + "\n".join(error_messages)
 
-                QMessageBox.information(self, "✅ Eliminazione Completata", success_message)
+                QMessageBox.information(
+                    self, "✅ Eliminazione Completata", success_message
+                )
                 self.load_properties()
                 self._clean_orphaned_document_folders()
             else:
@@ -456,7 +535,7 @@ class PropertiesView(BaseView):
         except Exception as e:
             QMessageBox.critical(
                 self, self.tm.get("MESSAGGI", "ERRORE"),
-                f"Si è verificato un errore durante l'eliminazione:\n\n{str(e)}"
+                f"Si è verificato un errore:\n\n{str(e)}"
             )
 
     def filter_properties(self, text):
@@ -486,6 +565,19 @@ class PropertiesView(BaseView):
                                 f"Cartella orfana rimossa: {folder_path.name}"
                             )
                     except Exception as e:
-                        self.logger.warning(f"Impossibile rimuovere cartella orfana: {e}")
+                        self.logger.warning(
+                            f"Impossibile rimuovere cartella orfana: {e}"
+                        )
         except Exception as e:
             self.logger.warning(f"Pulizia cartelle orfane fallita: {e}")
+
+
+# ──────────────────────────────────────────────────────────────────
+#  Helper locale
+# ──────────────────────────────────────────────────────────────────
+
+def _parse_date(due_date_value) -> date:
+    """Converte il campo due_date (str o date) in un oggetto date."""
+    if isinstance(due_date_value, date):
+        return due_date_value
+    return datetime.strptime(due_date_value, '%Y-%m-%d').date()

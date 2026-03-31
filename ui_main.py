@@ -222,6 +222,7 @@ class DashboardWindow(QMainWindow):
                 deadline_service=self.deadline_service,
                 translation_service=self.tm,
                 logger=self.logger,
+                user_prefs_service=self.user_prefs_service,
                 parent=self,
             ))
 
