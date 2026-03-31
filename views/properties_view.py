@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QFrame, QScrollArea, QWidget, QLineEdit, QDialog,
-    QFormLayout, QDialogButtonBox, QMessageBox
+    QFormLayout, QDialogButtonBox, QMessageBox, QComboBox
 )
 
 from validation_utils import format_currency
@@ -279,20 +279,42 @@ class PropertiesView(BaseView):
         info_row = QHBoxLayout()
         info_row.setSpacing(20)
 
-        address_label = QLabel(
-            f"{self.tm.get('ETICHETTE', 'INDIRIZZO')}: {prop['address']}"
-        )
+        address_label = QLabel(f"{self.tm.get('ETICHETTE', 'INDIRIZZO')}: {prop['address']}")
         address_label.setStyleSheet("color: #bdc3c7; font-size: 12px;")
         info_row.addWidget(address_label)
 
-        owner_label = QLabel(
-            f"{self.tm.get('ETICHETTE', 'PROPRIETARIO')}: {prop['owner']}"
-        )
-        owner_label.setStyleSheet("color: #bdc3c7; font-size: 12px;")
-        info_row.addWidget(owner_label)
+        if prop.get('managed_by'):
+            managed_label = QLabel(f"🏢 Gestita da: {prop['managed_by']}")
+            managed_label.setStyleSheet("color: #bdc3c7; font-size: 12px;")
+            info_row.addWidget(managed_label)
 
         info_row.addStretch()
         main_layout.addLayout(info_row)
+
+        # RIGA 2b: MQ e classe energetica (solo se presenti)
+        extra_info = []
+        if prop.get('square_meters'):
+            sqm = prop['square_meters']
+            sqm_str = str(int(sqm)) if sqm == int(sqm) else str(sqm)
+            extra_info.append(f"📐 {sqm_str} m²")
+        if prop.get('energy_class'):
+            _ec_color = {
+                "A+++": "#1a7a1a", "A++": "#1a7a1a", "A+": "#2ecc71", "A": "#2ecc71",
+                "B": "#a8d45a", "C": "#f1c40f", "D": "#f39c12",
+                "E": "#e67e22", "F": "#e74c3c", "G": "#c0392b",
+            }.get(prop['energy_class'], "#95a5a6")
+            extra_info.append(
+                f'<span style="color:{_ec_color};font-weight:bold;">⚡ {prop["energy_class"]}</span>'
+            )
+
+        if extra_info:
+            extra_row = QHBoxLayout()
+            extra_label = QLabel(" &nbsp;·&nbsp; ".join(extra_info))
+            extra_label.setStyleSheet("color: #95a5a6; font-size: 11px;")
+            extra_label.setTextFormat(Qt.TextFormat.RichText)
+            extra_row.addWidget(extra_label)
+            extra_row.addStretch()
+            main_layout.addLayout(extra_row)
 
         # RIGA 3: Statistiche con valuta e colore scadenze corretti
         stats     = self.get_property_stats(prop['id'])
@@ -360,26 +382,32 @@ class PropertiesView(BaseView):
     def add_property(self):
         dialog = QDialog(self)
         dialog.setWindowTitle(self.tm.get("ETICHETTE", "NUOVA_PROPRIETA"))
-        dialog.setMinimumWidth(400)
+        dialog.setMinimumWidth(420)
         dialog.setStyleSheet(default_dialog_style)
 
         layout = QFormLayout(dialog)
-        name_input    = QLineEdit()
-        name_input.setPlaceholderText(
-            self.tm.get("PLACEHOLDER", "55_BEATIFUL_APARTMENT")
-        )
-        address_input = QLineEdit()
-        address_input.setPlaceholderText(
-            self.tm.get("PLACEHOLDER", "VIA_APPARTAMENTO")
-        )
-        owner_input   = QLineEdit()
-        owner_input.setPlaceholderText(
-            self.tm.get("PLACEHOLDER", "PROPRIETARIO_NOME")
-        )
 
+        name_input = QLineEdit()
+        name_input.setPlaceholderText(self.tm.get("PLACEHOLDER", "55_BEATIFUL_APARTMENT"))
         layout.addRow(f"{self.tm.get('ETICHETTE', 'NOME_PROPRIETA')}*:", name_input)
+
+        address_input = QLineEdit()
+        address_input.setPlaceholderText(self.tm.get("PLACEHOLDER", "VIA_APPARTAMENTO"))
         layout.addRow(f"{self.tm.get('ETICHETTE', 'INDIRIZZO')}*:", address_input)
-        layout.addRow(f"{self.tm.get('ETICHETTE', 'PROPRIETARIO')}*:", owner_input)
+
+        managed_by_input = QLineEdit()
+        managed_by_input.setPlaceholderText("es. Agenzia Immobiliare Rossi")
+        layout.addRow("Gestita da:", managed_by_input)
+
+        sqm_input = QLineEdit()
+        sqm_input.setPlaceholderText("es. 75")
+        layout.addRow("Metri quadri:", sqm_input)
+
+        energy_combo = QComboBox()
+        energy_combo.addItem("— non specificata —", None)
+        for cls in ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"]:
+            energy_combo.addItem(cls, cls)
+        layout.addRow("Classe energetica:", energy_combo)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)
@@ -387,46 +415,77 @@ class PropertiesView(BaseView):
         buttons.rejected.connect(dialog.reject)
 
         if dialog.exec():
-            nome         = name_input.text().strip()
-            indirizzo    = address_input.text().strip()
-            proprietario = owner_input.text().strip()
+            nome = name_input.text().strip()
+            indirizzo = address_input.text().strip()
 
-            if not nome or not indirizzo or not proprietario:
-                QMessageBox.warning(
-                    self, self.tm.get("MESSAGGI", "ERRORE"),
-                    "Tutti i campi sono obbligatori!"
-                )
+            if not nome or not indirizzo:
+                QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"),
+                                    "Nome e indirizzo sono obbligatori!")
                 return
 
-            property_id = self.property_service.create(nome, indirizzo, proprietario)
+            managed_by = managed_by_input.text().strip() or None
+            energy_class = energy_combo.currentData()
+            square_meters = None
+            raw_sqm = sqm_input.text().strip()
+            if raw_sqm:
+                try:
+                    square_meters = float(raw_sqm.replace(",", "."))
+                except ValueError:
+                    QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"),
+                                        "Metri quadri non validi.")
+                    return
+
+            property_id = self.property_service.create(
+                nome, indirizzo,
+                managed_by=managed_by,
+                square_meters=square_meters,
+                energy_class=energy_class,
+            )
             if property_id:
-                QMessageBox.information(
-                    self, self.tm.get("MESSAGGI", "SUCCESSO"),
-                    f"{nome}: {self.tm.get('MESSAGGI', 'PROPRIETA_AGGIUNTA')}"
-                )
+                QMessageBox.information(self, self.tm.get("MESSAGGI", "SUCCESSO"),
+                                        f"{nome}: {self.tm.get('MESSAGGI', 'PROPRIETA_AGGIUNTA')}")
                 self.load_properties()
             else:
-                QMessageBox.warning(
-                    self, self.tm.get("MESSAGGI", "ERRORE"),
-                    self.tm.get("MESSAGGI", "IMPOSSIBILE_AGGIUNGERE_PROPRIETA")
-                )
+                QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"),
+                                    self.tm.get("MESSAGGI", "IMPOSSIBILE_AGGIUNGERE_PROPRIETA"))
 
     def edit_property(self, prop):
         dialog = QDialog(self)
         dialog.setWindowTitle(
             f"{self.tm.get('ETICHETTE', 'MODIFICA_PROPRIETA')}: {prop['name']}"
         )
-        dialog.setMinimumWidth(400)
+        dialog.setMinimumWidth(420)
         dialog.setStyleSheet(default_dialog_style)
 
         layout = QFormLayout(dialog)
-        name_input    = QLineEdit(prop['name'])
-        address_input = QLineEdit(prop['address'])
-        owner_input   = QLineEdit(prop['owner'])
 
+        name_input = QLineEdit(prop['name'])
+        address_input = QLineEdit(prop['address'])
         layout.addRow(f"{self.tm.get('ETICHETTE', 'NOME_PROPRIETA')}*:", name_input)
         layout.addRow(f"{self.tm.get('ETICHETTE', 'INDIRIZZO')}*:", address_input)
-        layout.addRow(f"{self.tm.get('ETICHETTE', 'PROPRIETARIO')}*:", owner_input)
+
+        managed_by_input = QLineEdit(prop.get('managed_by') or "")
+        managed_by_input.setPlaceholderText("es. Agenzia Immobiliare Rossi")
+        layout.addRow("Gestita da:", managed_by_input)
+
+        sqm_input = QLineEdit(
+            str(int(prop['square_meters']))
+            if prop.get('square_meters') and prop['square_meters'] == int(prop['square_meters'])
+            else str(prop['square_meters']) if prop.get('square_meters') else ""
+        )
+        sqm_input.setPlaceholderText("es. 75")
+        layout.addRow("Metri quadri:", sqm_input)
+
+        energy_combo = QComboBox()
+        energy_combo.addItem("— non specificata —", None)
+        for cls in ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"]:
+            energy_combo.addItem(cls, cls)
+        current_ec = prop.get('energy_class')
+        if current_ec:
+            idx = energy_combo.findData(current_ec)
+            if idx >= 0:
+                energy_combo.setCurrentIndex(idx)
+        layout.addRow("Classe energetica:", energy_combo)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)
@@ -434,25 +493,41 @@ class PropertiesView(BaseView):
         buttons.rejected.connect(dialog.reject)
 
         if dialog.exec():
-            nome         = name_input.text().strip()
-            indirizzo    = address_input.text().strip()
-            proprietario = owner_input.text().strip()
+            nome = name_input.text().strip()
+            indirizzo = address_input.text().strip()
 
-            if not nome or not indirizzo or not proprietario:
-                QMessageBox.warning(
-                    self, self.tm.get("MESSAGGI", "ERRORE"),
-                    self.tm.get("ETICHETTE", "TUTTI_CAMPI_OBBLIGATORI")
-                )
+            if not nome or not indirizzo:
+                QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"),
+                                    self.tm.get("ETICHETTE", "TUTTI_CAMPI_OBBLIGATORI"))
                 return
 
+            managed_by = managed_by_input.text().strip() or None
+            energy_class = energy_combo.currentData()
+
+            square_meters = None
+            raw_sqm = sqm_input.text().strip()
+            if raw_sqm:
+                try:
+                    square_meters = float(raw_sqm.replace(",", "."))
+                except ValueError:
+                    QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"),
+                                        "Metri quadri non validi.")
+                    return
+
             success = self.property_service.update(
-                prop['id'], name=nome, address=indirizzo, owner=proprietario
+                prop['id'],
+                name=nome,
+                address=indirizzo,
+                managed_by=managed_by,
+                square_meters=square_meters,
+                energy_class=energy_class,
+                _clear_managed_by=(managed_by is None),
+                _clear_square_meters=(square_meters is None),
+                _clear_energy_class=(energy_class is None),
             )
             if success:
-                QMessageBox.information(
-                    self, self.tm.get("MESSAGGI", "SUCCESSO"),
-                    self.tm.get("MESSAGGI", "PROPRIETA_AGGIORNATA")
-                )
+                QMessageBox.information(self, self.tm.get("MESSAGGI", "SUCCESSO"),
+                                        self.tm.get("MESSAGGI", "PROPRIETA_AGGIORNATA"))
                 self.load_properties()
             else:
                 QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"), "")

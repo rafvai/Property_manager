@@ -13,18 +13,22 @@ class Property(Base):
     tenant_id = Column(String(64), nullable=False, index=True)
     name = Column(String(200), nullable=False)
     address = Column(String(500), nullable=False)
-    owner = Column(String(200), nullable=False)
+    managed_by = Column(String(200), nullable=True)
+    square_meters = Column(Float, nullable=True)
+    energy_class = Column(String(10), nullable=True)
 
     transactions = relationship("Transaction", back_populates="property", cascade="all, delete-orphan")
     deadlines = relationship("Deadline", back_populates="property", cascade="all, delete-orphan")
 
     def to_dict(self):
         return {
-            'id': self.id,
-            'tenant_id': self.tenant_id,
-            'name': self.name,
-            'address': self.address,
-            'owner': self.owner
+            'id':             self.id,
+            'tenant_id':      self.tenant_id,
+            'name':           self.name,
+            'address':        self.address,
+            'managed_by':     self.managed_by,
+            'square_meters':  self.square_meters,
+            'energy_class':   self.energy_class,
         }
 
 

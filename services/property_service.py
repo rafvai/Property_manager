@@ -34,18 +34,23 @@ class PropertyService:
         finally:
             self.db.close_session(session)
 
-    def create(self, name, address, owner):
-        """Crea una nuova proprietà"""
+    def create(self, name, address, managed_by=None,
+               square_meters=None, energy_class=None):
         session = self.db.get_session()
         try:
-            new_property = Property(name=name, tenant_id=Config.CURRENT_TENANT_ID,address=address, owner=owner)
+            new_property = Property(
+                name=name,
+                tenant_id=Config.CURRENT_TENANT_ID,
+                address=address,
+                managed_by=managed_by,
+                square_meters=square_meters,
+                energy_class=energy_class,
+            )
             session.add(new_property)
             session.commit()
-
             property_id = new_property.id
             self.logger.info(f"PropertyService: Proprietà creata: {property_id}")
             return property_id
-
         except Exception as e:
             session.rollback()
             self.logger.error(f"PropertyService: Errore creazione proprietà: {e}")
@@ -53,25 +58,33 @@ class PropertyService:
         finally:
             self.db.close_session(session)
 
-    def update(self, property_id, name=None, address=None, owner=None):
-        """Aggiorna una proprietà esistente"""
+    def update(self, property_id, name=None, address=None,
+               managed_by=None, square_meters=None, energy_class=None,
+               _clear_managed_by=False, _clear_square_meters=False,
+               _clear_energy_class=False):
         session = self.db.get_session()
         try:
-            prop = session.query(Property).filter(Property.id == property_id, Property.tenant_id==Config.CURRENT_TENANT_ID).first()
+            prop = session.query(Property).filter(
+                Property.id == property_id,
+                Property.tenant_id == Config.CURRENT_TENANT_ID
+            ).first()
             if not prop:
                 return False
 
-            if name:
-                prop.name = name
-            if address:
-                prop.address = address
-            if owner:
-                prop.owner = owner
+            if name:          prop.name = name
+            if address:       prop.address = address
+
+            # I campi nullable ammettono anche il valore None esplicito
+            if managed_by is not None:    prop.managed_by = managed_by
+            if _clear_managed_by:         prop.managed_by = None
+            if square_meters is not None: prop.square_meters = square_meters
+            if _clear_square_meters:      prop.square_meters = None
+            if energy_class is not None:  prop.energy_class = energy_class
+            if _clear_energy_class:       prop.energy_class = None
 
             session.commit()
             self.logger.info(f"PropertyService: Proprietà aggiornata: {property_id}")
             return True
-
         except Exception as e:
             session.rollback()
             self.logger.error(f"PropertyService: Errore aggiornamento: {e}")

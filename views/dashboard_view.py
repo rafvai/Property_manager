@@ -300,11 +300,24 @@ class DashboardView(BaseView):
             self.info_name.setText(
                 f"🏡 {num_prop} {self.tm.get('ETICHETTE', 'PROPRIETA_TOTALI')}"
             )
+            self.info_address.setText("")
+            self.info_owner.setText("")
         else:
             p = self.selected_property
             self.info_name.setText(f"🏡 {p['name']}")
             self.info_address.setText(f"📍 {p['address']}")
-            self.info_owner.setText(f"👤 {p['owner']}")
+
+            # Riga extra: gestita da / mq / classe energetica
+            extras = []
+            if p.get('managed_by'):
+                extras.append(f"🏢 {p['managed_by']}")
+            if p.get('square_meters'):
+                sqm = p['square_meters']
+                sqm_str = str(int(sqm)) if sqm == int(sqm) else str(sqm)
+                extras.append(f"📐 {sqm_str} m²")
+            if p.get('energy_class'):
+                extras.append(f"⚡ {p['energy_class']}")
+            self.info_owner.setText("  ·  ".join(extras) if extras else "")
 
     # ──────────────────────────────────────────────────────────────
     #  Prossima scadenza — usa warning_days dal DB
