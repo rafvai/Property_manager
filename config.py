@@ -41,7 +41,7 @@ class Config:
 
     # ── Ambiente ─────────────────────────────────────────────────
     # Valori validi: development | production | saas
-    ENV = os.getenv('APP_ENV', 'development')
+    ENV = os.getenv('APP_ENV', 'production')
 
     # ── Flag specifici development ───────────────────────────────
     # Se True, l'AppController bypassa completamente il login

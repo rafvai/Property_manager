@@ -73,7 +73,7 @@ class AppController:
 
     def _on_login_ok(self, email: str, token: str, is_admin: bool):
         self.logger.info(f"AppController: accesso confermato per {email}, admin={is_admin}")
-        win = self._build_dashboard(is_admin=is_admin)
+        win = self._build_dashboard(is_admin=False)
         win.show()
         self._window = win
 
