@@ -5,8 +5,16 @@ a = Analysis(
     pathex=['.'],
     binaries=[],
     datas=[
-        ('icons',   'icons'),
-        ('shared',  'shared'),
+        ('icons',               'icons'),
+        ('shared',              'shared'),
+        ('dialogs.py',          '.'),
+        ('dialogs_import.py',   '.'),
+        ('styles.py',           '.'),
+        ('validation_utils.py', '.'),
+        ('transaction_types.py','.'),
+        ('security_manager.py', '.'),
+        ('log_manager.py',      '.'),
+        ('config.py',           '.'),
     ],
     hiddenimports=[
         'sqlalchemy.dialects.sqlite',
