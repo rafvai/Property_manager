@@ -14,6 +14,9 @@
 *.db-shm
 *.db-wal
 
+# Eccezione: translations.db è un asset dell'app, non un DB utente
+!shared/translations.db
+
 # Python
 __pycache__/
 *.pyc
@@ -31,3 +34,12 @@ docs/
 
 # Preferenze locali
 preferences.json
+
+# IDE
+.idea/
+
+# Note personali
+Sviluppi_futuri.txt
+
+# Env mal nominato (rinominalo in .env.production prima di committarlo)
+env.production.env

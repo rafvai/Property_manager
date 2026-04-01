@@ -151,7 +151,7 @@ class DashboardWindow(QMainWindow):
         ]
         if self.is_admin:
             menu_items.append(
-                ("icons/settings.png", self.tm.get("MENU", "TRADUZIONI"))
+                ("icons/translation.png", self.tm.get("MENU", "TRADUZIONI"))
             )
 
         for icon_path, text in menu_items:

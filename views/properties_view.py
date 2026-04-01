@@ -284,7 +284,7 @@ class PropertiesView(BaseView):
         info_row.addWidget(address_label)
 
         if prop.get('managed_by'):
-            managed_label = QLabel(f"🏢 Gestita da: {prop['managed_by']}")
+            managed_label = QLabel(f"🏢 {self.tm.get('ETICHETTE', 'GESTITA_DA')}: {prop['managed_by']}")
             managed_label.setStyleSheet("color: #bdc3c7; font-size: 12px;")
             info_row.addWidget(managed_label)
 
@@ -333,13 +333,13 @@ class PropertiesView(BaseView):
         num_upcoming = self._count_upcoming_deadlines(prop['id'], warning_days)
 
         if num_overdue > 0:
-            deadline_color = "#e74c3c"  # rosso — scadute
+            deadline_color = COLORE_ERROR  # rosso — scadute
             deadline_icon  = "⚠️"
         elif num_upcoming > 0:
-            deadline_color = "#f59e0b"  # arancione — imminenti entro warning_days
+            deadline_color = COLORE_WARNING  # arancione — imminenti entro warning_days
             deadline_icon  = "🔔"
         else:
-            deadline_color = "#95a5a6"  # grigio — tutto ok
+            deadline_color = COLORE_GRIGIO  # grigio — tutto ok
             deadline_icon  = ""
 
         deadline_label = QLabel(
@@ -397,14 +397,14 @@ class PropertiesView(BaseView):
 
         managed_by_input = QLineEdit()
         managed_by_input.setPlaceholderText("es. Agenzia Immobiliare Rossi")
-        layout.addRow("Gestita da:", managed_by_input)
+        layout.addRow(f"{self.tm.get('ETICHETTE', 'GESTITA_DA')}:", managed_by_input)
 
         sqm_input = QLineEdit()
         sqm_input.setPlaceholderText("es. 75")
-        layout.addRow("Metri quadri:", sqm_input)
+        layout.addRow(f"{self.tm.get('ETICHETTE', 'METRI_QUADRI')}:", sqm_input)
 
         energy_combo = QComboBox()
-        energy_combo.addItem("— non specificata —", None)
+        energy_combo.addItem(self.tm.get('ETICHETTE', "NON_SPECIFICATO"), None)
         for cls in ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"]:
             energy_combo.addItem(cls, cls)
         layout.addRow("Classe energetica:", energy_combo)
@@ -466,7 +466,7 @@ class PropertiesView(BaseView):
 
         managed_by_input = QLineEdit(prop.get('managed_by') or "")
         managed_by_input.setPlaceholderText("es. Agenzia Immobiliare Rossi")
-        layout.addRow("Gestita da:", managed_by_input)
+        layout.addRow(f"{self.tm.get('ETICHETTE', 'GESTITA_DA')}:", managed_by_input)
 
         sqm_input = QLineEdit(
             str(int(prop['square_meters']))
@@ -474,10 +474,10 @@ class PropertiesView(BaseView):
             else str(prop['square_meters']) if prop.get('square_meters') else ""
         )
         sqm_input.setPlaceholderText("es. 75")
-        layout.addRow("Metri quadri:", sqm_input)
+        layout.addRow(f"{self.tm.get('ETICHETTE', 'METRI_QUADRI')}:", sqm_input)
 
         energy_combo = QComboBox()
-        energy_combo.addItem("— non specificata —", None)
+        energy_combo.addItem(self.tm.get('ETICHETTE', "NON_SPECIFICATO"), None)
         for cls in ["A+++", "A++", "A+", "A", "B", "C", "D", "E", "F", "G"]:
             energy_combo.addItem(cls, cls)
         current_ec = prop.get('energy_class')
