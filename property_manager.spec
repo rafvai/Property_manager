@@ -8,6 +8,18 @@ a = Analysis(
     datas=[
         ('icons',   'icons'),
         ('shared',  'shared'),
+        # Moduli root espliciti (fix: ModuleNotFoundError 'dialogs' e simili)
+        ('dialogs.py',           '.'),
+        ('dialogs_import.py',    '.'),
+        ('styles.py',            '.'),
+        ('validation_utils.py',  '.'),
+        ('transaction_types.py', '.'),
+        ('security_manager.py',  '.'),
+        ('log_manager.py',       '.'),
+        ('config.py',            '.'),
+        ('ui_main.py',           '.'),
+        ('ui_login.py',          '.'),
+        ('ui_register.py',       '.'),
     ],
     hiddenimports=[
         # Moduli root del progetto
