@@ -1,25 +1,18 @@
 import os
 block_cipher = None
 
+# Aggiunge la directory corrente al path di analisi
+project_root = os.path.abspath('.')
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
 a = Analysis(
     ['Main.py'],
-    pathex=['.'],
+    pathex=['.', os.path.abspath('.')],
     binaries=[],
     datas=[
         ('icons',   'icons'),
         ('shared',  'shared'),
-        # Moduli root espliciti (fix: ModuleNotFoundError 'dialogs' e simili)
-        ('dialogs.py',           '.'),
-        ('dialogs_import.py',    '.'),
-        ('styles.py',            '.'),
-        ('validation_utils.py',  '.'),
-        ('transaction_types.py', '.'),
-        ('security_manager.py',  '.'),
-        ('log_manager.py',       '.'),
-        ('config.py',            '.'),
-        ('ui_main.py',           '.'),
-        ('ui_login.py',          '.'),
-        ('ui_register.py',       '.'),
     ],
     hiddenimports=[
         # Moduli root del progetto

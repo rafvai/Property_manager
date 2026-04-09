@@ -46,7 +46,7 @@ jobs:
           pip install numpy
 
       - name: Build con PyInstaller
-        run: pyinstaller property_manager.spec --clean --paths=.   # <-- aggiunto --paths=.
+        run: pyinstaller property_manager.spec --clean --paths=.
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
