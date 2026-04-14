@@ -54,7 +54,7 @@ jobs:
           python -c "import styles; print('styles OK')"
 
       - name: Build con PyInstaller
-        run: pyinstaller property_manager.spec --clean --paths=.
+        run: pyinstaller --clean property_manager.spec
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
