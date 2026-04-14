@@ -1,14 +1,15 @@
 import os
+import sys
 block_cipher = None
 
 # Aggiunge la directory corrente al path di analisi
-project_root = os.path.abspath('.')
+project_root = os.path.abspath(SPECPATH)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 a = Analysis(
     ['Main.py'],
-    pathex=['.', os.path.abspath('.')],
+    pathex=[project_root],
     binaries=[],
     datas=[
         ('icons',   'icons'),
