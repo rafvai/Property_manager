@@ -37,7 +37,7 @@ class DocumentMetadataDialog(QDialog):
         # Spesa/Guadagno
         self.type_box = QComboBox()
         self.type_box.addItems([self.tm.get("ETICHETTE","GUADAGNO"), self.tm.get("ETICHETTE","SPESA")])
-        layout.addRow(f"{self.tm.get("ETICHETTE","TIPO")}:", self.type_box)
+        layout.addRow(f"{self.tm.get('ETICHETTE','TIPO')}:", self.type_box)
 
         # Emittente
         self.emittente_input = QLineEdit()
@@ -47,19 +47,19 @@ class DocumentMetadataDialog(QDialog):
         # servizio
         self.service_input = QLineEdit()
         self.service_input.setPlaceholderText(self.tm.get("PLACEHOLDER","NOME_SERVIZIO"))
-        layout.addRow(f"{self.tm.get("ETICHETTE","SERVIZIO")}:", self.service_input)
+        layout.addRow(f"{self.tm.get('ETICHETTE','SERVIZIO')}:", self.service_input)
 
         # Importo
         self.importo_input = QLineEdit()
         self.importo_input.setPlaceholderText(self.tm.get("PLACEHOLDER","ES_IMPORTO"))
-        layout.addRow(f"{self.tm.get("ETICHETTE","IMPORTO")}:", self.importo_input)
+        layout.addRow(f"{self.tm.get('ETICHETTE','IMPORTO')}:", self.importo_input)
 
         # Data Fattura
         self.data_fattura = QDateEdit()
         self.data_fattura.setDisplayFormat("dd/MM/yyyy")
         self.data_fattura.setCalendarPopup(True)
         self.data_fattura.setDate(QDate.currentDate())
-        layout.addRow(f"{self.tm.get("ETICHETTE","DATA_FATTURA")}:", self.data_fattura)
+        layout.addRow(f"{self.tm.get('ETICHETTE','DATA_FATTURA')}:", self.data_fattura)
 
         # Pulsanti OK/Cancel
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -132,28 +132,28 @@ class AddDeadlineDialog(QDialog):
         # Titolo
         self.title_input = QLineEdit()
         self.title_input.setPlaceholderText(self.tm.get("ETICHETTE", "NUOVA_SCADENZA"))
-        layout.addRow(f"{self.tm.get("ETICHETTE", "TITOLO")}*:", self.title_input)
+        layout.addRow(f"{self.tm.get('ETICHETTE', 'TITOLO')}*:", self.title_input)
 
         # Descrizione
         self.description_input = QTextEdit()
         self.description_input.setPlaceholderText(self.tm.get("PLACEHOLDER", "DETTAGLI_AGGIUNTIVI"))
         self.description_input.setMaximumHeight(80)
-        layout.addRow(f"{self.tm.get("ETICHETTE", "DESCRIZIONE")}:", self.description_input)
+        layout.addRow(f"{self.tm.get('ETICHETTE', 'DESCRIZIONE')}:", self.description_input)
 
         # Data scadenza
         self.due_date = QDateEdit()
         self.due_date.setDisplayFormat("dd/MM/yyyy")
         self.due_date.setCalendarPopup(True)
         self.due_date.setDate(QDate.currentDate())
-        layout.addRow(f"{self.tm.get("ETICHETTE", "DATA_SCADENZA")}*:", self.due_date)
+        layout.addRow(f"{self.tm.get('ETICHETTE', 'DATA_SCADENZA')}*:", self.due_date)
 
         # Proprietà (opzionale)
         self.property_combo = QComboBox()
-        self.property_combo.addItem(self.tm.get("ETICHETTE", "ALL_PROPERTIES"), None)
+        self.property_combo.addItem(self.tm.get('ETICHETTE', 'ALL_PROPERTIES'), None)
         if properties:
             for prop in properties:
                 self.property_combo.addItem(prop["name"], prop["id"])
-        layout.addRow(f"{self.tm.get("ETICHETTE", "PROPRIETA")}*:", self.property_combo)
+        layout.addRow(f"{self.tm.get('ETICHETTE', 'PROPRIETA')}*:", self.property_combo)
 
         # Pulsanti
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -761,7 +761,7 @@ class ExportDialog(QDialog):
         cancel_btn.clicked.connect(self.reject)
         buttons_layout.addWidget(cancel_btn)
 
-        export_btn = QPushButton(f"📥 {self.tm.get("PULSANTI", "ESPORTA")}")
+        export_btn = QPushButton(f"📥 {self.tm.get('PULSANTI', 'ESPORTA')}")
         export_btn.setStyleSheet(default_export_button)
         export_btn.clicked.connect(self.do_export)
         buttons_layout.addWidget(export_btn)
