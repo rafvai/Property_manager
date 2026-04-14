@@ -42,7 +42,7 @@ class DocumentMetadataDialog(QDialog):
         # Emittente
         self.emittente_input = QLineEdit()
         self.emittente_input.setPlaceholderText(self.tm.get("PLACEHOLDER","ES_FORNITORE"))
-        layout.addRow(f"{self.tm.get("ETICHETTE","FORNITORE")}:", self.emittente_input)
+        layout.addRow(f"{self.tm.get('ETICHETTE','FORNITORE')}:", self.emittente_input)
 
         # servizio
         self.service_input = QLineEdit()
