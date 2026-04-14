@@ -744,7 +744,7 @@ class ExportDialog(QDialog):
         buttons_layout = QHBoxLayout()
         buttons_layout.addStretch()
 
-        cancel_btn = QPushButton(f"❌ {self.tm.get("PULSANTI", "ANNULLA")}")
+        cancel_btn = QPushButton(f"❌ {self.tm.get('PULSANTI', 'ANNULLA')}")
         cancel_btn.setStyleSheet(f"""
             QPushButton {{
                 background-color: {COLORE_ERROR};
