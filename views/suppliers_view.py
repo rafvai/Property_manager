@@ -843,7 +843,7 @@ class SuppliersView(BaseView):
         header_layout.addWidget(title)
         header_layout.addStretch()
 
-        add_btn = QPushButton(f"+ {self.tm.get("PULSANTI", "AGGIUNGI")}")
+        add_btn = QPushButton(f"+ {self.tm.get('PULSANTI', 'AGGIUNGI')}")
         add_btn.setStyleSheet(default_aggiungi_button)
         add_btn.clicked.connect(self.add_supplier)
         header_layout.addWidget(add_btn)
@@ -975,7 +975,7 @@ class SuppliersView(BaseView):
             filter_text.append(f"proprietà '{property_name}'")
         
         if self.current_category:
-            filter_text.append(f"{self.tm.get("suppliers","category")} '{self.current_category}'")
+            filter_text.append(f"{self.tm.get('suppliers','category')} '{self.current_category}'")
         
         if self.current_min_rating:
             filter_text.append(f"rating ≥ {self.current_min_rating}⭐")
@@ -1076,7 +1076,7 @@ class SuppliersView(BaseView):
 
         name_input = QLineEdit()
         name_input.setPlaceholderText(self.tm.get("PLACEHOLDER","ES_FORNITORE"))
-        layout.addRow(f"{self.tm.get("ETICHETTE","NOME")}*:", name_input)
+        layout.addRow(f"{self.tm.get('ETICHETTE','NOME')}*:", name_input)
 
         category_combo = QComboBox()
         category_combo.setEditable(True)
@@ -1085,7 +1085,7 @@ class SuppliersView(BaseView):
         for cat in categories:
             category_combo.addItem(cat)
         
-        layout.addRow(f"{self.tm.get("ETICHETTE","CATEGORIA")}*:", category_combo)
+        layout.addRow(f"{self.tm.get('ETICHETTE','CATEGORIA')}*:", category_combo)
 
         property_combo = QComboBox()
         property_combo.addItem(self.tm.get("ETICHETTE","ALL_PROPERTIES"), None)
@@ -1099,30 +1099,30 @@ class SuppliersView(BaseView):
             if index >= 0:
                 property_combo.setCurrentIndex(index)
         
-        layout.addRow(f"{self.tm.get("ETICHETTE","PROPRIETA")}:", property_combo)
+        layout.addRow(f"{self.tm.get('ETICHETTE','PROPRIETA')}:", property_combo)
 
         phone_input = QLineEdit()
         phone_input.setPlaceholderText(self.tm.get("PLACEHOLDER","NUMERO_TELEFONO"))
-        layout.addRow(f"{self.tm.get("ETICHETTE","TELEFONO")}:", phone_input)
+        layout.addRow(f"{self.tm.get('ETICHETTE','TELEFONO')}:", phone_input)
 
         email_input = QLineEdit()
         email_input.setPlaceholderText(self.tm.get("PLACEHOLDER","EMAIL_FORNITORE"))
-        layout.addRow(f"{self.tm.get("ETICHETTE","EMAIL")}:", email_input)
+        layout.addRow(f"{self.tm.get('ETICHETTE','EMAIL')}:", email_input)
 
         address_input = QLineEdit()
         address_input.setPlaceholderText(self.tm.get("PLACEHOLDER","VIA_APPARTAMENTO"))
-        layout.addRow(f"{self.tm.get("ETICHETTE","INDIRIZZO")}:", address_input)
+        layout.addRow(f"{self.tm.get('ETICHETTE','INDIRIZZO')}:", address_input)
 
         notes_input = QTextEdit()
         notes_input.setMaximumHeight(80)
-        layout.addRow(f"{self.tm.get("ETICHETTE","NOTE")}:", notes_input)
+        layout.addRow(f"{self.tm.get('ETICHETTE','NOTE')}:", notes_input)
 
         # Rating iniziale
         rating_spin = QSpinBox()
         rating_spin.setRange(0, 5)
         rating_spin.setValue(0)
         rating_spin.setSuffix(" ⭐")
-        layout.addRow(f"{self.tm.get("ETICHETTE","VALUTAZIONE")}:", rating_spin)
+        layout.addRow(f"{self.tm.get('ETICHETTE','VALUTAZIONE')}:", rating_spin)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)
@@ -1191,7 +1191,7 @@ class SuppliersView(BaseView):
         layout = QFormLayout(dialog)
 
         name_input = QLineEdit(supplier['name'])
-        layout.addRow(f"{self.tm.get("ETICHETTE","NOME")}*:", name_input)
+        layout.addRow(f"{self.tm.get('ETICHETTE','NOME')}*:", name_input)
 
         category_combo = QComboBox()
         category_combo.setEditable(True)
@@ -1199,7 +1199,7 @@ class SuppliersView(BaseView):
         for cat in categories:
             category_combo.addItem(cat)
         category_combo.setCurrentText(supplier['category'])
-        layout.addRow(f"{self.tm.get("ETICHETTE","CATEGORIA")}*:", category_combo)
+        layout.addRow(f"{self.tm.get('ETICHETTE','CATEGORIA')}*:", category_combo)
 
         property_combo = QComboBox()
         property_combo.addItem("Nessuna proprietà", None)
