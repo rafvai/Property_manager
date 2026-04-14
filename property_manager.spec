@@ -14,6 +14,7 @@ a = Analysis(
     datas=[
         ('icons',   'icons'),
         ('shared',  'shared'),
+        ('dialogs.py', '.'),
     ],
     hiddenimports=[
         # Moduli root del progetto
