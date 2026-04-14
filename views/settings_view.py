@@ -377,7 +377,7 @@ class SettingsView(BaseView):
             db_path = self._db_path()
             if not db_path.exists():
                 QMessageBox.warning(self, self.tm.get("MESSAGGI", "ERRORE"),
-                                    f"{self.tm.get("MESSAGGI", "DATABASE_NON_TROVATO")}:\n{db_path}")
+                                    f"{self.tm.get('MESSAGGI','DATABASE_NON_TROVATO')}:\n{db_path}")
                 return
 
             timestamp    = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -391,7 +391,7 @@ class SettingsView(BaseView):
             if backup_path:
                 shutil.copy2(str(db_path), backup_path)
                 QMessageBox.information(
-                    self, f"✅ {self.tm.get("MESSAGGI", "BACKUP_COMPLETATO")}",
+                    self, f"✅ {self.tm.get('MESSAGGI', 'BACKUP_COMPLETATO')}",
                     f"Database salvato con successo!\n\n📁 {backup_path}"
                 )
 
@@ -544,7 +544,7 @@ class SettingsView(BaseView):
         if dialog.exec():
             self.user_prefs_service.set_currency(combo.currentData())
             QMessageBox.information(self, self.tm.get("MESSAGGI", "SALVATO"),
-                                    f"{self.tm.get("MESSAGGI", "VALUTA_IMPOSTATA_A")} {combo.currentData()}.")
+                                    f"{self.tm.get('MESSAGGI', 'VALUTA_IMPOSTATA_A')} {combo.currentData()}.")
 
     # ── ACCOUNT & LICENZA ─────────────────────────────────────────
 
@@ -561,12 +561,12 @@ class SettingsView(BaseView):
         current_pwd = QLineEdit()
         current_pwd.setEchoMode(QLineEdit.EchoMode.Password)
         current_pwd.setPlaceholderText(self.tm.get("ETICHETTE", "PASSWORD_ATTUALE"))
-        layout.addRow(f"{self.tm.get("ETICHETTE", "PASSWORD_ATTUALE")}*:", current_pwd)
+        layout.addRow(f"{self.tm.get('ETICHETTE', 'PASSWORD_ATTUALE')}*:", current_pwd)
 
         new_pwd = QLineEdit()
         new_pwd.setEchoMode(QLineEdit.EchoMode.Password)
         new_pwd.setPlaceholderText("Minimo 8 caratteri")
-        layout.addRow(f"{self.tm.get("ETICHETTE", "NUOVA_PASSWORD")}*:", new_pwd)
+        layout.addRow(f"{self.tm.get('ETICHETTE', 'NUOVA_PASSWORD')}*:", new_pwd)
 
         confirm_pwd = QLineEdit()
         confirm_pwd.setEchoMode(QLineEdit.EchoMode.Password)
