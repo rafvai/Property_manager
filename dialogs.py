@@ -579,7 +579,7 @@ class ExportDialog(QDialog):
         main_layout.setContentsMargins(25, 25, 25, 25)
 
         # Titolo
-        title = QLabel(f"📥 {self.tm.get("ETICHETTE", "ESPORTA_DATI")}")
+        title = QLabel(f"📥 {self.tm.get('ETICHETTE', 'ESPORTA_DATI')}")
         title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
         main_layout.addWidget(title)
 
