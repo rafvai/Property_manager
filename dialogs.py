@@ -519,7 +519,7 @@ class PlannerCalendarWidget(QWidget):
     # ──────────────────────────────────────────────────────────────
 
     def add_deadline(self, preset_date=None):
-        from dialogs import AddDeadlineDialog  # import locale per evitare circolarità
+
         properties = self.property_service.get_all()
         dialog = AddDeadlineDialog(self.tm, properties=properties, parent=self)
 
