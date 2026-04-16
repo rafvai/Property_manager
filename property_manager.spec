@@ -42,6 +42,7 @@ a = Analysis(
         'services.transaction_service',
         'services.translation_system_simple',
         'services.user_preference_service',
+        'services.translation_sync_service',
         # Database
         'database.connection',
         'database.models',

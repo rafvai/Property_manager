@@ -284,6 +284,9 @@ def main():
     p = sub.add_parser("delete", help="Elimina utente (irreversibile)")
     p.add_argument("user_id", type=int)
 
+    p = sub.add_parser("upload-translations", help="Carica nuovo file translations.db")
+    p.add_argument("file", help="Path al file translations.db")
+
     args = parser.parse_args()
     cmds = {
         "stats"        : cmd_stats,
@@ -299,9 +302,22 @@ def main():
         "promote"      : cmd_promote,
         "demote"       : cmd_demote,
         "delete"       : cmd_delete,
+        "upload-translations": cmd_upload_translations,
     }
     cmds[args.command](args)
 
 
-if __name__ == "__main__":
-    main()
+def cmd_upload_translations(args):
+    headers_no_json = {"X-Admin-Key": ADMIN_KEY}
+    with open(args.file, "rb") as f:
+        resp = requests.post(
+            f"{SERVER_URL}/admin/translations/upload",
+            headers=headers_no_json,
+            files={"file": ("translations.db", f, "application/octet-stream")},
+            timeout=30
+        )
+    if resp.status_code not in (200, 201):
+        print(f"❌ Errore {resp.status_code}: {resp.text}")
+        sys.exit(1)
+    data = resp.json()
+    print(f"✅ Traduzioni aggiornate ({data['size_bytes']} bytes)")

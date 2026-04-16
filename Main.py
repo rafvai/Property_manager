@@ -1,3 +1,4 @@
+import os
 import sys
 from PySide6.QtWidgets import QApplication, QMessageBox
 
@@ -12,9 +13,11 @@ from services.transaction_service import TransactionService
 from services.translation_system_simple import TranslationManager
 from services.auth_service import AuthService
 from services.user_preference_service import UserPreferenceService
+from services.translation_sync_service import TranslationSyncService
 from ui_login import LoginWindow
 from ui_register import RegisterWindow
 from ui_main import DashboardWindow
+from pathlib import Path
 
 
 class AppController:
@@ -153,9 +156,20 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # ── Traduzioni ────────────────────────────────────────────────
+
+    TRANSLATIONS_LOCAL = Path('shared/translations.db')
+    TRANSLATIONS_LOCAL.parent.mkdir(parents=True, exist_ok=True)
+
+    sync_svc = TranslationSyncService(
+        server_url=os.getenv('LICENSE_SERVER_URL', ''),
+        local_path=TRANSLATIONS_LOCAL,
+        logger=logger
+    )
+    sync_svc.sync()  # silenzioso: fallback automatico se offline
+
     try:
         translation_manager = TranslationManager(
-            db_path='shared/translations.db',
+            db_path=str(TRANSLATIONS_LOCAL),
             default_language='it'
         )
         prefs_service = PreferencesService(logger)
@@ -166,14 +180,11 @@ if __name__ == "__main__":
         )
     except Exception as e:
         logger.error(f"Errore inizializzazione traduzioni: {e} — uso fallback italiano")
-        # Le traduzioni non sono bloccanti: l'app può avviarsi
-        # mostrando le chiavi come placeholder
         translation_manager = TranslationManager(
-            db_path='shared/translations.db',
+            db_path=str(TRANSLATIONS_LOCAL),
             default_language='it'
         )
         prefs_service = PreferencesService(logger)
-
     supplier_svc = SupplierService(logger)
     transaction_svc = TransactionService(logger, supplier_service=supplier_svc)
 
