@@ -156,16 +156,18 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # ── Traduzioni ────────────────────────────────────────────────
-
-    TRANSLATIONS_LOCAL = Path('shared/translations.db')
-    TRANSLATIONS_LOCAL.parent.mkdir(parents=True, exist_ok=True)
+    if Config.is_development():
+        TRANSLATIONS_LOCAL = Path('shared/translations.db')
+        TRANSLATIONS_LOCAL.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        TRANSLATIONS_LOCAL = Config.BASE_DIR / 'translations.db'
 
     sync_svc = TranslationSyncService(
         server_url=os.getenv('LICENSE_SERVER_URL', ''),
         local_path=TRANSLATIONS_LOCAL,
         logger=logger
     )
-    sync_svc.sync()  # silenzioso: fallback automatico se offline
+    sync_svc.sync()
 
     try:
         translation_manager = TranslationManager(
