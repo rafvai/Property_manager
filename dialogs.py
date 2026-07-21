@@ -3,13 +3,13 @@ import os
 import shutil
 from datetime import date, timedelta
 
-from PySide6.QtCore import Qt, QDate, QPoint, QUrl
+from PySide6.QtCore import Qt, QDate, QPoint, QUrl, QEvent
 from PySide6.QtGui import QIcon, QDesktopServices
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QMessageBox,
     QFileDialog, QListWidget, QFormLayout, QLineEdit, QComboBox, QDialogButtonBox,
     QDateEdit, QWidget, QHBoxLayout, QSizePolicy, QGridLayout, QFrame, QTextEdit, QRadioButton, QButtonGroup, QGroupBox,
-    QListWidgetItem
+    QListWidgetItem, QApplication
 )
 
 from styles import COLORE_SECONDARIO, COLORE_WIDGET_2, COLORE_RIGA_1, COLORE_ITEM_HOVER, default_button_main_header, \
@@ -244,19 +244,24 @@ class CustomTitleBar(QWidget):
         main_layout.addWidget(title_container)
 
         # --- Drag logic ---
-        self._is_dragging = False
-        self._drag_pos = QPoint()
+        self._click_pos = None
 
-        # Aggiorna icona iniziale
+        # Icona iniziale + sync su OGNI cambio di stato della finestra
+        # (doppio click, Win+frecce, snap ai bordi, drag di sistema)
         self.update_maximize_icon()
+        parent.installEventFilter(self)
+
+    def eventFilter(self, obj, event):
+        if obj is self.parent and event.type() == QEvent.Type.WindowStateChange:
+            self.update_maximize_icon()
+        return super().eventFilter(obj, event)
 
     def toggle_maximize(self):
-        """Gestisce il toggle e aggiorna l'icona"""
+        """Toggle massimizza/ripristina (l'icona si aggiorna via eventFilter)"""
         if self.parent.isMaximized():
             self.parent.showNormal()
         else:
             self.parent.showMaximized()
-        self.update_maximize_icon()
 
     def update_maximize_icon(self):
         """Aggiorna l'icona del pulsante in base allo stato della finestra"""
@@ -267,18 +272,45 @@ class CustomTitleBar(QWidget):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            self._is_dragging = True
-            self._drag_pos = event.globalPosition().toPoint() - self.parent.frameGeometry().topLeft()
+            self._click_pos = event.globalPosition().toPoint()
             event.accept()
 
     def mouseReleaseEvent(self, event):
-        self._is_dragging = False
+        self._click_pos = None
         event.accept()
 
-    def mouseMoveEvent(self, event):
-        if self._is_dragging and event.buttons() == Qt.MouseButton.LeftButton:
-            self.parent.move(event.globalPosition().toPoint() - self._drag_pos)
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.toggle_maximize()
             event.accept()
+
+    def mouseMoveEvent(self, event):
+        """
+        Delega il trascinamento al sistema operativo (startSystemMove):
+        gestisce correttamente monitor multipli con DPI diversi, snap ai
+        bordi e animazioni — il move() manuale saltava tra gli schermi.
+        """
+        if self._click_pos is None or not (event.buttons() & Qt.MouseButton.LeftButton):
+            return
+
+        # Soglia per distinguere un click da un drag
+        moved = (event.globalPosition().toPoint() - self._click_pos).manhattanLength()
+        if moved < QApplication.startDragDistance():
+            return
+
+        win = self.parent
+        if win.isMaximized():
+            # Come le finestre native: il drag ripristina la finestra
+            # tenendo il cursore nella stessa posizione relativa della barra
+            ratio = event.position().x() / max(1, self.width())
+            win.showNormal()
+            gp = event.globalPosition().toPoint()
+            win.move(int(gp.x() - win.width() * ratio),
+                     gp.y() - int(event.position().y()))
+
+        self._click_pos = None
+        win.windowHandle().startSystemMove()
+        event.accept()
 
 
 class ClickableDayCell(QFrame):

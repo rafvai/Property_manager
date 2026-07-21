@@ -275,11 +275,15 @@ class RegisterWindow(QWidget):
 
     def mousePressEvent(self, e):
         if e.button() == Qt.MouseButton.LeftButton:
-            self._drag_pos = e.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            self._drag_pos = e.globalPosition().toPoint()
 
     def mouseMoveEvent(self, e):
-        if e.buttons() == Qt.MouseButton.LeftButton and self._drag_pos:
-            self.move(e.globalPosition().toPoint() - self._drag_pos)
+        # startSystemMove: drag nativo dell'OS, fluido anche tra monitor con DPI diversi
+        if e.buttons() == Qt.MouseButton.LeftButton and self._drag_pos is not None:
+            if (e.globalPosition().toPoint() - self._drag_pos).manhattanLength() \
+                    >= QApplication.startDragDistance():
+                self._drag_pos = None
+                self.windowHandle().startSystemMove()
 
     def mouseReleaseEvent(self, e):
         self._drag_pos = None

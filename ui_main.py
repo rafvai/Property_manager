@@ -59,7 +59,14 @@ class DashboardWindow(QMainWindow):
         self.setWindowTitle("Property Manager MVP")
         self.setGeometry(200, 200, 1200, 700)
         self.setMinimumSize(800, 600)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        # I hint minimize/maximize servono anche senza cornice: abilitano
+        # l'animazione di minimizzazione, il click sulla taskbar e lo snap
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowSystemMenuHint
+            | Qt.WindowType.WindowMinimizeButtonHint
+            | Qt.WindowType.WindowMaximizeButtonHint
+        )
 
         # Container principale
         container = QWidget()
