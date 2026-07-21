@@ -120,13 +120,9 @@ def validate_required_text(value_str, field_name, min_length=1, max_length=None)
             f"{field_name} non può superare {max_length} caratteri"
         )
 
-    # SICUREZZA: Verifica pattern SQL injection
-    try:
-        security.sanitize_sql_input(clean_text, max_length or 500)
-    except ValueError as e:
-        raise ValidationError(
-            f"{field_name} contiene caratteri o pattern non permessi: {e}"
-        )
+    # NOTA: nessuna blacklist di keyword SQL qui. La protezione da SQL injection
+    # sono le query parametrizzate (SQLAlchemy); una blacklist bloccherebbe solo
+    # dati legittimi (es. fornitore "Rossi & Figli", nota con la parola "update").
 
     return clean_text
 

@@ -1,5 +1,5 @@
 from config import Config
-from database.models import Supplier, Property, SupplierDocument, SupplierReview
+from database.models import Supplier, Property, SupplierDocument, SupplierReview, utcnow
 from database.connection import DatabaseConnection
 from sqlalchemy import func, desc
 from datetime import datetime
@@ -164,7 +164,7 @@ class SupplierService:
             for field, value in kwargs.items():
                 if field in allowed_fields:
                     setattr(supplier, field, value)
-            supplier.updated_at = datetime.utcnow()
+            supplier.updated_at = utcnow()
             session.commit()
             self.logger.info(f"SupplierService: Fornitore aggiornato: {supplier_id}")
             return True

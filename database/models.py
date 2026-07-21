@@ -1,9 +1,14 @@
 from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean, Text, Date, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 
 Base = declarative_base()
+
+
+def utcnow():
+    """UTC naive per i default delle colonne (datetime.utcnow è deprecato)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 class Property(Base):
@@ -72,7 +77,7 @@ class Deadline(Base):
     description = Column(Text, nullable=True)
     due_date = Column(Date, nullable=False, index=True)
     completed = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     property = relationship("Property", back_populates="deadlines")
 
@@ -105,8 +110,8 @@ class Supplier(Base):
     last_service_date = Column(Date, nullable=True)
     total_spent = Column(Float, default=0.0)
     service_count = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
+    updated_at = Column(DateTime, default=utcnow)
 
     property = relationship("Property", backref="suppliers")
     documents = relationship("SupplierDocument", back_populates="supplier", cascade="all, delete-orphan")
@@ -141,7 +146,7 @@ class SupplierDocument(Base):
     document_type = Column(String(50), nullable=False)
     title = Column(String(200), nullable=False)
     file_path = Column(String(500), nullable=False)
-    upload_date = Column(DateTime, default=datetime.utcnow)
+    upload_date = Column(DateTime, default=utcnow)
     notes = Column(Text, nullable=True)
 
     supplier = relationship("Supplier", back_populates="documents")
@@ -169,7 +174,7 @@ class SupplierReview(Base):
     title = Column(String(200), nullable=True)
     comment = Column(Text, nullable=True)
     service_date = Column(Date, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=utcnow)
 
     supplier = relationship("Supplier", back_populates="reviews")
 

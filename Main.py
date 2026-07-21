@@ -76,7 +76,7 @@ class AppController:
 
     def _on_login_ok(self, email: str, token: str, is_admin: bool):
         self.logger.info(f"AppController: accesso confermato per {email}, admin={is_admin}")
-        win = self._build_dashboard(is_admin=False)
+        win = self._build_dashboard(is_admin=is_admin)
         win.show()
         self._window = win
 
@@ -91,11 +91,11 @@ class AppController:
         self._window = win
 
     def _on_register_ok(self):
+        # Il server dopo la registrazione non rilascia un token:
+        # si torna al login, come indicato nel messaggio di conferma.
         self.logger.info("AppController: registrazione completata, ritorno al login")
         self._window.close()
-        win = self._build_dashboard(is_admin=False)
-        win.show()
-        self._window = win
+        self._show_login()
 
     # ──────────────────────────────────────────────
     #  HELPER
@@ -162,6 +162,16 @@ if __name__ == "__main__":
     else:
         TRANSLATIONS_LOCAL = Config.BASE_DIR / 'translations.db'
 
+        # Primo avvio senza rete: usa il seed incluso nella build, così la UI
+        # non mostra le chiavi [ETICHETTE.*] in attesa del sync dal server
+        if not TRANSLATIONS_LOCAL.exists():
+            bundled = Path(getattr(sys, '_MEIPASS', Path(__file__).parent)) \
+                / 'shared' / 'translations.db'
+            if bundled.exists():
+                import shutil
+                shutil.copy2(bundled, TRANSLATIONS_LOCAL)
+                logger.info("Traduzioni: copiato seed incluso nella build")
+
     sync_svc = TranslationSyncService(
         server_url=os.getenv('LICENSE_SERVER_URL', ''),
         local_path=TRANSLATIONS_LOCAL,
@@ -202,5 +212,13 @@ if __name__ == "__main__":
 
     controller = AppController(app, services, logger)
     controller.start()
+
+    # Chiudi lo splash della build PyInstaller ora che la finestra è visibile
+    # (pyi_splash esiste solo nell'eseguibile, non in sviluppo)
+    try:
+        import pyi_splash
+        pyi_splash.close()
+    except ImportError:
+        pass
 
     sys.exit(app.exec())

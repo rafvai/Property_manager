@@ -9,8 +9,9 @@ Gestisce:
 import json
 import os
 import hmac, hashlib
+import secrets
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 try:
@@ -18,6 +19,11 @@ try:
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
+
+
+def _utcnow() -> datetime:
+    """UTC naive, coerente con le date ISO in cache (datetime.utcnow è deprecato)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 # ─────────────────────────────────────────────
 #  CONFIG
@@ -34,7 +40,28 @@ else:
 
 _CACHE_DIR.mkdir(parents=True, exist_ok=True)
 _CACHE_FILE    = _CACHE_DIR / ".license_cache"
-_HMAC_KEY      = b"pm-license-cache-v1"
+
+
+def _get_hmac_key() -> bytes:
+    """
+    Chiave HMAC per la firma della cache offline, casuale e per-installazione,
+    conservata nel portachiavi di sistema (Windows Credential Manager / macOS
+    Keychain). Una chiave hardcoded nel sorgente renderebbe la firma falsificabile
+    da chiunque decompili l'eseguibile. Fallback alla chiave legacy se il
+    portachiavi non è disponibile.
+    """
+    try:
+        import keyring
+        stored = keyring.get_password("PropertyManager", "cache_hmac_key")
+        if not stored:
+            stored = secrets.token_hex(32)
+            keyring.set_password("PropertyManager", "cache_hmac_key", stored)
+        return stored.encode()
+    except Exception:
+        return b"pm-license-cache-v1"
+
+
+_HMAC_KEY = _get_hmac_key()
 
 
 # ─────────────────────────────────────────────
@@ -67,6 +94,14 @@ class AuthService:
     def __init__(self, logger, server_url: str = None):
         self.logger     = logger
         self.server_url = (server_url or LICENSE_SERVER_URL).rstrip("/")
+
+        if self.server_url.startswith("http://") and \
+                not any(h in self.server_url for h in ("localhost", "127.0.0.1")):
+            self.logger.warning(
+                "AuthService: il server licenze usa HTTP non cifrato — "
+                "le credenziali viaggiano in chiaro. Configura HTTPS sul server "
+                "e aggiorna LICENSE_SERVER_URL."
+            )
 
     # ── Login principale ────────────────────────────────────────────
     def login(self, email: str, password: str) -> AuthResult:
@@ -140,7 +175,7 @@ class AuthService:
             return AuthResult(success=False, mode="failed", error="Password errata.")
 
         cached_at = datetime.fromisoformat(cache["cached_at"])
-        age_days  = (datetime.utcnow() - cached_at).days
+        age_days  = (_utcnow() - cached_at).days
 
         if age_days > OFFLINE_CACHE_DAYS:
             self._clear_cache()
@@ -191,7 +226,7 @@ class AuthService:
             "days_left"  : server_data.get("days_left"),
             "is_admin"   : server_data.get("is_admin", False),
             "grace_mode" : server_data.get("grace_mode", False),
-            "cached_at"  : datetime.utcnow().isoformat()
+            "cached_at"  : _utcnow().isoformat()
         }
         payload   = json.dumps(cache, sort_keys=True).encode()
         signature = hmac.digest(_HMAC_KEY, payload, "sha256").hex()
@@ -238,6 +273,6 @@ class AuthService:
     @staticmethod
     def _days_left(expires_at: str) -> int:
         try:
-            return max(0, (datetime.fromisoformat(expires_at) - datetime.utcnow()).days)
+            return max(0, (datetime.fromisoformat(expires_at) - _utcnow()).days)
         except Exception:
             return 0

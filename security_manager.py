@@ -318,16 +318,10 @@ class SecurityManager:
         # Rimuovi tag HTML
         text = re.sub(r'<[^>]*>', '', text)
 
-        # Escape caratteri HTML speciali
-        html_escape_table = {
-            "&": "&amp;",
-            '"': "&quot;",
-            "'": "&#x27;",
-            ">": "&gt;",
-            "<": "&lt;",
-        }
-
-        return "".join(html_escape_table.get(c, c) for c in text)
+        # Escape solo le parentesi angolari residue: apostrofi, virgolette e "&"
+        # sono testo legittimo (Sant'Angelo, Rossi & Figli) e l'app è desktop Qt,
+        # non un renderer HTML — l'escaping completo corrompeva i dati salvati.
+        return text.replace("<", "&lt;").replace(">", "&gt;")
 
     @staticmethod
     def validate_numeric_range(value: Union[int, float], min_val: float, max_val: float) -> bool:
