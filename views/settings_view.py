@@ -60,6 +60,9 @@ class SettingItem(QFrame):
         layout.addWidget(icon_container)
 
         text_container = QWidget()
+        # Senza questo il container eredita lo sfondo scuro dallo stylesheet
+        # globale e disegna un riquadro più scuro dietro a titolo e descrizione
+        text_container.setStyleSheet("background: transparent;")
         text_layout = QVBoxLayout(text_container)
         text_layout.setContentsMargins(0, 0, 0, 0)
         text_layout.setSpacing(4)
@@ -355,6 +358,7 @@ class SettingsView(BaseView):
         info_layout.addWidget(app_icon)
 
         text_container = QWidget()
+        text_container.setStyleSheet("background: transparent;")
         text_layout = QVBoxLayout(text_container)
         text_layout.setContentsMargins(0, 0, 0, 0)
         text_layout.setSpacing(2)
@@ -679,9 +683,10 @@ class SettingsView(BaseView):
 
             # Calcola giorni rimasti in tempo reale
             try:
-                from datetime import datetime as dt
+                from datetime import datetime as dt, timezone as tz
                 exp_dt = dt.fromisoformat(expires_at)
-                days_left = max(0, (exp_dt - dt.utcnow()).days)
+                now_utc = dt.now(tz.utc).replace(tzinfo=None)
+                days_left = max(0, (exp_dt - now_utc).days)
                 expires_str = exp_dt.strftime("%d/%m/%Y")
             except Exception:
                 expires_str = expires_at[:10] if expires_at else "—"
