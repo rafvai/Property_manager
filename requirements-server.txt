@@ -1,0 +1,8 @@
+# Dipendenze license server (license_server.py) — deploy su VPS
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-jose[cryptography]>=3.3
+passlib[bcrypt]>=1.7
+bcrypt==4.0.1  # passlib 1.7.x non legge la versione di bcrypt>=4.1
+python-multipart>=0.0.9  # richiesto da UploadFile
+python-dotenv>=1.0

@@ -13,6 +13,9 @@ a = Analysis(
     binaries=[],
     datas=[
         ('icons',   'icons'),
+        # Seed traduzioni: copiato in BASE_DIR al primo avvio se il sync
+        # dal server non è ancora avvenuto (evita UI con chiavi [ETICHETTE.*])
+        ('shared/translations.db', 'shared'),
     ],
     hiddenimports=[
         # Moduli root del progetto
@@ -74,10 +77,43 @@ a = Analysis(
         'keyring.backends.macOS',
     ],
     excludes=[
+        # Codice non-client
         'tests',
         'pytest',
         'license_server',
         'admin_cli',
+        # Roba pesante mai usata dal client (riduce dimensione e avvio).
+        # NB: NON escludere unittest/doctest/pydoc — matplotlib li importa
+        # a runtime e la loro assenza fa crashare l'avvio.
+        'tkinter',
+        'IPython',
+        'jedi',
+        # Moduli Qt non usati (l'app usa solo Widgets/Core/Gui)
+        'PySide6.QtWebEngineCore',
+        'PySide6.QtWebEngineWidgets',
+        'PySide6.QtQml',
+        'PySide6.QtQuick',
+        'PySide6.QtQuickWidgets',
+        'PySide6.QtMultimedia',
+        'PySide6.QtMultimediaWidgets',
+        'PySide6.QtPdf',
+        'PySide6.QtPdfWidgets',
+        'PySide6.Qt3DCore',
+        'PySide6.Qt3DRender',
+        'PySide6.QtCharts',
+        'PySide6.QtDataVisualization',
+        'PySide6.QtBluetooth',
+        'PySide6.QtSensors',
+        'PySide6.QtSerialPort',
+        'PySide6.QtWebSockets',
+        'PySide6.QtWebChannel',
+        'PySide6.QtPositioning',
+        'PySide6.QtLocation',
+        'PySide6.QtRemoteObjects',
+        'PySide6.QtTest',
+        'PySide6.QtDesigner',
+        'PySide6.QtHelp',
+        'PySide6.QtSql',
     ],
     cipher=block_cipher,
     noarchive=False,
@@ -85,25 +121,42 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+# Splash screen: appare istantaneamente all'avvio mentre Python/Qt caricano.
+# Supportato solo su Windows/Linux — su macOS PyInstaller non lo prevede.
+splash_target = []
+if sys.platform == 'win32':
+    splash = Splash(
+        'assets/splash.png',
+        binaries=a.binaries,
+        datas=a.datas,
+        text_pos=None,
+        always_on_top=True,
+    )
+    splash_target = [splash, splash.binaries]
+
 exe = EXE(
     pyz,
     a.scripts,
+    *( [splash_target[0]] if splash_target else [] ),
     [],
     exclude_binaries=True,
     name='PropertyManager',
     debug=False,
     strip=False,
-    upx=True,
+    # UPX disattivato: la decompressione rallenta l'avvio e causa
+    # falsi positivi antivirus (che rallentano ancora di più)
+    upx=False,
     console=False,
-    icon='icons/homepage.png',
+    icon='assets/app.ico',
 )
 
 coll = COLLECT(
     exe,
+    *( [splash_target[1]] if splash_target else [] ),
     a.binaries,
     a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
+    upx=False,
     name='PropertyManager',
 )

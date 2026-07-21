@@ -32,18 +32,7 @@ jobs:
       - name: Installa dipendenze
         run: |
           pip install --upgrade pip
-          pip install pyinstaller
-          pip install PySide6
-          pip install sqlalchemy
-          pip install alembic
-          pip install reportlab
-          pip install openpyxl
-          pip install python-dotenv
-          pip install cryptography
-          pip install keyring
-          pip install requests
-          pip install matplotlib
-          pip install numpy
+          pip install -r requirements-dev.txt
 
       - name: Debug struttura progetto
         run: |

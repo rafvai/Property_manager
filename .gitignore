@@ -24,6 +24,10 @@ __pycache__/
 .venv/
 venv/
 
+# Build PyInstaller
+build/
+dist/
+
 # Log
 logs/
 *.log
