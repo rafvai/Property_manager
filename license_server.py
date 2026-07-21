@@ -12,11 +12,12 @@ Variabili ambiente richieste (.env):
 """
 
 import os
+import math
 import sqlite3
 import secrets
 import hashlib
 import string
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -44,12 +45,28 @@ def _load_or_create_secret_key() -> str:
     return key
 
 SECRET_KEY = os.getenv("SECRET_KEY") or _load_or_create_secret_key()
-ADMIN_KEY  = os.getenv("ADMIN_KEY", "changeme-in-production")
+ADMIN_KEY  = os.getenv("ADMIN_KEY", "")
 ALGORITHM  = "HS256"
 DB_PATH    = Path("licenses.db")
 
+# Rifiuta di partire con la admin key di default: tutti gli endpoint
+# /admin/* sarebbero aperti a chiunque conosca il valore pubblico.
+if not ADMIN_KEY or ADMIN_KEY == "changeme-in-production":
+    if os.getenv("APP_ENV", "production") == "development":
+        ADMIN_KEY = secrets.token_hex(32)
+        print(f"⚠️  DEV: ADMIN_KEY non impostata, generata per questa sessione: {ADMIN_KEY}")
+    else:
+        raise RuntimeError(
+            "ADMIN_KEY mancante o di default. Imposta ADMIN_KEY nel file .env "
+            "(es. python -c \"import secrets; print(secrets.token_hex(32))\")"
+        )
+
 GRACE_PERIOD_DAYS = 7
 WARN_BEFORE_DAYS  = 14
+
+# Rate limiting login: max tentativi falliti per utente nella finestra
+MAX_FAILED_LOGINS    = int(os.getenv("MAX_LOGIN_ATTEMPTS", "5"))
+LOCKOUT_WINDOW_MIN   = int(os.getenv("LOGIN_TIMEOUT", "15"))
 
 pwd_ctx  = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer(auto_error=False)
@@ -177,18 +194,29 @@ def hash_password(password: str) -> str:
 def verify_password(plain: str, hashed: str) -> bool:
     return pwd_ctx.verify(plain, hashed)
 
+def utcnow() -> datetime:
+    """UTC naive, coerente con le date ISO salvate nel DB (utcnow() è deprecato)."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
 def create_token(data: dict, expires_delta: timedelta = timedelta(hours=24)) -> str:
     payload = data.copy()
-    payload["exp"] = datetime.utcnow() + expires_delta
+    payload["exp"] = utcnow() + expires_delta
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
-def days_left(expires_at_str: str) -> int:
+def is_expired(expires_at_str: str) -> bool:
+    """La licenza è valida per tutto il giorno di scadenza incluso."""
     exp = datetime.fromisoformat(expires_at_str)
-    delta = exp - datetime.utcnow()
-    return max(0, delta.days)
+    if exp.time() == datetime.min.time():
+        exp += timedelta(days=1)  # scadenza a mezzanotte di fine giornata
+    return exp <= utcnow()
+
+def days_left(expires_at_str: str) -> int:
+    """Giorni residui arrotondati per eccesso: 'scade tra 23 ore' → 1, non 0."""
+    delta = datetime.fromisoformat(expires_at_str) - utcnow()
+    return max(0, math.ceil(delta.total_seconds() / 86400))
 
 def require_admin(x_admin_key: str = Header(None)):
-    if x_admin_key != ADMIN_KEY:
+    if not x_admin_key or not secrets.compare_digest(x_admin_key, ADMIN_KEY):
         raise HTTPException(status_code=403, detail="Admin key non valida")
 
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
@@ -215,7 +243,7 @@ def log_login(conn, user_id: int, ip: str, success: bool, reason: str = None):
 # ─────────────────────────────────────────────
 @app.get("/health")
 def health():
-    return {"status": "ok", "timestamp": datetime.utcnow().isoformat()}
+    return {"status": "ok", "timestamp": utcnow().isoformat()}
 
 
 @app.post("/auth/login", response_model=LoginResponse)
@@ -231,6 +259,25 @@ def login(req: LoginRequest, x_forwarded_for: str = Header(None)):
     if not row:
         conn.close()
         raise HTTPException(status_code=401, detail="Credenziali non valide")
+
+    # Rate limiting: blocca il brute-force sull'account
+    failed_recent = conn.execute(
+        """SELECT COUNT(*) FROM login_log
+           WHERE user_id=? AND success=0
+             AND timestamp > datetime('now', ?)""",
+        (row["id"], f"-{LOCKOUT_WINDOW_MIN} minutes")
+    ).fetchone()[0]
+    if failed_recent >= MAX_FAILED_LOGINS:
+        log_login(conn, row["id"], ip, False, "rate_limited")
+        conn.commit()
+        conn.close()
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Troppi tentativi falliti. "
+                f"Riprova tra {LOCKOUT_WINDOW_MIN} minuti."
+            )
+        )
 
     if not verify_password(req.password, row["password_hash"]):
         log_login(conn, row["id"], ip, False, "wrong_password")
@@ -248,11 +295,11 @@ def login(req: LoginRequest, x_forwarded_for: str = Header(None)):
     warning_msg = None
     grace_mode  = False
 
-    if remaining == 0:
+    if is_expired(row["expires_at"]):
         grace_until = row["grace_until"]
         if grace_until:
-            grace_remaining = days_left(grace_until)
-            if grace_remaining > 0:
+            if not is_expired(grace_until):
+                grace_remaining = days_left(grace_until)
                 grace_mode  = True
                 warning_msg = (
                     f"⚠️ La tua licenza è scaduta. "
@@ -269,7 +316,7 @@ def login(req: LoginRequest, x_forwarded_for: str = Header(None)):
                     detail="Licenza scaduta. Contatta il supporto per rinnovare."
                 )
         else:
-            grace_date = (datetime.utcnow() + timedelta(days=GRACE_PERIOD_DAYS)).isoformat()
+            grace_date = (utcnow() + timedelta(days=GRACE_PERIOD_DAYS)).isoformat()
             conn.execute(
                 "UPDATE users SET grace_until=? WHERE id=?",
                 (grace_date, row["id"])
@@ -327,8 +374,8 @@ def verify_token(current_user: str = Depends(get_current_user)):
     remaining  = days_left(row["expires_at"])
     grace_mode = False
 
-    if remaining == 0 and row["grace_until"]:
-        if days_left(row["grace_until"]) == 0:
+    if is_expired(row["expires_at"]):
+        if not row["grace_until"] or is_expired(row["grace_until"]):
             raise HTTPException(status_code=403, detail="Licenza scaduta")
         grace_mode = True
 
@@ -339,6 +386,10 @@ def verify_token(current_user: str = Depends(get_current_user)):
 def change_password(req: PasswordChange, current_user: str = Depends(get_current_user)):
     conn = get_db()
     row  = conn.execute("SELECT * FROM users WHERE email=?", (current_user,)).fetchone()
+
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Utente non trovato")
 
     if not verify_password(req.current_password, row["password_hash"]):
         conn.close()
@@ -382,7 +433,7 @@ def register(req: RegisterRequest, x_forwarded_for: str = Header(None)):
         conn.close()
         raise HTTPException(status_code=400, detail="La password deve essere di almeno 8 caratteri")
 
-    expires = (datetime.utcnow() + timedelta(days=invite["expires_days"])).date().isoformat()
+    expires = (utcnow() + timedelta(days=invite["expires_days"])).date().isoformat()
 
     try:
         conn.execute(
@@ -424,7 +475,7 @@ def register(req: RegisterRequest, x_forwarded_for: str = Header(None)):
 # ─────────────────────────────────────────────
 @app.post("/admin/users", dependencies=[Depends(require_admin)])
 def create_user(user: UserCreate):
-    expires = (datetime.utcnow() + timedelta(days=user.expires_days)).date().isoformat()
+    expires = (utcnow() + timedelta(days=user.expires_days)).date().isoformat()
     conn = get_db()
     try:
         conn.execute(
@@ -477,7 +528,7 @@ def extend_license(user_id: int, days: int):
         raise HTTPException(status_code=404, detail="Utente non trovato")
 
     current_exp = datetime.fromisoformat(row["expires_at"])
-    base        = max(current_exp, datetime.utcnow())
+    base        = max(current_exp, utcnow())
     new_exp     = (base + timedelta(days=days)).date().isoformat()
 
     conn.execute(
