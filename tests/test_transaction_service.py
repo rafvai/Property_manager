@@ -262,19 +262,16 @@ class TestCreateWithSupplier:
 
     def test_crea_con_supplier_id_aggiorna_stats(self, transaction_service):
         """Con supplier_id e tipo Uscita → aggiorna le statistiche del fornitore.
-        SupplierService viene importato DENTRO la funzione con 'from services...',
-        quindi va patchato nel suo modulo sorgente."""
+        SupplierService è iniettato nel costruttore (self._supplier_service)."""
         svc, session = transaction_service
 
-        with patch("services.transaction_service.Transaction") as MockTrans, \
-             patch("services.supplier_service.SupplierService") as MockSupplierSvc:
+        mock_supplier_svc = MagicMock()
+        svc._supplier_service = mock_supplier_svc
 
+        with patch("services.transaction_service.Transaction") as MockTrans:
             mock_t = MagicMock()
             mock_t.id = 20
             MockTrans.return_value = mock_t
-
-            mock_instance = MagicMock()
-            MockSupplierSvc.return_value = mock_instance
 
             result = svc.create_with_supplier(
                 property_id=1,
@@ -287,21 +284,19 @@ class TestCreateWithSupplier:
             )
 
         assert result == 20
-        mock_instance.update_service_stats.assert_called_once()
+        mock_supplier_svc.update_service_stats.assert_called_once()
 
     def test_crea_entrata_con_supplier_non_aggiorna_stats(self, transaction_service):
         """Le Entrate non devono aggiornare le stats del fornitore"""
         svc, session = transaction_service
 
-        with patch("services.transaction_service.Transaction") as MockTrans, \
-             patch("services.supplier_service.SupplierService") as MockSupplierSvc:
+        mock_supplier_svc = MagicMock()
+        svc._supplier_service = mock_supplier_svc
 
+        with patch("services.transaction_service.Transaction") as MockTrans:
             mock_t = MagicMock()
             mock_t.id = 30
             MockTrans.return_value = mock_t
-
-            mock_instance = MagicMock()
-            MockSupplierSvc.return_value = mock_instance
 
             svc.create_with_supplier(
                 property_id=1,
@@ -313,7 +308,7 @@ class TestCreateWithSupplier:
                 supplier_id=5
             )
 
-        mock_instance.update_service_stats.assert_not_called()
+        mock_supplier_svc.update_service_stats.assert_not_called()
 
     def test_errore_db_fa_rollback(self, transaction_service):
         svc, session = transaction_service
@@ -333,13 +328,14 @@ class TestCreateWithSupplier:
         """Se l'aggiornamento stats fallisce, la transazione deve essere già salvata"""
         svc, session = transaction_service
 
-        with patch("services.transaction_service.Transaction") as MockTrans, \
-             patch("services.supplier_service.SupplierService") as MockSupplierSvc:
+        mock_supplier_svc = MagicMock()
+        mock_supplier_svc.update_service_stats.side_effect = Exception("Stats error")
+        svc._supplier_service = mock_supplier_svc
 
+        with patch("services.transaction_service.Transaction") as MockTrans:
             mock_t = MagicMock()
             mock_t.id = 50
             MockTrans.return_value = mock_t
-            MockSupplierSvc.return_value.update_service_stats.side_effect = Exception("Stats error")
 
             result = svc.create_with_supplier(
                 property_id=1,

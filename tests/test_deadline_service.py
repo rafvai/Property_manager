@@ -161,8 +161,8 @@ class TestGetNextDeadline:
         svc, session = deadline_service
         tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
         d = _make_deadline(1, due_date=tomorrow)
+        # get_next_deadline usa UNA sola .filter() con condizioni combinate
         session.query.return_value \
-            .filter.return_value \
             .filter.return_value \
             .order_by.return_value \
             .first.return_value = d
@@ -176,7 +176,6 @@ class TestGetNextDeadline:
         svc, session = deadline_service
         session.query.return_value \
             .filter.return_value \
-            .filter.return_value \
             .order_by.return_value \
             .first.return_value = None
 
@@ -185,10 +184,9 @@ class TestGetNextDeadline:
         assert result is None
 
     def test_filtro_per_property_id(self, deadline_service):
-        """Con property_id deve filtrare ulteriormente"""
+        """Con property_id deve filtrare ulteriormente (seconda .filter())"""
         svc, session = deadline_service
         session.query.return_value \
-            .filter.return_value \
             .filter.return_value \
             .filter.return_value \
             .order_by.return_value \

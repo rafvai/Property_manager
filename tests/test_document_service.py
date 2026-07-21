@@ -54,7 +54,7 @@ def document_service(docs_dir):
     with patch("services.document_service.get_docs_dir", return_value=docs_dir):
         from services.document_service import DocumentService
         svc = DocumentService(logger=MagicMock())
-        svc.docs_dir = str(docs_dir)
+        svc.docs_dir = docs_dir  # Path, come nel service reale
         svc.abs_docs_dir = str(docs_dir.resolve())
         return svc
 

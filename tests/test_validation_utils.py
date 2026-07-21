@@ -135,13 +135,15 @@ class TestValidateRequiredText:
         result = validate_required_text("A" * 10, "Nome", max_length=10)
         assert len(result) == 10
 
-    def test_sql_injection_union_lancia_errore(self):
-        with pytest.raises(ValidationError):
-            validate_required_text("UNION SELECT * FROM users", "Campo")
+    def test_testo_con_keyword_sql_accettato(self):
+        """Le keyword SQL nel testo sono dati legittimi: la protezione
+        dall'injection sono le query parametrizzate, non una blacklist."""
+        result = validate_required_text("UNION SELECT * FROM users", "Campo")
+        assert result == "UNION SELECT * FROM users"
 
-    def test_sql_injection_drop_lancia_errore(self):
-        with pytest.raises(ValidationError):
-            validate_required_text("DROP TABLE properties", "Campo")
+    def test_nome_fornitore_con_e_commerciale_accettato(self):
+        result = validate_required_text("Rossi & Figli S.r.l.", "Fornitore")
+        assert result == "Rossi & Figli S.r.l."
 
     def test_null_byte_viene_rimosso(self):
         try:

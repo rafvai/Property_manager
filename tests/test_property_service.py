@@ -220,15 +220,16 @@ class TestUpdate:
         assert result is True
         assert prop.address == "Milano, MI"
 
-    def test_aggiorna_proprietario(self, property_service):
+    def test_aggiorna_gestore(self, property_service):
+        """Il campo si chiama managed_by (ex owner)"""
         svc, session = property_service
         prop = _make_property(id=1)
         session.query.return_value.filter.return_value.first.return_value = prop
 
-        result = svc.update(1, owner="Luigi Bianchi")
+        result = svc.update(1, managed_by="Luigi Bianchi")
 
         assert result is True
-        assert prop.owner == "Luigi Bianchi"
+        assert prop.managed_by == "Luigi Bianchi"
 
     def test_proprieta_non_trovata_ritorna_false(self, property_service):
         svc, session = property_service
