@@ -1,28 +1,24 @@
-import sys
-import os
 
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QListWidget, QListWidgetItem, QSizePolicy
-)
 from PySide6.QtCore import Qt
-from dialogs import CustomTitleBar
-import logging
-from styles import *
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QHBoxLayout, QListWidget, QListWidgetItem, QMainWindow, QSizePolicy, QVBoxLayout, QWidget
 
-from services.database_service import DatabaseService
+from dialogs import CustomTitleBar
+from services.deadline_service import DeadlineService
+from services.document_service import DocumentService
 from services.property_service import PropertyService
 from services.transaction_service import TransactionService
-from services.document_service import DocumentService
-from services.deadline_service import DeadlineService
-
-from views.dashboard_view import DashboardView
-from views.properties_view import PropertiesView
-from views.documents_view import DocumentsView
+from styles import (
+    COLORE_BACKGROUND,
+    W_LAT_MENU,
+    default_menu_lat_style,
+)
 from views.accounting_view import AccountingView
-from views.report_view import ReportView
 from views.calendar_view import CalendarView
+from views.dashboard_view import DashboardView
+from views.documents_view import DocumentsView
+from views.properties_view import PropertiesView
+from views.report_view import ReportView
 from views.settings_view import SettingsView
 from views.suppliers_view import SuppliersView
 

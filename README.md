@@ -1,5 +1,8 @@
 # Property Manager
 
+![CI](https://github.com/rafvai/Property_manager/actions/workflows/ci.yml/badge.svg)
+![Build](https://github.com/rafvai/Property_manager/actions/workflows/build.yml/badge.svg)
+
 Applicazione desktop per la gestione di case vacanza: immobili, fornitori,
 transazioni, scadenze, documenti e report — con interfaccia unica che elimina
 le attività ripetitive.
@@ -32,12 +35,15 @@ DEV_SKIP_LOGIN=true           # solo dev: salta il login
 LICENSE_SERVER_URL=https://...  # URL del license server (usa HTTPS!)
 ```
 
-## Test
+## Test e qualità
 
 ```bash
 pytest tests/ -v
 pytest tests/ -m "not slow"   # esclude i test PBKDF2 lenti
+ruff check .                  # lint (config in pyproject.toml)
 ```
+
+La CI (`.github/workflows/ci.yml`) esegue lint e test a ogni push.
 
 ## License server (VPS)
 
@@ -78,7 +84,12 @@ pyinstaller --clean property_manager.spec
 ```
 
 La CI (`.github/workflows/build.yml`) genera gli eseguibili Windows e macOS
-a ogni tag `v*`.
+a ogni tag `v*` (o con avvio manuale da GitHub → Actions → Run workflow).
+
+L'URL del license server non è nel sorgente: la CI lo legge dal secret
+`LICENSE_SERVER_URL` (Settings → Secrets and variables → Actions) e lo
+include nell'eseguibile come `build_config.env`. Nelle build locali vale
+il `.env` di sviluppo.
 
 ## Struttura
 
@@ -90,5 +101,9 @@ database/            modelli SQLAlchemy + connessione
 services/            logica di business (proprietà, fornitori, transazioni, …)
 views/               viste Qt della dashboard
 migrations/          migrazioni Alembic
-tests/               test suite pytest (~3.500 righe)
+tests/               test suite pytest (316 test)
 ```
+
+## Licenza
+
+Distribuito con licenza [MIT](LICENSE).

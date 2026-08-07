@@ -1,18 +1,24 @@
-from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-    QPushButton, QFrame, QWidget
-)
-from PySide6.QtCore import Qt, QSize
+from datetime import datetime, timedelta
+
+import matplotlib.patches as mpatches
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-import matplotlib.patches as mpatches
-from datetime import datetime, timedelta
-import numpy as np
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QComboBox, QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
-from views.base_view import BaseView
+from styles import (
+    COLORE_BIANCO,
+    COLORE_GRIGIO,
+    COLORE_ITEM_SELEZIONATO,
+    COLORE_WIDGET_2,
+    default_combo_box_style,
+    default_dashboard_widget,
+    default_style_text,
+    default_title_style,
+)
 from validation_utils import format_currency
-from styles import *
+from views.base_view import BaseView
 
 
 class ClickableFrame(QFrame):
@@ -446,7 +452,7 @@ class DashboardView(BaseView):
             dot_offset  = -0.25
             dot_size    = 0.1
 
-            for label, p, x, c in zip(labels, perc, x_positions, colors):
+            for label, p, x, c in zip(labels, perc, x_positions, colors, strict=False):
                 self.ax.add_patch(mpatches.Circle(
                     (x + dot_offset, y_text), dot_size, color=c,
                     transform=self.ax.transData, clip_on=False)

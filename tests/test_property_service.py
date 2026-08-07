@@ -16,10 +16,11 @@ Esecuzione:
     pytest tests/test_property_service.py -v
 """
 
-import pytest
-import sys
 import os
-from unittest.mock import MagicMock, patch, PropertyMock
+import sys
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

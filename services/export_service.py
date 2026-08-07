@@ -1,16 +1,14 @@
-import os
 from datetime import datetime
 from pathlib import Path
 
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import A4, landscape
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import cm
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
-from openpyxl.utils import get_column_letter
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import cm
+from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from config import Config
 from styles import COLORE_ERROR
@@ -231,7 +229,7 @@ class ExportService:
                 cell.fill      = PatternFill(start_color=bg, end_color=bg, fill_type='solid')
                 cell.alignment = Alignment(horizontal='left' if col < 5 else 'right')
 
-        for col, width in zip(['A', 'B', 'C', 'D', 'E'], [12, 12, 25, 30, 15]):
+        for col, width in zip(['A', 'B', 'C', 'D', 'E'], [12, 12, 25, 30, 15], strict=True):
             ws_trans.column_dimensions[col].width = width
 
         wb.save(str(filepath))

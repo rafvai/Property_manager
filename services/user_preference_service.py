@@ -1,6 +1,6 @@
-from database.models import UserPreference
-from database.connection import DatabaseConnection
 from config import Config
+from database.connection import DatabaseConnection
+from database.models import UserPreference
 
 
 class UserPreferenceService:

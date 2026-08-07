@@ -1,6 +1,9 @@
 # Ambiente — MAI committare il .env attivo
 .env
 
+# Config di deploy generata dalla CI (contiene l'URL del server)
+build_config.env
+
 # Template committabili (contengono solo valori di esempio)
 # .env.development  ← OK committare
 # .env.production   ← OK committare

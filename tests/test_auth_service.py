@@ -17,21 +17,18 @@ Esecuzione:
     pytest tests/test_auth_service.py -v
 """
 
-import pytest
-import sys
-import os
-import json
-import hashlib
 import hmac
-import tempfile
-from pathlib import Path
+import json
+import os
+import sys
 from datetime import datetime, timedelta
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from services.auth_service import AuthService, AuthResult, _HMAC_KEY
-
+from services.auth_service import _HMAC_KEY, AuthResult, AuthService
 
 # ══════════════════════════════════════════════════════════
 #  Fixture condivise

@@ -17,23 +17,23 @@ Esecuzione:
     pytest tests/test_validation_utils.py -v
 """
 
-import pytest
-import sys
 import os
+import sys
+
+import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from validation_utils import (
+    ValidationError,
+    format_currency,
     parse_decimal,
-    validate_required_text,
+    validate_amount_range,
     validate_date_string,
     validate_property_id,
+    validate_required_text,
     validate_transaction_type,
-    format_currency,
-    validate_amount_range,
-    ValidationError
 )
-
 
 # ══════════════════════════════════════════════════════════
 #  parse_decimal

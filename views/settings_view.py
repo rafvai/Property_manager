@@ -1,17 +1,50 @@
-import os
 import shutil
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve, QPoint
+from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, Qt
 from PySide6.QtGui import QColor
-from PySide6.QtWidgets import (QVBoxLayout, QHBoxLayout, QLabel, QScrollArea, QFrame, QMessageBox, QFileDialog, QWidget,
-                               QGraphicsDropShadowEffect, QDialog, QDialogButtonBox, QComboBox, QFormLayout, QLineEdit,
-                               QPushButton, QTextEdit)
+from PySide6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFileDialog,
+    QFormLayout,
+    QFrame,
+    QGraphicsDropShadowEffect,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
 
 from config import Config
+from styles import (
+    COLORE_BACKGROUND,
+    COLORE_BIANCO,
+    COLORE_ERROR,
+    COLORE_GRIGIO,
+    COLORE_ITEM_HOVER,
+    COLORE_ITEM_SELEZIONATO,
+    COLORE_SECONDARIO,
+    COLORE_SUCCESS,
+    COLORE_WARNING,
+    COLORE_WIDGET_2,
+    default_aggiungi_button,
+    default_combo_box_style,
+    default_dialog_style,
+    default_style_secondary_buttons,
+    default_style_text,
+    default_style_text_small,
+    default_title_style,
+)
 from views.base_view import BaseView
-from styles import *
+
 
 class SettingItem(QFrame):
     """Widget personalizzato per ogni elemento delle impostazioni con animazioni"""
@@ -436,8 +469,8 @@ class SettingsView(BaseView):
 
     def open_exports_folder(self):
         """Apri cartella export — usa il path corretto da Config."""
-        from PySide6.QtGui import QDesktopServices
         from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
 
         exports_dir = self._exports_dir()
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(exports_dir)))
@@ -602,9 +635,12 @@ class SettingsView(BaseView):
 
         if dialog.exec():
             try:
+                import hmac
+                import json
+
                 import requests
+
                 from services.auth_service import _CACHE_FILE, _HMAC_KEY
-                import json, hmac
 
                 cache_file = _CACHE_FILE
                 if not cache_file.exists():
@@ -660,9 +696,10 @@ class SettingsView(BaseView):
         layout.setContentsMargins(24, 24, 24, 24)
 
         try:
-            from services.auth_service import _CACHE_FILE
-            import json, hmac
-            from services.auth_service import _HMAC_KEY
+            import hmac
+            import json
+
+            from services.auth_service import _CACHE_FILE, _HMAC_KEY
 
             if not _CACHE_FILE.exists():
                 raise FileNotFoundError
@@ -683,9 +720,9 @@ class SettingsView(BaseView):
 
             # Calcola giorni rimasti in tempo reale
             try:
-                from datetime import datetime as dt, timezone as tz
+                from datetime import datetime as dt
                 exp_dt = dt.fromisoformat(expires_at)
-                now_utc = dt.now(tz.utc).replace(tzinfo=None)
+                now_utc = dt.now(UTC).replace(tzinfo=None)
                 days_left = max(0, (exp_dt - now_utc).days)
                 expires_str = exp_dt.strftime("%d/%m/%Y")
             except Exception:
@@ -808,7 +845,7 @@ class SettingsView(BaseView):
         log_path = Path("logs") / "app.log"
         if log_path.exists():
             try:
-                with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                with open(log_path, encoding="utf-8", errors="replace") as f:
                     lines = f.readlines()
                 last_lines = lines[-100:] if len(lines) > 100 else lines
                 log_text.setPlainText("".join(last_lines))
@@ -841,7 +878,7 @@ class SettingsView(BaseView):
     def _refresh_log_text(self, text_edit: QTextEdit, log_path: Path):
         if log_path.exists():
             try:
-                with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                with open(log_path, encoding="utf-8", errors="replace") as f:
                     lines = f.readlines()
                 last_lines = lines[-100:] if len(lines) > 100 else lines
                 text_edit.setPlainText("".join(last_lines))

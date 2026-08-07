@@ -1,9 +1,11 @@
+import contextlib
 import os
 import shutil
-from pathlib import Path
-from security_manager import SecurityManager
-from config import Config
 from datetime import date as date_type
+from pathlib import Path
+
+from config import Config
+from security_manager import SecurityManager
 
 
 def get_docs_dir() -> Path:
@@ -45,7 +47,7 @@ class DocumentService:
         try:
             property_id = int(property_id)
         except (ValueError, TypeError):
-            raise ValueError(f"property_id non valido: {property_id}")
+            raise ValueError(f"property_id non valido: {property_id}") from None
 
         base_path = self.docs_dir / Config.CURRENT_TENANT_ID / f"property_{property_id}"
 
@@ -59,7 +61,7 @@ class DocumentService:
                     sanitized_parts.append(self.security.sanitize_filename(part))
                 except ValueError as e:
                     self.logger.error(f"Path pericoloso rilevato: {sub_directory}")
-                    raise ValueError(f"Sottocartella non valida: {e}")
+                    raise ValueError(f"Sottocartella non valida: {e}") from e
             if sanitized_parts:
                 base_path = base_path / Path(*sanitized_parts)
 
@@ -68,7 +70,7 @@ class DocumentService:
             self.security.validate_path(abs_path, self.abs_docs_dir)
         except ValueError:
             self.logger.critical(f"PATH TRAVERSAL RILEVATO: {base_path}")
-            raise ValueError("Path traversal rilevato!")
+            raise ValueError("Path traversal rilevato!") from None
 
         return str(base_path)
 
@@ -122,7 +124,7 @@ class DocumentService:
             service      = metadata['service']
             service      = self.security.sanitize_sql_input(service, max_length=100)
         except KeyError as e:
-            raise ValueError(f"Metadata mancante: {e}")
+            raise ValueError(f"Metadata mancante: {e}") from e
 
         if not isinstance(data_fattura, date_type):
             raise ValueError(
@@ -130,7 +132,6 @@ class DocumentService:
                 f"ricevuto: {type(data_fattura).__name__}. "
                 f"Usa QDate.toPython() nel dialog."
             )
-        giorno = str(data_fattura.day).zfill(2)
         mese = str(data_fattura.month).zfill(2)
         anno = str(data_fattura.year)
 
@@ -151,20 +152,20 @@ class DocumentService:
         try:
             safe_service = self.security.sanitize_filename(service)
         except ValueError as e:
-            raise ValueError(f"Nome servizio non valido: {e}")
+            raise ValueError(f"Nome servizio non valido: {e}") from e
 
         new_filename = f"{mese}_{anno}_{safe_service}{file_extension}"
         try:
             new_filename = self.security.sanitize_filename(new_filename)
         except ValueError as e:
-            raise ValueError(f"Nome file risultante non valido: {e}")
+            raise ValueError(f"Nome file risultante non valido: {e}") from e
 
         dest_path = os.path.join(folder, new_filename)
         try:
             self.security.validate_path(dest_path, self.abs_docs_dir)
         except ValueError:
             self.logger.critical(f"PATH TRAVERSAL in save: {dest_path}")
-            raise ValueError("Operazione bloccata: path non sicuro")
+            raise ValueError("Operazione bloccata: path non sicuro") from None
 
         counter = 1
         while os.path.exists(dest_path):
@@ -177,19 +178,17 @@ class DocumentService:
         try:
             shutil.copy2(source_path, dest_path)
             if not os.path.exists(dest_path):
-                raise IOError("File non copiato")
+                raise OSError("File non copiato")
             if os.path.getsize(dest_path) != validation['size']:
                 os.remove(dest_path)
-                raise IOError("Dimensione file copiato non corrisponde")
+                raise OSError("Dimensione file copiato non corrisponde")
             self.logger.info(f"Documento salvato: {new_filename}")
             return dest_path
         except Exception as e:
             self.logger.error(f"Errore salvataggio documento: {e}")
             if os.path.exists(dest_path):
-                try:
+                with contextlib.suppress(Exception):
                     os.remove(dest_path)
-                except Exception:
-                    pass
             return None
 
     def delete_document(self, file_path):
@@ -263,7 +262,7 @@ class DocumentService:
             return result
 
         try:
-            for root, dirs, files in os.walk(folder_path):
+            for _root, dirs, files in os.walk(folder_path):
                 result['files_deleted']   += len(files)
                 result['folders_deleted'] += len(dirs)
             shutil.rmtree(folder_path)
@@ -293,7 +292,7 @@ class DocumentService:
 
         total_size = 0
         try:
-            for root, dirs, files in os.walk(folder_path):
+            for root, _dirs, files in os.walk(folder_path):
                 for file in files:
                     file_path = os.path.join(root, file)
                     if os.path.exists(file_path):

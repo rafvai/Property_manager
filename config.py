@@ -11,14 +11,14 @@ Flusso di caricamento:
 Per cambiare ambiente basta modificare APP_ENV nel file .env.
 """
 
-import os
 import json
+import os
 from pathlib import Path
-from typing import Dict, Any, Optional
-from cryptography.fernet import Fernet
-import keyring
-from dotenv import load_dotenv
+from typing import Any
 
+import keyring
+from cryptography.fernet import Fernet
+from dotenv import load_dotenv
 
 # ──────────────────────────────────────────────────────────────────
 #  CARICAMENTO .env
@@ -27,6 +27,12 @@ from dotenv import load_dotenv
 # ──────────────────────────────────────────────────────────────────
 _ENV_FILE = Path(__file__).parent / ".env"
 load_dotenv(_ENV_FILE)  # silenzioso se il file non esiste
+
+# Config di build: generata dalla CI da un GitHub Secret e inclusa
+# nell'eseguibile (vedi build.yml). Contiene solo valori di deploy come
+# LICENSE_SERVER_URL. load_dotenv non sovrascrive variabili già presenti,
+# quindi .env e ambiente di sistema hanno comunque la precedenza.
+load_dotenv(Path(__file__).parent / "build_config.env")
 
 
 class Config:
@@ -42,6 +48,12 @@ class Config:
     # ── Ambiente ─────────────────────────────────────────────────
     # Valori validi: development | production | saas
     ENV = os.getenv('APP_ENV', 'production')
+
+    # ── License server ───────────────────────────────────────────
+    # Unica fonte di verità per l'URL, usata sia dall'auth sia dal sync
+    # traduzioni. Arriva da .env in sviluppo e da build_config.env
+    # (GitHub Secret) nell'eseguibile — mai hardcoded nel sorgente.
+    LICENSE_SERVER_URL = os.getenv('LICENSE_SERVER_URL', '')
 
     # ── Flag specifici development ───────────────────────────────
     # Se True, l'AppController bypassa completamente il login
@@ -149,12 +161,12 @@ class Config:
             f.write(encrypted_data)
 
     @staticmethod
-    def load_db_credentials() -> Optional[Dict[str, Any]]:
+    def load_db_credentials() -> dict[str, Any] | None:
         config_file = Config.BASE_DIR / '.db_config'
         if not config_file.exists():
             return None
         try:
-            with open(config_file, 'r') as f:
+            with open(config_file) as f:
                 encrypted_data = f.read()
             credentials = json.loads(Config.decrypt_password(encrypted_data))
             password = keyring.get_password(Config.SERVICE_NAME, 'db_password')
@@ -166,7 +178,7 @@ class Config:
             return None
 
     @staticmethod
-    def get_database_config() -> Dict[str, Any]:
+    def get_database_config() -> dict[str, Any]:
         """Configurazione DB basata sull'ambiente."""
         if Config.ENV in ['development', 'production']:
             db_name = 'property_manager.db' if Config.is_development() \
@@ -231,7 +243,7 @@ class Config:
         return True
 
     @staticmethod
-    def get_session_config() -> Dict[str, Any]:
+    def get_session_config() -> dict[str, Any]:
         return {
             'secret_key': os.getenv('SESSION_SECRET_KEY') or
                           Config._get_encryption_key().decode('utf-8'),
@@ -242,7 +254,7 @@ class Config:
         }
 
     @staticmethod
-    def get_security_config() -> Dict[str, Any]:
+    def get_security_config() -> dict[str, Any]:
         return {
             'max_login_attempts'  : int(os.getenv('MAX_LOGIN_ATTEMPTS', '5')),
             'login_timeout_minutes': int(os.getenv('LOGIN_TIMEOUT', '15')),
@@ -268,7 +280,7 @@ class Config:
             f"  Ambiente   : {Config.ENV}",
             f"  Skip login : {Config.DEV_SKIP_LOGIN}",
             f"  Log level  : {os.getenv('LOG_LEVEL', 'INFO')}",
-            f"  Server URL : {os.getenv('LICENSE_SERVER_URL', 'non impostato')}",
+            f"  Server URL : {Config.LICENSE_SERVER_URL}",
             "─" * 45,
         ]
         for line in lines:

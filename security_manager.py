@@ -2,13 +2,11 @@
 Sistema di sicurezza centralizzato per Property Manager
 Protegge da: SQL Injection, Path Traversal, XSS, File Upload malicious
 """
-import re
-import os
 import hashlib
-import secrets
-from pathlib import Path
-from typing import Optional, List, Union
 import mimetypes
+import os
+import re
+import secrets
 
 
 class SecurityManager:
@@ -83,7 +81,7 @@ class SecurityManager:
         return filename
 
     @staticmethod
-    def validate_file_upload(filepath: str, allowed_extensions: Optional[set] = None) -> dict:
+    def validate_file_upload(filepath: str, allowed_extensions: set | None = None) -> dict:
         """
         Valida file upload per sicurezza
 
@@ -230,7 +228,7 @@ class SecurityManager:
         return True
 
     @staticmethod
-    def hash_password(password: str, salt: Optional[str] = None) -> tuple:
+    def hash_password(password: str, salt: str | None = None) -> tuple:
         """
         Hash sicuro della password con salt
 
@@ -324,7 +322,7 @@ class SecurityManager:
         return text.replace("<", "&lt;").replace(">", "&gt;")
 
     @staticmethod
-    def validate_numeric_range(value: Union[int, float], min_val: float, max_val: float) -> bool:
+    def validate_numeric_range(value: int | float, min_val: float, max_val: float) -> bool:
         """
         Valida che un numero sia in un range
 

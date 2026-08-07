@@ -1,7 +1,8 @@
-from database.models import Deadline
-from database.connection import DatabaseConnection
-from datetime import datetime, date, timedelta
+from datetime import date, datetime, timedelta
+
 from config import Config
+from database.connection import DatabaseConnection
+from database.models import Deadline
 
 
 class DeadlineService:
@@ -23,14 +24,11 @@ class DeadlineService:
         session = self.db.get_session()
         try:
             first_day = date(year, month, 1)
-            if month == 12:
-                last_day = date(year + 1, 1, 1)
-            else:
-                last_day = date(year, month + 1, 1)
+            last_day = date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
 
             deadlines = session.query(Deadline).filter(
                 Deadline.tenant_id == Config.CURRENT_TENANT_ID,
-                Deadline.completed == False,
+                Deadline.completed.is_(False),
                 Deadline.due_date >= first_day,
                 Deadline.due_date <  last_day,
             ).order_by(Deadline.due_date.asc(), Deadline.title.asc()).all()
@@ -59,7 +57,7 @@ class DeadlineService:
             if property_id:
                 query = query.filter(Deadline.property_id == property_id)
             if not include_completed:
-                query = query.filter(Deadline.completed == False)
+                query = query.filter(Deadline.completed.is_(False))
 
             deadlines = query.order_by(Deadline.due_date.asc()).all()
             return [d.to_dict() for d in deadlines]
@@ -76,7 +74,7 @@ class DeadlineService:
         try:
             today = datetime.now().strftime('%Y-%m-%d')
             query = session.query(Deadline).filter(
-                Deadline.completed  == False,
+                Deadline.completed.is_(False),
                 Deadline.tenant_id  == Config.CURRENT_TENANT_ID,
                 Deadline.due_date   >= today,
             )
@@ -115,7 +113,7 @@ class DeadlineService:
 
             query = session.query(Deadline).filter(
                 Deadline.tenant_id == Config.CURRENT_TENANT_ID,
-                Deadline.completed == False,
+                Deadline.completed.is_(False),
                 Deadline.due_date  >= today,
                 Deadline.due_date  <= deadline_limit,
             )
@@ -146,7 +144,7 @@ class DeadlineService:
             today = date.today()
             query = session.query(Deadline).filter(
                 Deadline.tenant_id == Config.CURRENT_TENANT_ID,
-                Deadline.completed == False,
+                Deadline.completed.is_(False),
                 Deadline.due_date  <  today,
             )
             if property_id:

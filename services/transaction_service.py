@@ -1,8 +1,9 @@
-from database.models import Transaction
-from database.connection import DatabaseConnection
+
 from sqlalchemy import and_, func
-from datetime import datetime
+
 from config import Config
+from database.connection import DatabaseConnection
+from database.models import Transaction
 
 
 class TransactionService:

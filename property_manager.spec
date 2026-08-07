@@ -16,7 +16,12 @@ a = Analysis(
         # Seed traduzioni: copiato in BASE_DIR al primo avvio se il sync
         # dal server non è ancora avvenuto (evita UI con chiavi [ETICHETTE.*])
         ('shared/translations.db', 'shared'),
-    ],
+    ] + (
+        # Config di deploy generata dalla CI (LICENSE_SERVER_URL dal GitHub
+        # Secret). Assente nelle build locali: l'URL arriva dal .env di sviluppo
+        [('build_config.env', '.')]
+        if os.path.exists(os.path.join(SPECPATH, 'build_config.env')) else []
+    ),
     hiddenimports=[
         # Moduli root del progetto
         'dialogs',

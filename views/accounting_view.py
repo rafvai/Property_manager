@@ -1,20 +1,24 @@
-from PySide6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton,
-    QTableWidget, QTableWidgetItem, QWidget, QHeaderView, QDialog,
-    QFrame, QMessageBox
-)
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QFont
+from datetime import datetime
+
+import numpy as np
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
-import numpy as np
-from datetime import datetime
-from collections import defaultdict
-from calendar import monthrange
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import QComboBox, QHBoxLayout, QHeaderView, QLabel, QTableWidget, QTableWidgetItem, QVBoxLayout
 
-from views.base_view import BaseView
+from styles import (
+    COLORE_BIANCO,
+    COLORE_ERROR,
+    COLORE_GRIGIO,
+    COLORE_SECONDARIO,
+    COLORE_SUCCESS,
+    COLORE_WIDGET_2,
+    default_combo_box_style,
+    default_title_style,
+)
 from validation_utils import format_currency
-from styles import *
+from views.base_view import BaseView
 
 
 class AccountingView(BaseView):

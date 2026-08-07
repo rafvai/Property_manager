@@ -42,6 +42,18 @@ jobs:
           python -c "import ui_login; print('ui_login OK')"
           python -c "import styles; print('styles OK')"
 
+      - name: Config di build (URL server licenze dal Secret)
+        shell: bash
+        env:
+          LICENSE_SERVER_URL: ${{ secrets.LICENSE_SERVER_URL }}
+        run: |
+          if [ -z "$LICENSE_SERVER_URL" ]; then
+            echo "::warning::Secret LICENSE_SERVER_URL non impostato — l'eseguibile non avrà l'URL del server (login e sync traduzioni disattivati)"
+          else
+            echo "LICENSE_SERVER_URL=$LICENSE_SERVER_URL" > build_config.env
+            echo "build_config.env generato"
+          fi
+
       - name: Build con PyInstaller
         run: pyinstaller --clean property_manager.spec
 

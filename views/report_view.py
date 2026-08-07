@@ -5,17 +5,36 @@ from datetime import datetime
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QIcon
 from PySide6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton,
-    QTableWidget, QTableWidgetItem, QFrame, QWidget,
-    QMessageBox, QHeaderView, QProgressBar
+    QComboBox,
+    QFrame,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QMessageBox,
+    QProgressBar,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
 
 from dialogs import ExportDialog, TransactionDialogWithSuppliers
 from dialogs_import import ImportDialog
-from services.import_service import ImportService
 from services.export_service import ExportService
-from styles import *
-from validation_utils import parse_decimal, format_currency, ValidationError
+from services.import_service import ImportService
+from styles import (
+    COLORE_BACKGROUND,
+    COLORE_BIANCO,
+    COLORE_ERROR,
+    COLORE_SUCCESS,
+    COLORE_WIDGET_2,
+    default_aggiungi_button,
+    default_combo_box_style,
+    default_style_secondary_buttons,
+    default_title_style,
+)
+from validation_utils import ValidationError, format_currency, parse_decimal
 from views.base_view import BaseView
 
 
@@ -501,10 +520,10 @@ class ReportView(BaseView):
             amount_color = COLORE_ERROR if is_uscita else COLORE_SUCCESS
             bg_color     = COLORE_WIDGET_2 if i % 2 == 1 else COLORE_BACKGROUND
 
-            def _cell(text, align=Qt.AlignmentFlag.AlignCenter, color=COLORE_BIANCO):
+            def _cell(text, align=Qt.AlignmentFlag.AlignCenter, color=COLORE_BIANCO, bg=bg_color):
                 item = QTableWidgetItem(text)
                 item.setForeground(QColor(color))
-                item.setBackground(QColor(bg_color))
+                item.setBackground(QColor(bg))
                 item.setTextAlignment(align | Qt.AlignmentFlag.AlignVCenter)
                 return item
 
@@ -565,14 +584,13 @@ class ReportView(BaseView):
             self.tm.get("MESSAGGI", "ELIMINARE_TRANSAZIONE"),
             QMessageBox.Yes | QMessageBox.No
         )
-        if reply == QMessageBox.Yes:
-            if self.transaction_service.delete(trans['id']):
-                QMessageBox.information(
-                    self,
-                    self.tm.get("MESSAGGI", "SUCCESSO"),
-                    self.tm.get("MESSAGGI", "TRANSAZIONE_ELIMINATA")
-                )
-                self.update_report()
+        if reply == QMessageBox.Yes and self.transaction_service.delete(trans['id']):
+            QMessageBox.information(
+                self,
+                self.tm.get("MESSAGGI", "SUCCESSO"),
+                self.tm.get("MESSAGGI", "TRANSAZIONE_ELIMINATA")
+            )
+            self.update_report()
 
     # ──────────────────────────────────────────────────────────────
     #  AZIONI

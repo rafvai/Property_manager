@@ -19,11 +19,12 @@ Esecuzione:
     pytest tests/test_transaction_service.py -v
 """
 
-import pytest
-import sys
 import os
-from unittest.mock import MagicMock, patch, call
-from datetime import date, datetime
+import sys
+from datetime import date
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

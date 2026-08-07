@@ -1,8 +1,9 @@
+
+from sqlalchemy import desc, func
+
 from config import Config
-from database.models import Supplier, Property, SupplierDocument, SupplierReview, utcnow
 from database.connection import DatabaseConnection
-from sqlalchemy import func, desc
-from datetime import datetime
+from database.models import Property, Supplier, SupplierDocument, SupplierReview, utcnow
 
 
 class SupplierService:

@@ -11,23 +11,22 @@ Variabili ambiente richieste (.env):
     ADMIN_KEY=<chiave segreta per pannello admin>
 """
 
-import os
-import math
-import sqlite3
-import secrets
 import hashlib
+import math
+import os
+import secrets
+import sqlite3
 import string
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Depends, Header, UploadFile
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pydantic import BaseModel, EmailStr
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from dotenv import load_dotenv
+from pydantic import BaseModel
 
 load_dotenv()
 
@@ -138,7 +137,7 @@ init_db()
 class LoginRequest(BaseModel):
     email: str
     password: str
-    client_info: Optional[str] = None
+    client_info: str | None = None
 
 class LoginResponse(BaseModel):
     token: str
@@ -146,26 +145,26 @@ class LoginResponse(BaseModel):
     expires_at: str
     days_left: int
     is_admin: bool
-    warning: Optional[str] = None
+    warning: str | None = None
     grace_mode: bool = False
 
 class UserCreate(BaseModel):
     email: str
     password: str
-    full_name: Optional[str] = None
+    full_name: str | None = None
     plan: str = "beta"
     expires_days: int = 90
 
 class UserInfo(BaseModel):
     id: int
     email: str
-    full_name: Optional[str]
+    full_name: str | None
     plan: str
     status: str
     registered_at: str
     expires_at: str
     days_left: int
-    last_login: Optional[str]
+    last_login: str | None
     login_count: int
 
 class PasswordChange(BaseModel):
@@ -196,7 +195,7 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 def utcnow() -> datetime:
     """UTC naive, coerente con le date ISO salvate nel DB (utcnow() è deprecato)."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 def create_token(data: dict, expires_delta: timedelta = timedelta(hours=24)) -> str:
     payload = data.copy()
@@ -229,7 +228,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
             raise HTTPException(status_code=401, detail="Token non valido")
         return email
     except JWTError:
-        raise HTTPException(status_code=401, detail="Token non valido o scaduto")
+        raise HTTPException(status_code=401, detail="Token non valido o scaduto") from None
 
 def log_login(conn, user_id: int, ip: str, success: bool, reason: str = None):
     conn.execute(
@@ -466,8 +465,8 @@ def register(req: RegisterRequest, x_forwarded_for: str = Header(None)):
     except Exception as e:
         conn.close()
         if "UNIQUE" in str(e):
-            raise HTTPException(status_code=409, detail="Email già registrata")
-        raise HTTPException(status_code=500, detail="Errore durante la registrazione")
+            raise HTTPException(status_code=409, detail="Email già registrata") from e
+        raise HTTPException(status_code=500, detail="Errore durante la registrazione") from e
 
 
 # ─────────────────────────────────────────────
@@ -493,8 +492,7 @@ def create_user(user: UserCreate):
                 "expires_at": row["expires_at"], "plan": row["plan"]}
     except sqlite3.IntegrityError:
         conn.close()
-        raise HTTPException(status_code=409, detail="Email già registrata")
-
+        raise HTTPException(status_code=409, detail="Email già registrata") from None
 
 @app.get("/admin/users", dependencies=[Depends(require_admin)])
 def list_users():
@@ -740,4 +738,4 @@ async def upload_translations(file: UploadFile):
     except Exception as e:
         if temp_path.exists():
             temp_path.unlink()
-        raise HTTPException(status_code=400, detail=f"Errore: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Errore: {str(e)}") from e

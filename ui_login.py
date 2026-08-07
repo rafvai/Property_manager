@@ -1,15 +1,18 @@
 """
 ui_login.py — Login window con autenticazione remota
 """
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QFrame, QApplication, QSizePolicy
-)
-from PySide6.QtCore import Qt, Signal, QTimer, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import QEasingCurve, QPropertyAnimation, Qt, QTimer, Signal
+from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from styles import (
-    COLORE_SECONDARIO, COLORE_WIDGET_2, COLORE_ITEM_SELEZIONATO,
-    COLORE_ITEM_HOVER, COLORE_BIANCO, COLORE_ERROR, COLORE_SUCCESS, COLORE_GRIGIO
+    COLORE_BIANCO,
+    COLORE_ERROR,
+    COLORE_GRIGIO,
+    COLORE_ITEM_HOVER,
+    COLORE_ITEM_SELEZIONATO,
+    COLORE_SECONDARIO,
+    COLORE_SUCCESS,
+    COLORE_WIDGET_2,
 )
 
 _CARD = f"QFrame#loginCard {{ background-color: {COLORE_WIDGET_2}; border-radius: 16px; }}"
@@ -169,10 +172,10 @@ class LoginWindow(QWidget):
 
     @staticmethod
     def _lbl(text, style=""):
-        l = QLabel(text)
+        lbl = QLabel(text)
         if style:
-            l.setStyleSheet(style)
-        return l
+            lbl.setStyleSheet(style)
+        return lbl
 
     # ──────────────────────────────────────────────
     #  LOGICA
@@ -269,11 +272,11 @@ class LoginWindow(QWidget):
 
     def mouseMoveEvent(self, e):
         # startSystemMove: drag nativo dell'OS, fluido anche tra monitor con DPI diversi
-        if e.buttons() == Qt.MouseButton.LeftButton and self._drag_pos is not None:
-            if (e.globalPosition().toPoint() - self._drag_pos).manhattanLength() \
-                    >= QApplication.startDragDistance():
-                self._drag_pos = None
-                self.windowHandle().startSystemMove()
+        if (e.buttons() == Qt.MouseButton.LeftButton and self._drag_pos is not None
+                and (e.globalPosition().toPoint() - self._drag_pos).manhattanLength()
+                    >= QApplication.startDragDistance()):
+            self._drag_pos = None
+            self.windowHandle().startSystemMove()
 
     def mouseReleaseEvent(self, e):
         self._drag_pos = None

@@ -1,32 +1,61 @@
-from PySide6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QPushButton,
-    QFrame, QScrollArea, QWidget, QLineEdit, QDialog,
-    QFormLayout, QDialogButtonBox, QMessageBox, QTextEdit,
-    QListWidget, QListWidgetItem, QFileDialog, QSpinBox, QTabWidget
-)
-from PySide6.QtCore import Qt, QUrl, QSize
-from PySide6.QtGui import QColor, QDesktopServices, QIcon
-
-from views.base_view import BaseView
-from styles import *
-from validation_utils import validate_required_text, ValidationError
-import os
 from datetime import datetime
+
+from PySide6.QtCore import Qt, QUrl
+from PySide6.QtGui import QDesktopServices
+from PySide6.QtWidgets import (
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFileDialog,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QSpinBox,
+    QTabWidget,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
+)
+
+from styles import (
+    COLORE_BACKGROUND,
+    COLORE_ERROR,
+    COLORE_ITEM_HOVER,
+    COLORE_ITEM_SELEZIONATO,
+    COLORE_RIGA_1,
+    COLORE_RIGA_2,
+    COLORE_SECONDARIO,
+    COLORE_WIDGET_2,
+    default_aggiungi_button,
+    default_combo_box_style,
+    default_dialog_style,
+    default_style_search_line,
+    default_title_style,
+)
+from validation_utils import ValidationError, validate_required_text
+from views.base_view import BaseView
 
 
 class StarRatingWidget(QWidget):
     """Widget per visualizzare/selezionare rating con stelle"""
-    
+
     def __init__(self, rating=0, editable=False, parent=None):
         super().__init__(parent)
         self.rating = rating
         self.editable = editable
         self.hovered_star = -1
-        
+
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(2)
-        
+
         self.star_labels = []
         for i in range(5):
             label = QLabel()
@@ -36,34 +65,34 @@ class StarRatingWidget(QWidget):
                 label.mousePressEvent = lambda e, star=i: self.set_rating(star + 1)
                 label.enterEvent = lambda e, star=i: self.hover_star(star)
                 label.leaveEvent = lambda e: self.hover_star(-1)
-            
+
             self.star_labels.append(label)
             layout.addWidget(label)
-        
+
         self.update_stars()
-    
+
     def set_rating(self, rating):
         """Imposta il rating"""
         self.rating = rating
         self.update_stars()
-    
+
     def hover_star(self, star):
         """Gestisce hover sulle stelle"""
         if self.editable:
             self.hovered_star = star
             self.update_stars()
-    
+
     def update_stars(self):
         """Aggiorna visualizzazione stelle"""
         display_rating = self.hovered_star + 1 if self.hovered_star >= 0 else self.rating
-        
+
         for i, label in enumerate(self.star_labels):
             if i < display_rating:
                 label.setText("⭐")
             else:
                 label.setText("☆")
             label.setStyleSheet("font-size: 18px; background: transparent;")
-    
+
     def get_rating(self):
         """Ritorna il rating corrente"""
         return self.rating
@@ -91,7 +120,7 @@ class SupplierCard(QFrame):
                 background-color: {COLORE_ITEM_HOVER};
             }}
         """)
-        
+
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setup_ui()
 
@@ -119,11 +148,11 @@ class SupplierCard(QFrame):
         if self.supplier.get('avg_rating', 0) > 0:
             stars = StarRatingWidget(int(self.supplier['avg_rating']))
             top_row.addWidget(stars)
-            
+
             rating_text = QLabel(f"({self.supplier['avg_rating']}/5)")
             rating_text.setStyleSheet("color: #f39c12; font-size: 11px; font-weight: bold;")
             top_row.addWidget(rating_text)
-            
+
             if self.supplier.get('review_count', 0) > 0:
                 review_count = QLabel(f"{self.supplier['review_count']} recensioni")
                 review_count.setStyleSheet("color: #95a5a6; font-size: 10px;")
@@ -195,8 +224,8 @@ class SupplierCard(QFrame):
                 last_service = QLabel(f"🔧 Ultimo: {date_str}")
                 last_service.setStyleSheet("color: #3498db; font-size: 11px;")
                 stats_row.addWidget(last_service)
-            except:
-                pass
+            except (ValueError, TypeError):
+                pass  # data malformata: ometti l'etichetta
 
         # Totale speso
         if self.supplier.get('total_spent', 0) > 0:
@@ -234,40 +263,40 @@ class SupplierCard(QFrame):
 
 class SupplierDetailsDialog(QDialog):
     """Dialog dettagliato per visualizzare tutte le info del fornitore"""
-    
+
     def __init__(self, supplier, supplier_service, parent=None):
         super().__init__(parent)
         self.supplier = supplier
         self.supplier_service = supplier_service
-        
+
         self.setWindowTitle(f"Dettagli: {supplier['name']}")
         self.setMinimumSize(700, 600)
         self.setStyleSheet(default_dialog_style)
-        
+
         self.setup_ui()
-    
+
     def setup_ui(self):
         """Costruisce l'interfaccia del dialog"""
         layout = QVBoxLayout(self)
-        
+
         # Header con nome e rating
         header = QHBoxLayout()
-        
+
         name_label = QLabel(f"🏢 {self.supplier['name']}")
         name_label.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
         header.addWidget(name_label)
-        
+
         if self.supplier.get('avg_rating', 0) > 0:
             stars = StarRatingWidget(int(self.supplier['avg_rating']))
             header.addWidget(stars)
-            
+
             rating_label = QLabel(f"{self.supplier['avg_rating']}/5")
             rating_label.setStyleSheet("color: #f39c12; font-size: 14px; font-weight: bold;")
             header.addWidget(rating_label)
-        
+
         header.addStretch()
         layout.addLayout(header)
-        
+
         # Tabs per le diverse sezioni
         tabs = QTabWidget()
         tabs.setStyleSheet(f"""
@@ -291,44 +320,44 @@ class SupplierDetailsDialog(QDialog):
                 background-color: {COLORE_ITEM_HOVER};
             }}
         """)
-        
+
         # Tab 1: Info Generali
         info_tab = self.create_info_tab()
         tabs.addTab(info_tab, "📋 Info")
-        
+
         # Tab 2: Recensioni
         reviews_tab = self.create_reviews_tab()
         tabs.addTab(reviews_tab, f"⭐ Recensioni ({self.supplier.get('review_count', 0)})")
-        
+
         # Tab 3: Documenti
         documents_tab = self.create_documents_tab()
         tabs.addTab(documents_tab, "📄 Documenti")
-        
+
         layout.addWidget(tabs)
-        
+
         # Bottone chiudi
         close_btn = QPushButton("Chiudi")
         close_btn.setStyleSheet(default_aggiungi_button)
         close_btn.clicked.connect(self.accept)
         layout.addWidget(close_btn)
-    
+
     def create_info_tab(self):
         """Crea tab con info generali"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setSpacing(15)
-        
+
         # Categoria
         cat_label = QLabel(f"📂 Categoria: {self.supplier['category']}")
         cat_label.setStyleSheet("color: white; font-size: 14px; font-weight: bold;")
         layout.addWidget(cat_label)
-        
+
         # Proprietà
         if self.supplier.get('property_name'):
             prop_label = QLabel(f"🏠 Proprietà: {self.supplier['property_name']}")
             prop_label.setStyleSheet("color: #3498db; font-size: 13px;")
             layout.addWidget(prop_label)
-        
+
         # Contatti
         if self.supplier.get('phone') or self.supplier.get('email') or self.supplier.get('address'):
             contacts_frame = QFrame()
@@ -340,29 +369,29 @@ class SupplierDetailsDialog(QDialog):
                 }}
             """)
             contacts_layout = QVBoxLayout(contacts_frame)
-            
+
             contacts_title = QLabel("📞 Contatti")
             contacts_title.setStyleSheet("color: white; font-size: 13px; font-weight: bold;")
             contacts_layout.addWidget(contacts_title)
-            
+
             if self.supplier.get('phone'):
                 phone = QLabel(f"Telefono: {self.supplier['phone']}")
                 phone.setStyleSheet("color: #bdc3c7; font-size: 12px;")
                 contacts_layout.addWidget(phone)
-            
+
             if self.supplier.get('email'):
                 email = QLabel(f"Email: {self.supplier['email']}")
                 email.setStyleSheet("color: #bdc3c7; font-size: 12px;")
                 contacts_layout.addWidget(email)
-            
+
             if self.supplier.get('address'):
                 address = QLabel(f"Indirizzo: {self.supplier['address']}")
                 address.setStyleSheet("color: #bdc3c7; font-size: 12px;")
                 address.setWordWrap(True)
                 contacts_layout.addWidget(address)
-            
+
             layout.addWidget(contacts_frame)
-        
+
         # Statistiche
         stats_frame = QFrame()
         stats_frame.setStyleSheet(f"""
@@ -373,25 +402,25 @@ class SupplierDetailsDialog(QDialog):
             }}
         """)
         stats_layout = QVBoxLayout(stats_frame)
-        
+
         stats_title = QLabel("📊 Statistiche")
         stats_title.setStyleSheet("color: white; font-size: 13px; font-weight: bold;")
         stats_layout.addWidget(stats_title)
-        
+
         stats_grid = QHBoxLayout()
-        
+
         if self.supplier.get('service_count', 0) > 0:
             services = QLabel(f"{self.supplier['service_count']}\nServizi")
             services.setStyleSheet("color: #3498db; font-size: 12px; text-align: center;")
             services.setAlignment(Qt.AlignmentFlag.AlignCenter)
             stats_grid.addWidget(services)
-        
+
         if self.supplier.get('total_spent', 0) > 0:
             spent = QLabel(f"€ {self.supplier['total_spent']:,.0f}\nSpesi")
             spent.setStyleSheet("color: #2ecc71; font-size: 12px; text-align: center;")
             spent.setAlignment(Qt.AlignmentFlag.AlignCenter)
             stats_grid.addWidget(spent)
-        
+
         if self.supplier.get('last_service_date'):
             try:
                 date_obj = datetime.strptime(self.supplier['last_service_date'], '%Y-%m-%d')
@@ -400,12 +429,12 @@ class SupplierDetailsDialog(QDialog):
                 last.setStyleSheet("color: #f39c12; font-size: 12px; text-align: center;")
                 last.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 stats_grid.addWidget(last)
-            except:
-                pass
-        
+            except (ValueError, TypeError):
+                pass  # data malformata: ometti l'etichetta
+
         stats_layout.addLayout(stats_grid)
         layout.addWidget(stats_frame)
-        
+
         # Note
         if self.supplier.get('notes'):
             notes_frame = QFrame()
@@ -417,35 +446,35 @@ class SupplierDetailsDialog(QDialog):
                 }}
             """)
             notes_layout = QVBoxLayout(notes_frame)
-            
+
             notes_title = QLabel("📝 Note")
             notes_title.setStyleSheet("color: white; font-size: 13px; font-weight: bold;")
             notes_layout.addWidget(notes_title)
-            
+
             notes_text = QLabel(self.supplier['notes'])
             notes_text.setStyleSheet("color: #bdc3c7; font-size: 12px;")
             notes_text.setWordWrap(True)
             notes_layout.addWidget(notes_text)
-            
+
             layout.addWidget(notes_frame)
-        
+
         layout.addStretch()
         return widget
-    
+
     def create_reviews_tab(self):
         """Crea tab recensioni"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        
+
         # Bottone aggiungi recensione
         add_review_btn = QPushButton("➕ Aggiungi Recensione")
         add_review_btn.setStyleSheet(default_aggiungi_button)
         add_review_btn.clicked.connect(self.add_review)
         layout.addWidget(add_review_btn)
-        
+
         # Lista recensioni
         reviews = self.supplier_service.get_reviews(self.supplier['id'])
-        
+
         if not reviews:
             no_reviews = QLabel("📭 Nessuna recensione ancora")
             no_reviews.setStyleSheet("color: #95a5a6; font-size: 14px; padding: 20px;")
@@ -455,20 +484,20 @@ class SupplierDetailsDialog(QDialog):
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
             scroll.setStyleSheet("border: none; background-color: transparent;")
-            
+
             reviews_container = QWidget()
             reviews_layout = QVBoxLayout(reviews_container)
-            
+
             for review in reviews:
                 review_card = self.create_review_card(review)
                 reviews_layout.addWidget(review_card)
-            
+
             reviews_layout.addStretch()
             scroll.setWidget(reviews_container)
             layout.addWidget(scroll)
-        
+
         return widget
-    
+
     def create_review_card(self, review):
         """Crea una card per una recensione"""
         card = QFrame()
@@ -480,15 +509,15 @@ class SupplierDetailsDialog(QDialog):
                 margin-bottom: 8px;
             }}
         """)
-        
+
         layout = QVBoxLayout(card)
-        
+
         # Header: stelle e data
         header = QHBoxLayout()
-        
+
         stars = StarRatingWidget(review['rating'])
         header.addWidget(stars)
-        
+
         if review.get('created_at'):
             try:
                 date_obj = datetime.fromisoformat(review['created_at'])
@@ -496,11 +525,11 @@ class SupplierDetailsDialog(QDialog):
                 date_label = QLabel(date_str)
                 date_label.setStyleSheet("color: #95a5a6; font-size: 11px;")
                 header.addWidget(date_label)
-            except:
-                pass
-        
+            except (ValueError, TypeError):
+                pass  # data malformata: ometti l'etichetta
+
         header.addStretch()
-        
+
         # Bottone elimina
         delete_btn = QPushButton("🗑️")
         delete_btn.setFixedSize(24, 24)
@@ -516,77 +545,77 @@ class SupplierDetailsDialog(QDialog):
         """)
         delete_btn.clicked.connect(lambda: self.delete_review(review['id']))
         header.addWidget(delete_btn)
-        
+
         layout.addLayout(header)
-        
+
         # Titolo recensione
         if review.get('title'):
             title = QLabel(review['title'])
             title.setStyleSheet("color: white; font-size: 13px; font-weight: bold;")
             layout.addWidget(title)
-        
+
         # Commento
         if review.get('comment'):
             comment = QLabel(review['comment'])
             comment.setStyleSheet("color: #bdc3c7; font-size: 12px;")
             comment.setWordWrap(True)
             layout.addWidget(comment)
-        
+
         return card
-    
+
     def add_review(self):
         """Dialog per aggiungere recensione"""
         dialog = QDialog(self)
         dialog.setWindowTitle("Nuova Recensione")
         dialog.setMinimumWidth(400)
         dialog.setStyleSheet(default_dialog_style)
-        
+
         layout = QFormLayout(dialog)
-        
+
         # Rating
         rating_widget = StarRatingWidget(0, editable=True)
         layout.addRow("Valutazione*:", rating_widget)
-        
+
         # Titolo
         title_input = QLineEdit()
         title_input.setPlaceholderText("Es: Ottimo servizio")
         layout.addRow("Titolo:", title_input)
-        
+
         # Commento
         comment_input = QTextEdit()
         comment_input.setPlaceholderText("Descrivi la tua esperienza...")
         comment_input.setMaximumHeight(100)
         layout.addRow("Commento:", comment_input)
-        
+
         # Bottoni
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)
         buttons.accepted.connect(dialog.accept)
         buttons.rejected.connect(dialog.reject)
-        
+
         if dialog.exec():
             rating = rating_widget.get_rating()
             if rating == 0:
                 QMessageBox.warning(self, "⚠️ Attenzione", "Seleziona una valutazione!")
                 return
-            
+
             title = title_input.text().strip() or None
             comment = comment_input.toPlainText().strip() or None
-            
+
             review_id = self.supplier_service.add_review(
                 self.supplier['id'],
                 rating,
                 title,
                 comment
             )
-            
+
             if review_id:
                 QMessageBox.information(self, "✅ Successo", "Recensione aggiunta!")
                 # Ricarica tab
                 self.setup_ui()
             else:
                 QMessageBox.warning(self, "❌ Errore", "Impossibile aggiungere la recensione")
-    
+
     def delete_review(self, review_id):
         """Elimina una recensione"""
         reply = QMessageBox.question(
@@ -595,28 +624,28 @@ class SupplierDetailsDialog(QDialog):
             "Eliminare questa recensione?",
             QMessageBox.Yes | QMessageBox.No
         )
-        
+
         if reply == QMessageBox.Yes:
             if self.supplier_service.delete_review(review_id):
                 QMessageBox.information(self, "✅ Successo", "Recensione eliminata!")
                 self.setup_ui()
             else:
                 QMessageBox.warning(self, "❌ Errore", "Impossibile eliminare")
-    
+
     def create_documents_tab(self):
         """Crea tab documenti"""
         widget = QWidget()
         layout = QVBoxLayout(widget)
-        
+
         # Bottone aggiungi documento
         add_doc_btn = QPushButton("➕ Aggiungi Documento")
         add_doc_btn.setStyleSheet(default_aggiungi_button)
         add_doc_btn.clicked.connect(self.add_document)
         layout.addWidget(add_doc_btn)
-        
+
         # Lista documenti
         documents = self.supplier_service.get_documents(self.supplier['id'])
-        
+
         if not documents:
             no_docs = QLabel("📭 Nessun documento caricato")
             no_docs.setStyleSheet("color: #95a5a6; font-size: 14px; padding: 20px;")
@@ -639,23 +668,23 @@ class SupplierDetailsDialog(QDialog):
                     background-color: {COLORE_ITEM_HOVER};
                 }}
             """)
-            
+
             for doc in documents:
                 item_widget = self.create_document_item(doc)
                 item = QListWidgetItem()
                 item.setSizeHint(item_widget.sizeHint())
                 docs_list.addItem(item)
                 docs_list.setItemWidget(item, item_widget)
-            
+
             layout.addWidget(docs_list)
-        
+
         return widget
-    
+
     def create_document_item(self, doc):
         """Crea widget per un documento"""
         widget = QWidget()
         layout = QHBoxLayout(widget)
-        
+
         # Icona tipo documento
         icon_map = {
             'contratto': '📝',
@@ -664,25 +693,25 @@ class SupplierDetailsDialog(QDialog):
             'altro': '📄'
         }
         icon = icon_map.get(doc['document_type'], '📄')
-        
+
         icon_label = QLabel(icon)
         icon_label.setStyleSheet("font-size: 24px;")
         layout.addWidget(icon_label)
-        
+
         # Info documento
         info_layout = QVBoxLayout()
-        
+
         title = QLabel(doc['title'])
         title.setStyleSheet("color: white; font-size: 13px; font-weight: bold;")
         info_layout.addWidget(title)
-        
+
         type_label = QLabel(doc['document_type'].capitalize())
         type_label.setStyleSheet("color: #95a5a6; font-size: 11px;")
         info_layout.addWidget(type_label)
-        
+
         layout.addLayout(info_layout)
         layout.addStretch()
-        
+
         # Bottone apri
         open_btn = QPushButton("📂 Apri")
         open_btn.setFixedHeight(28)
@@ -699,7 +728,7 @@ class SupplierDetailsDialog(QDialog):
         """)
         open_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl.fromLocalFile(doc['file_path'])))
         layout.addWidget(open_btn)
-        
+
         # Bottone elimina
         delete_btn = QPushButton("🗑️")
         delete_btn.setFixedSize(28, 28)
@@ -715,63 +744,63 @@ class SupplierDetailsDialog(QDialog):
         """)
         delete_btn.clicked.connect(lambda: self.delete_document(doc['id']))
         layout.addWidget(delete_btn)
-        
+
         return widget
-    
+
     def add_document(self):
         """Dialog per aggiungere documento"""
         dialog = QDialog(self)
         dialog.setWindowTitle("Nuovo Documento")
         dialog.setMinimumWidth(500)
         dialog.setStyleSheet(default_dialog_style)
-        
+
         layout = QFormLayout(dialog)
-        
+
         # Tipo documento
         type_combo = QComboBox()
         type_combo.addItems(['Contratto', 'Preventivo', 'Fattura', 'Altro'])
         layout.addRow("Tipo*:", type_combo)
-        
+
         # Titolo
         title_input = QLineEdit()
         title_input.setPlaceholderText("Es: Contratto annuale 2024")
         layout.addRow("Titolo*:", title_input)
-        
+
         # Selezione file
         file_path_input = QLineEdit()
         file_path_input.setReadOnly(True)
-        
+
         browse_btn = QPushButton("📁 Sfoglia...")
         browse_btn.clicked.connect(lambda: self.browse_file(file_path_input))
-        
+
         file_layout = QHBoxLayout()
         file_layout.addWidget(file_path_input)
         file_layout.addWidget(browse_btn)
         layout.addRow("File*:", file_layout)
-        
+
         # Note
         notes_input = QTextEdit()
         notes_input.setMaximumHeight(80)
         notes_input.setPlaceholderText("Note opzionali...")
         layout.addRow("Note:", notes_input)
-        
+
         # Bottoni
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         layout.addWidget(buttons)
         buttons.accepted.connect(dialog.accept)
         buttons.rejected.connect(dialog.reject)
-        
+
         if dialog.exec():
             title = title_input.text().strip()
             file_path = file_path_input.text().strip()
-            
+
             if not title or not file_path:
                 QMessageBox.warning(self, "⚠️ Attenzione", "Compilare tutti i campi obbligatori!")
                 return
-            
+
             doc_type = type_combo.currentText().lower()
             notes = notes_input.toPlainText().strip() or None
-            
+
             doc_id = self.supplier_service.add_document(
                 self.supplier['id'],
                 doc_type,
@@ -779,13 +808,13 @@ class SupplierDetailsDialog(QDialog):
                 file_path,
                 notes
             )
-            
+
             if doc_id:
                 QMessageBox.information(self, "✅ Successo", "Documento aggiunto!")
                 self.setup_ui()
             else:
                 QMessageBox.warning(self, "❌ Errore", "Impossibile aggiungere il documento")
-    
+
     def browse_file(self, line_edit):
         """Apre dialog per selezionare file"""
         file_path, _ = QFileDialog.getOpenFileName(
@@ -794,10 +823,10 @@ class SupplierDetailsDialog(QDialog):
             "",
             "All Files (*.*)"
         )
-        
+
         if file_path:
             line_edit.setText(file_path)
-    
+
     def delete_document(self, doc_id):
         """Elimina un documento"""
         reply = QMessageBox.question(
@@ -806,7 +835,7 @@ class SupplierDetailsDialog(QDialog):
             "Eliminare questo documento?",
             QMessageBox.Yes | QMessageBox.No
         )
-        
+
         if reply == QMessageBox.Yes:
             if self.supplier_service.delete_document(doc_id):
                 QMessageBox.information(self, "✅ Successo", "Documento eliminato!")
@@ -826,7 +855,7 @@ class SuppliersView(BaseView):
         self.current_category = None
         self.current_property_id = None
         self.current_min_rating = None
-        
+
         super().__init__(property_service, None, None, parent)
 
     def setup_ui(self):
@@ -863,11 +892,11 @@ class SuppliersView(BaseView):
         self.property_selector.setStyleSheet(default_combo_box_style)
         self.property_selector.setMinimumWidth(200)
         self.property_selector.addItem(self.tm.get('ETICHETTE', 'ALL_PROPERTIES'), None)
-        
+
         properties = self.property_service.get_all()
         for prop in properties:
             self.property_selector.addItem(prop['name'], prop['id'])
-        
+
         self.property_selector.currentIndexChanged.connect(self.filter_by_property)
         filters_layout.addWidget(self.property_selector)
 
@@ -969,17 +998,17 @@ class SuppliersView(BaseView):
     def update_stats(self, suppliers_count):
         """Aggiorna statistiche"""
         filter_text = []
-        
+
         if self.current_property_id:
             property_name = self.property_selector.currentText()
             filter_text.append(f"proprietà '{property_name}'")
-        
+
         if self.current_category:
             filter_text.append(f"{self.tm.get('suppliers','category')} '{self.current_category}'")
-        
+
         if self.current_min_rating:
             filter_text.append(f"rating ≥ {self.current_min_rating}⭐")
-        
+
         if filter_text:
             self.stats_label.setText(
                 f"📊 {suppliers_count} fornitori • Filtri: {' + '.join(filter_text)}"
@@ -1001,13 +1030,13 @@ class SuppliersView(BaseView):
 
         if search_text:
             suppliers = self.supplier_service.search(
-                search_text, 
-                self.current_category, 
+                search_text,
+                self.current_category,
                 self.current_property_id
             )
         else:
             suppliers = self.supplier_service.get_all(
-                self.current_category, 
+                self.current_category,
                 self.current_property_id,
                 self.current_min_rating
             )
@@ -1080,25 +1109,25 @@ class SuppliersView(BaseView):
 
         category_combo = QComboBox()
         category_combo.setEditable(True)
-        
+
         categories = self.supplier_service.get_categories()
         for cat in categories:
             category_combo.addItem(cat)
-        
+
         layout.addRow(f"{self.tm.get('ETICHETTE','CATEGORIA')}*:", category_combo)
 
         property_combo = QComboBox()
         property_combo.addItem(self.tm.get("ETICHETTE","ALL_PROPERTIES"), None)
-        
+
         properties = self.property_service.get_all()
         for prop in properties:
             property_combo.addItem(prop['name'], prop['id'])
-        
+
         if self.current_property_id:
             index = property_combo.findData(self.current_property_id)
             if index >= 0:
                 property_combo.setCurrentIndex(index)
-        
+
         layout.addRow(f"{self.tm.get('ETICHETTE','PROPRIETA')}:", property_combo)
 
         phone_input = QLineEdit()
@@ -1203,16 +1232,16 @@ class SuppliersView(BaseView):
 
         property_combo = QComboBox()
         property_combo.addItem("Nessuna proprietà", None)
-        
+
         properties = self.property_service.get_all()
         for prop in properties:
             property_combo.addItem(prop['name'], prop['id'])
-        
+
         if supplier.get('property_id'):
             index = property_combo.findData(supplier['property_id'])
             if index >= 0:
                 property_combo.setCurrentIndex(index)
-        
+
         layout.addRow(self.tm.get("ETICHETTE","PROPRIETA"), property_combo)
 
         phone_input = QLineEdit(supplier.get('phone') or "")
@@ -1301,7 +1330,7 @@ class SuppliersView(BaseView):
             stats_info = f"\n📊 {supplier['service_count']} servizi utilizzati"
         if supplier.get('total_spent', 0) > 0:
             stats_info += f"\n💰 {supplier['total_spent']:,.0f}€ spesi"
-        
+
         reply = QMessageBox.question(
             self,
             "🗑️ Conferma Eliminazione",

@@ -24,18 +24,18 @@ W_LAT_MENU = 0.20
 ######## STYLES #######################
 default_combo_box_style = f"""
     QComboBox {{
-        background-color: {COLORE_SECONDARIO}; 
-        padding: 8px 12px; 
-        min-height: 20px; 
-        border-radius: 6px; 
-        color: {COLORE_BIANCO}; 
+        background-color: {COLORE_SECONDARIO};
+        padding: 8px 12px;
+        min-height: 20px;
+        border-radius: 6px;
+        color: {COLORE_BIANCO};
         font-size: 14px;
         border: 1px solid #334155;
     }}
     QComboBox:hover {{
         border: 1px solid {COLORE_ITEM_HOVER};
     }}
-    QComboBox::drop-down {{ 
+    QComboBox::drop-down {{
         border: 0px;
         width: 30px;
     }}
@@ -44,36 +44,36 @@ default_combo_box_style = f"""
         width: 12px;
         height: 12px;
     }}
-    QComboBox QAbstractItemView {{ 
-        background-color: {COLORE_SECONDARIO}; 
-        color: {COLORE_BIANCO}; 
-        selection-background-color: {COLORE_ITEM_SELEZIONATO}; 
+    QComboBox QAbstractItemView {{
+        background-color: {COLORE_SECONDARIO};
+        color: {COLORE_BIANCO};
+        selection-background-color: {COLORE_ITEM_SELEZIONATO};
         selection-color: white;
         border: 1px solid #334155;
     }}
 """
 
 default_menu_lat_style = f"""
-    QListWidget {{ 
-        color: {COLORE_BIANCO}; 
-        background-color: {COLORE_BACKGROUND}; 
-        padding: 10px; 
+    QListWidget {{
+        color: {COLORE_BIANCO};
+        background-color: {COLORE_BACKGROUND};
+        padding: 10px;
         border-radius: 0px;
         border-right: 1px solid #334155;
     }}
-    QListWidget::item {{ 
-        padding: 12px 10px 12px 20px; 
+    QListWidget::item {{
+        padding: 12px 10px 12px 20px;
         font-size: 15px;
         font-weight: 500;
         margin: 2px 0px;
     }}
-    QListWidget::item:selected {{ 
-        background: {COLORE_ITEM_SELEZIONATO}; 
+    QListWidget::item:selected {{
+        background: {COLORE_ITEM_SELEZIONATO};
         border-radius: 6px;
         color: white;
     }}
     QListWidget::item:hover {{
-        background: {COLORE_ITEM_HOVER}; 
+        background: {COLORE_ITEM_HOVER};
         border-radius: 6px;
     }}
 """
@@ -97,25 +97,25 @@ default_aggiungi_button = f"""
 """
 
 default_title_style = f"""
-    font-size: 20px; 
-    font-weight: bold; 
+    font-size: 20px;
+    font-weight: bold;
     color: {COLORE_BIANCO};
     """
 
 default_report_table = f"""
-    QHeaderView::section {{ 
-        background-color: {COLORE_WIDGET_2}; 
-        color: white; 
-        font-size: 14px; 
-        font-weight: bold; 
+    QHeaderView::section {{
+        background-color: {COLORE_WIDGET_2};
+        color: white;
+        font-size: 14px;
+        font-weight: bold;
         padding: 8px;
-        border: 1px solid {COLORE_GRIGIO}; 
-    }} 
+        border: 1px solid {COLORE_GRIGIO};
+    }}
     QTableWidget {{
-        color: {COLORE_BIANCO}; 
-        background-color: {COLORE_WIDGET_2}; 
-        font-size: 13px; 
-        gridline-color: {COLORE_GRIGIO}; 
+        color: {COLORE_BIANCO};
+        background-color: {COLORE_WIDGET_2};
+        font-size: 13px;
+        gridline-color: {COLORE_GRIGIO};
     }}
 """
 
@@ -229,7 +229,7 @@ default_dialog_style = f"""
                 background-color: {COLORE_WIDGET_2};
                 border: 1px solid {COLORE_ITEM_SELEZIONATO};
             }}
-            QSpinBox {{ 
+            QSpinBox {{
             background-color: {COLORE_WIDGET_2};
             color: #94a3b8;
             border: 2px solid #334155;
@@ -293,8 +293,8 @@ default_style_search_line = f"""
 
 default_dashboard_widget = f"""
         QFrame {{
-                background: {COLORE_WIDGET_2}; 
-                border-radius: 12px; 
+                background: {COLORE_WIDGET_2};
+                border-radius: 12px;
                 padding: 12px;
             }}
         """

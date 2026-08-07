@@ -2,8 +2,9 @@
 Utilità per la validazione sicura degli input utente
 VERSIONE POTENZIATA con protezione SQL Injection e XSS
 """
-from decimal import Decimal, InvalidOperation
 import re
+from decimal import InvalidOperation
+
 from security_manager import SecurityManager
 
 
@@ -77,10 +78,9 @@ def parse_decimal(value_str, field_name="Importo"):
         raise ValidationError(
             f"{field_name} non è un numero valido. "
             "Usa il formato: 123.45 o 123,45"
-        )
+        ) from None
     except InvalidOperation:
-        raise ValidationError(f"{field_name} non è un numero valido")
-
+        raise ValidationError(f"{field_name} non è un numero valido") from None
 
 def validate_required_text(value_str, field_name, min_length=1, max_length=None):
     """
@@ -166,8 +166,7 @@ def validate_property_id(property_id):
     try:
         prop_id = int(property_id)
     except (ValueError, TypeError):
-        raise ValidationError(f"ID proprietà non valido: {property_id}")
-
+        raise ValidationError(f"ID proprietà non valido: {property_id}") from None
     if prop_id <= 0:
         raise ValidationError(f"ID proprietà deve essere positivo: {prop_id}")
 
@@ -237,7 +236,7 @@ def validate_date_string(date_str, field_name="Data"):
         day, month, year = date_str.split('/')
         day, month, year = int(day), int(month), int(year)
     except ValueError:
-        raise ValidationError(f"{field_name}: formato non valido")
+        raise ValidationError(f"{field_name}: formato non valido") from None
 
     # Valida range
     if not (1 <= day <= 31):
@@ -312,7 +311,7 @@ def sanitize_filename(filename, max_length=200):
     try:
         return security.sanitize_filename(filename, max_length)
     except ValueError as e:
-        raise ValidationError(f"Nome file non valido: {e}")
+        raise ValidationError(f"Nome file non valido: {e}") from e
 
 
 def validate_amount_range(amount, field_name="Importo"):

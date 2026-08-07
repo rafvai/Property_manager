@@ -2,11 +2,13 @@
 Gestione connessione database universale
 Supporta TUTTI i DB cambiando solo CONNECTION_STRING
 """
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session
-from database.models import Base
 import os
 from pathlib import Path
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import scoped_session, sessionmaker
+
+from database.models import Base
 
 
 class DatabaseConnection:
@@ -67,7 +69,7 @@ class DatabaseConnection:
             if db_path.exists():
                 logger.info(f"Dimensione DB: {db_path.stat().st_size} bytes")
             else:
-                logger.info(f"DB non trovato, verrà creato nuovo")
+                logger.info("DB non trovato, verrà creato nuovo")
 
             return f'sqlite:///{db_path}'
 

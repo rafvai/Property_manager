@@ -4,10 +4,9 @@ Scarica translations.db dal license server se obsoleto.
 Funziona anche offline: usa il file locale come fallback silenzioso.
 """
 import hashlib
-import os
-import requests
 from pathlib import Path
 
+import requests
 
 CONNECT_TIMEOUT = 5
 READ_TIMEOUT    = 15

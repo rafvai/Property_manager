@@ -1,23 +1,22 @@
-import os
 import sys
+from pathlib import Path
+
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 # ── Config è il primo import: carica .env prima di tutto il resto ──
 from config import Config
-
 from log_manager import LogManager
+from services.auth_service import AuthService
 from services.database_service import DatabaseService
 from services.preferences_service import PreferencesService
 from services.supplier_service import SupplierService
 from services.transaction_service import TransactionService
-from services.translation_system_simple import TranslationManager
-from services.auth_service import AuthService
-from services.user_preference_service import UserPreferenceService
 from services.translation_sync_service import TranslationSyncService
+from services.translation_system_simple import TranslationManager
+from services.user_preference_service import UserPreferenceService
 from ui_login import LoginWindow
-from ui_register import RegisterWindow
 from ui_main import DashboardWindow
-from pathlib import Path
+from ui_register import RegisterWindow
 
 
 class AppController:
@@ -114,6 +113,21 @@ class AppController:
         )
 
 
+def _translation_count(db_path: Path) -> int:
+    """Numero di traduzioni nel DB, 0 se il file manca o non è leggibile."""
+    if not db_path.exists():
+        return 0
+    try:
+        import sqlite3
+        conn = sqlite3.connect(db_path)
+        try:
+            return conn.execute("SELECT COUNT(*) FROM translations").fetchone()[0]
+        finally:
+            conn.close()
+    except Exception:
+        return 0
+
+
 # ──────────────────────────────────────────────────────────────────
 #  MAIN
 # ──────────────────────────────────────────────────────────────────
@@ -162,18 +176,19 @@ if __name__ == "__main__":
     else:
         TRANSLATIONS_LOCAL = Config.BASE_DIR / 'translations.db'
 
-        # Primo avvio senza rete: usa il seed incluso nella build, così la UI
-        # non mostra le chiavi [ETICHETTE.*] in attesa del sync dal server
-        if not TRANSLATIONS_LOCAL.exists():
-            bundled = Path(getattr(sys, '_MEIPASS', Path(__file__).parent)) \
-                / 'shared' / 'translations.db'
-            if bundled.exists():
-                import shutil
-                shutil.copy2(bundled, TRANSLATIONS_LOCAL)
-                logger.info("Traduzioni: copiato seed incluso nella build")
+        # Usa il seed incluso nella build se il file locale manca oppure è
+        # rimasto indietro (es. creato vuoto da una versione precedente):
+        # senza rete la UI mostrerebbe le chiavi [ETICHETTE.*] per sempre
+        bundled = Path(getattr(sys, '_MEIPASS', Path(__file__).parent)) \
+            / 'shared' / 'translations.db'
+        if bundled.exists() and _translation_count(TRANSLATIONS_LOCAL) < \
+                _translation_count(bundled):
+            import shutil
+            shutil.copy2(bundled, TRANSLATIONS_LOCAL)
+            logger.info("Traduzioni: copiato seed incluso nella build")
 
     sync_svc = TranslationSyncService(
-        server_url=os.getenv('LICENSE_SERVER_URL', ''),
+        server_url=Config.LICENSE_SERVER_URL,
         local_path=TRANSLATIONS_LOCAL,
         logger=logger
     )

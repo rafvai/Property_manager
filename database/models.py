@@ -1,14 +1,15 @@
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime, Boolean, Text, Date, UniqueConstraint
+from datetime import UTC, datetime
+
+from sqlalchemy import Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from datetime import datetime, timezone
 
 Base = declarative_base()
 
 
 def utcnow():
     """UTC naive per i default delle colonne (datetime.utcnow è deprecato)."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 class Property(Base):

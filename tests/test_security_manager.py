@@ -18,15 +18,15 @@ Esecuzione:
     pytest tests/test_security_manager.py -v
 """
 
-import pytest
 import os
 import sys
 import tempfile
 
+import pytest
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from security_manager import SecurityManager
-
 
 # ══════════════════════════════════════════════════════════
 #  sanitize_filename
@@ -98,9 +98,8 @@ class TestValidateFileUpload:
 
     def _crea_file_temp(self, suffix=".pdf", size_bytes=1024):
         """Helper: crea file temporaneo con contenuto"""
-        tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
-        tmp.write(b"X" * size_bytes)
-        tmp.close()
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+            tmp.write(b"X" * size_bytes)
         return tmp.name
 
     def test_file_pdf_valido(self):

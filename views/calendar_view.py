@@ -1,6 +1,9 @@
-from PySide6.QtWidgets import QVBoxLayout, QFrame
+from PySide6.QtWidgets import QFrame, QVBoxLayout
+
+from styles import (
+    COLORE_WIDGET_2,
+)
 from views.base_view import BaseView
-from styles import *
 
 
 class CalendarView(BaseView):

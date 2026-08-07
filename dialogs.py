@@ -1,23 +1,51 @@
 # dialogs.py
 import os
-import shutil
 from datetime import date, timedelta
 
-from PySide6.QtCore import Qt, QDate, QPoint, QUrl, QEvent
-from PySide6.QtGui import QIcon, QDesktopServices
+from PySide6.QtCore import QDate, QEvent, Qt, QUrl
+from PySide6.QtGui import QDesktopServices, QIcon
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QLabel, QPushButton, QMessageBox,
-    QFileDialog, QListWidget, QFormLayout, QLineEdit, QComboBox, QDialogButtonBox,
-    QDateEdit, QWidget, QHBoxLayout, QSizePolicy, QGridLayout, QFrame, QTextEdit, QRadioButton, QButtonGroup, QGroupBox,
-    QListWidgetItem, QApplication
+    QApplication,
+    QButtonGroup,
+    QComboBox,
+    QDateEdit,
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
+    QFrame,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QPushButton,
+    QRadioButton,
+    QSizePolicy,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
-from styles import COLORE_SECONDARIO, COLORE_WIDGET_2, COLORE_RIGA_1, COLORE_ITEM_HOVER, default_button_main_header, \
-    default_aggiungi_button, default_selector_date_export, default_export_button, COLORE_ERROR, default_dialog_style, \
-    COLORE_ITEM_SELEZIONATO, COLORE_BIANCO, COLORE_WARNING
-from validation_utils import parse_decimal, validate_required_text, validate_date, ValidationError
+from styles import (
+    COLORE_BIANCO,
+    COLORE_ERROR,
+    COLORE_ITEM_HOVER,
+    COLORE_ITEM_SELEZIONATO,
+    COLORE_RIGA_1,
+    COLORE_SECONDARIO,
+    COLORE_WARNING,
+    COLORE_WIDGET_2,
+    default_aggiungi_button,
+    default_button_main_header,
+    default_dialog_style,
+    default_export_button,
+    default_selector_date_export,
+)
 from transaction_types import label_to_canonical
-
+from validation_utils import ValidationError, parse_decimal, validate_date, validate_required_text
 
 DOCS_DIR = "docs"
 
@@ -75,8 +103,8 @@ class DocumentMetadataDialog(QDialog):
             if not tipo:
                 raise ValidationError("Seleziona il tipo")
 
-            # Valida emittente
-            emittente = validate_required_text(
+            # Valida emittente (solleva ValidationError se non valido)
+            validate_required_text(
                 self.emittente_input.text(),
                 "Fornitore/Emittente",
                 min_length=2,
@@ -84,15 +112,15 @@ class DocumentMetadataDialog(QDialog):
             )
 
             # Valida servizio
-            servizio = validate_required_text(
+            validate_required_text(
                 self.service_input.text(),
                 "Servizio",
                 min_length=2,
                 max_length=100
             )
 
-            # Valida importo - 🔥 GESTISCE SIA VIRGOLA CHE PUNTO
-            importo = parse_decimal(
+            # Valida importo — gestisce sia virgola che punto
+            parse_decimal(
                 self.importo_input.text(),
                 "Importo"
             )
@@ -604,7 +632,7 @@ class ExportDialog(QDialog):
 
         self.setWindowTitle(self.tm.get("ETICHETTE", "ESPORTA_DATI"))
         self.setMinimumSize(500, 400)
-        self.setStyleSheet(f"QDialog {{ background-color: #131b23; }}")
+        self.setStyleSheet("QDialog { background-color: #131b23; }")
 
         main_layout = QVBoxLayout(self)
         main_layout.setSpacing(20)

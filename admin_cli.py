@@ -23,9 +23,9 @@ Esempi:
     python admin_cli.py delete 3
 """
 
+import argparse
 import os
 import sys
-import argparse
 from datetime import datetime
 
 try:
@@ -131,13 +131,13 @@ def cmd_create_invite(args):
         "note"        : args.note or ""
     }
     data = req("post", "/admin/invites", json=payload)
-    print(f"\n✅ Codice invito creato:")
+    print("\n✅ Codice invito creato:")
     print(f"   Codice   : {data['code']}")
     print(f"   Piano    : {data['plan']}")
     print(f"   Usi max  : {data['max_uses']}")
     print(f"   Licenza  : {data['expires_days']} giorni dal momento della registrazione")
     print(f"   Note     : {data['note'] or '—'}")
-    print(f"\n   🔗 Condividi questo codice con il tester.\n")
+    print("\n   🔗 Condividi questo codice con il tester.\n")
 
 
 def cmd_list_invites(_args):

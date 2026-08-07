@@ -18,11 +18,12 @@ Esecuzione:
     pytest tests/test_deadline_service.py -v
 """
 
-import pytest
-import sys
 import os
-from unittest.mock import MagicMock, patch, call
+import sys
 from datetime import datetime, timedelta
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

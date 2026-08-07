@@ -1,6 +1,6 @@
-from database.models import Property
-from database.connection import DatabaseConnection
 from config import Config
+from database.connection import DatabaseConnection
+from database.models import Property
 
 
 class PropertyService:
@@ -71,16 +71,24 @@ class PropertyService:
             if not prop:
                 return False
 
-            if name:          prop.name = name
-            if address:       prop.address = address
+            if name:
+                prop.name = name
+            if address:
+                prop.address = address
 
             # I campi nullable ammettono anche il valore None esplicito
-            if managed_by is not None:    prop.managed_by = managed_by
-            if _clear_managed_by:         prop.managed_by = None
-            if square_meters is not None: prop.square_meters = square_meters
-            if _clear_square_meters:      prop.square_meters = None
-            if energy_class is not None:  prop.energy_class = energy_class
-            if _clear_energy_class:       prop.energy_class = None
+            if managed_by is not None:
+                prop.managed_by = managed_by
+            if _clear_managed_by:
+                prop.managed_by = None
+            if square_meters is not None:
+                prop.square_meters = square_meters
+            if _clear_square_meters:
+                prop.square_meters = None
+            if energy_class is not None:
+                prop.energy_class = energy_class
+            if _clear_energy_class:
+                prop.energy_class = None
 
             session.commit()
             self.logger.info(f"PropertyService: Proprietà aggiornata: {property_id}")

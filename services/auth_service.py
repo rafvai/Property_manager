@@ -6,16 +6,19 @@ Gestisce:
 - Cache locale cifrata (max 7 giorni offline)
 - Verifica stato licenza (grace, warning, scaduta)
 """
+import contextlib
+import hashlib
+import hmac
 import json
 import os
-import hmac, hashlib
 import secrets
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+
+from config import Config
 
 try:
-    import requests
+    import requests  # noqa: F401 — verifica disponibilità, i metodi lo importano localmente
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
@@ -23,20 +26,17 @@ except ImportError:
 
 def _utcnow() -> datetime:
     """UTC naive, coerente con le date ISO in cache (datetime.utcnow è deprecato)."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 # ─────────────────────────────────────────────
 #  CONFIG
 # ─────────────────────────────────────────────
-LICENSE_SERVER_URL = os.getenv("LICENSE_SERVER_URL", "http://129.159.240.166")
+LICENSE_SERVER_URL = Config.LICENSE_SERVER_URL
 OFFLINE_CACHE_DAYS = 7
 CONNECT_TIMEOUT    = 5
 READ_TIMEOUT       = 10
 
-if os.name == "nt":
-    _CACHE_DIR = Path(os.getenv("APPDATA")) / "PropertyManager"
-else:
-    _CACHE_DIR = Path.home() / ".propertymanager"
+_CACHE_DIR = Path(os.getenv("APPDATA")) / "PropertyManager" if os.name == "nt" else Path.home() / ".propertymanager"
 
 _CACHE_DIR.mkdir(parents=True, exist_ok=True)
 _CACHE_FILE    = _CACHE_DIR / ".license_cache"
@@ -114,7 +114,7 @@ class AuthService:
 
         return self._login_offline(email, password)
 
-    def _login_online(self, email: str, password: str) -> Optional[AuthResult]:
+    def _login_online(self, email: str, password: str) -> AuthResult | None:
         try:
             import requests as req
             resp = req.post(
@@ -231,12 +231,10 @@ class AuthService:
         payload   = json.dumps(cache, sort_keys=True).encode()
         signature = hmac.digest(_HMAC_KEY, payload, "sha256").hex()
         _CACHE_FILE.write_text(json.dumps({"payload": cache, "sig": signature}), encoding="utf-8")
-        try:
+        with contextlib.suppress(Exception):
             _CACHE_FILE.chmod(0o600)
-        except Exception:
-            pass
 
-    def _load_cache(self) -> Optional[dict]:
+    def _load_cache(self) -> dict | None:
         if not _CACHE_FILE.exists():
             return None
         try:

@@ -1,16 +1,31 @@
 import os
 
-from PySide6.QtCore import Qt, QSize, QUrl
-from PySide6.QtGui import QDesktopServices
-from PySide6.QtGui import QIcon, QColor
+from PySide6.QtCore import QSize, Qt, QUrl
+from PySide6.QtGui import QColor, QDesktopServices, QIcon
 from PySide6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-    QPushButton, QListWidget, QListWidgetItem, QWidget,
-    QFileDialog, QDialog, QMessageBox
+    QComboBox,
+    QDialog,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
 
 from dialogs import DocumentMetadataDialog
-from styles import *
+from styles import (
+    COLORE_BIANCO,
+    COLORE_ITEM_HOVER,
+    COLORE_RIGA_1,
+    COLORE_RIGA_2,
+    default_aggiungi_button,
+    default_combo_box_style,
+    default_title_style,
+)
 from views.base_view import BaseView
 
 DOCS_DIR = "docs"
@@ -83,7 +98,7 @@ class DocumentsView(BaseView):
         self.docs_list = QListWidget()
         self.docs_list.setStyleSheet(f"""
             QListWidget::item:hover {{
-                background: {COLORE_ITEM_HOVER};   
+                background: {COLORE_ITEM_HOVER};
                 border-radius: 8px;
             }}
             QListWidget::item:selected {{
@@ -195,7 +210,7 @@ class DocumentsView(BaseView):
 
     def add_document(self):
         """Aggiunge nuovi documenti CON VALIDAZIONE"""
-        from validation_utils import parse_decimal, ValidationError
+        from validation_utils import ValidationError, parse_decimal
 
         # Controllo difensivo: non dovrebbe mai scattare grazie al bottone disabilitato,
         # ma protegge da chiamate programmatiche dirette
@@ -253,7 +268,7 @@ class DocumentsView(BaseView):
                             f"💰 {importo_float:,.2f}€"
                         )
                 else:
-                    self.logger.error(f"Impossibile salvare la transazione nel database")
+                    self.logger.error("Impossibile salvare la transazione nel database")
                     QMessageBox.warning(
                         self,
                         self.tm.get('MESSAGGI', 'ERRORE'),

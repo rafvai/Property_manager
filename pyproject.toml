@@ -1,0 +1,27 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+exclude = [
+    ".venv",
+    "build",
+    "dist",
+    "migrations",
+]
+
+[tool.ruff.lint]
+# E/W  = stile pycodestyle      F  = errori pyflakes (import inutilizzati, nomi non definiti)
+# I    = ordinamento import     B  = bug probabili (flake8-bugbear)
+# UP   = sintassi moderna       SIM = semplificazioni
+select = ["E", "F", "W", "I", "B", "UP", "SIM"]
+ignore = [
+    "E501",   # righe lunghe: gestite con buonsenso, non a colpi di linter
+]
+
+[tool.ruff.lint.per-file-ignores]
+# I test usano import ripetuti nei singoli casi per isolamento
+"tests/*" = ["E402"]
+# Depends() nei default è l'idioma standard di FastAPI
+"license_server.py" = ["B008"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

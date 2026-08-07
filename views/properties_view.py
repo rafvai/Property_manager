@@ -1,15 +1,38 @@
-import os
-from datetime import datetime, date
+from datetime import date, datetime
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFrame, QScrollArea, QWidget, QLineEdit, QDialog,
-    QFormLayout, QDialogButtonBox, QMessageBox, QComboBox
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
 )
 
+from styles import (
+    COLORE_BACKGROUND,
+    COLORE_ERROR,
+    COLORE_GRIGIO,
+    COLORE_ITEM_HOVER,
+    COLORE_RIGA_1,
+    COLORE_RIGA_2,
+    COLORE_SECONDARIO,
+    COLORE_SUCCESS,
+    COLORE_WARNING,
+    default_aggiungi_button,
+    default_dialog_style,
+    default_style_search_line,
+    default_title_style,
+)
 from validation_utils import format_currency
-from styles import *
 from views.base_view import BaseView
 
 
@@ -539,7 +562,6 @@ class PropertiesView(BaseView):
         )
         folder_size_bytes = self.document_service.get_property_folder_size(prop['id'])
         folder_size_str   = self.document_service.format_size(folder_size_bytes)
-        property_folder   = self.document_service.get_property_folder(prop['id'])
 
         warning_message = (
             self.tm.get("MESSAGGI", "CONFERMA_ELIMINA")

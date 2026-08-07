@@ -14,7 +14,7 @@ class PreferencesService:
         """Carica le preferenze dal file"""
         if os.path.exists(self.prefs_file):
             try:
-                with open(self.prefs_file, 'r', encoding='utf-8') as f:
+                with open(self.prefs_file, encoding='utf-8') as f:
                     return json.load(f)
             except Exception as e:
                 self.logger.exception(f"PreferencesService:Errore caricamento preferenze: {e}")
