@@ -285,7 +285,9 @@ class TestCreateWithSupplier:
             )
 
         assert result == 20
-        mock_supplier_svc.update_service_stats.assert_called_once()
+        # La data deve arrivare come date, non come stringa: la colonna
+        # last_service_date è Date e SQLite rifiuta le stringhe
+        mock_supplier_svc.update_service_stats.assert_called_once_with(5, date(2024, 1, 25), 120.0)
 
     def test_crea_entrata_con_supplier_non_aggiorna_stats(self, transaction_service):
         """Le Entrate non devono aggiornare le stats del fornitore"""

@@ -1,4 +1,6 @@
 
+from datetime import date as date_type
+
 from sqlalchemy import desc, func
 
 from config import Config
@@ -183,7 +185,7 @@ class SupplierService:
 
         Args:
             supplier_id: ID fornitore
-            service_date: Data servizio (yyyy-MM-dd)
+            service_date: Data servizio (date, oppure stringa yyyy-MM-dd)
             amount: Importo speso
         """
         session = self.db.get_session()
@@ -191,6 +193,10 @@ class SupplierService:
             supplier = session.query(Supplier).filter(
                 Supplier.id == supplier_id
             ).first()
+
+            # La colonna è Date: SQLite rifiuta le stringhe, quindi si converte
+            if isinstance(service_date, str):
+                service_date = date_type.fromisoformat(service_date)
 
             if supplier:
                 supplier.last_service_date = service_date

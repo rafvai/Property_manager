@@ -24,6 +24,7 @@ Esecuzione:
 
 import os
 import sys
+from datetime import date
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -346,12 +347,24 @@ class TestUpdateServiceStats:
         supplier = _make_supplier(id=1, total_spent=100.0, service_count=2)
         session.query.return_value.filter.return_value.first.return_value = supplier
 
-        result = svc.update_service_stats(1, "2024-01-15", 50.0)
+        result = svc.update_service_stats(1, date(2024, 1, 15), 50.0)
 
         assert result is True
         assert supplier.total_spent == 150.0
         assert supplier.service_count == 3
-        assert supplier.last_service_date == "2024-01-15"
+        assert supplier.last_service_date == date(2024, 1, 15)
+
+    def test_stringa_iso_convertita_in_date(self, supplier_service):
+        """La colonna last_service_date è Date: una stringa ISO va convertita,
+        altrimenti SQLite rifiuta la scrittura e le statistiche non si aggiornano"""
+        svc, session = supplier_service
+        supplier = _make_supplier(id=1, total_spent=0.0, service_count=0)
+        session.query.return_value.filter.return_value.first.return_value = supplier
+
+        result = svc.update_service_stats(1, "2024-01-15", 50.0)
+
+        assert result is True
+        assert supplier.last_service_date == date(2024, 1, 15)
 
     def test_fornitore_non_trovato_ritorna_false(self, supplier_service):
         svc, session = supplier_service

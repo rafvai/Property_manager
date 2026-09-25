@@ -158,8 +158,7 @@ class TransactionService:
             # Aggiorna statistiche fornitore solo per le Uscite
             if supplier_id and trans_type == 'Uscita' and self._supplier_service:
                 try:
-                    service_date = date.isoformat() if hasattr(date, 'isoformat') else str(date)
-                    self._supplier_service.update_service_stats(supplier_id, service_date, amount)
+                    self._supplier_service.update_service_stats(supplier_id, date, amount)
                 except Exception as e:
                     self.logger.warning(f"Impossibile aggiornare stats fornitore: {str(e)}")
 
