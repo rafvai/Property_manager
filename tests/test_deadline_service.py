@@ -311,6 +311,28 @@ class TestUpdate:
         assert result is True
         assert d.title == "Nuovo Titolo"
 
+    def test_none_esplicito_azzera_descrizione_e_proprieta(self, deadline_service):
+        """Dal dettaglio si deve poter togliere la descrizione e riportare
+        la scadenza a 'generale': None esplicito viene scritto"""
+        svc, session = deadline_service
+        deadline = MagicMock(description="vecchia", property_id=3)
+        session.query.return_value.filter.return_value.first.return_value = deadline
+
+        assert svc.update(1, description=None, property_id=None) is True
+        assert deadline.description is None
+        assert deadline.property_id is None
+
+    def test_none_su_titolo_e_data_viene_ignorato(self, deadline_service):
+        """title e due_date non ammettono NULL: None non deve sovrascriverli"""
+        svc, session = deadline_service
+        deadline = MagicMock(title="Titolo", due_date="2024-01-01", completed=False)
+        session.query.return_value.filter.return_value.first.return_value = deadline
+
+        assert svc.update(1, title=None, due_date=None, completed=None) is True
+        assert deadline.title == "Titolo"
+        assert deadline.due_date == "2024-01-01"
+        assert deadline.completed is False
+
     def test_segna_come_completata(self, deadline_service):
         svc, session = deadline_service
         d = _make_deadline(id=1, completed=False)

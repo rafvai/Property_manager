@@ -27,13 +27,7 @@ class CalendarView(BaseView):
         )
         frame_layout = QVBoxLayout(frame)
 
-        # Importa qui per non creare circolarità; usa la versione patchata
-        # che accetta user_prefs_service
-        try:
-            from dialogs_calendar_patch import PlannerCalendarWidget
-        except ImportError:
-            # Fallback alla versione originale se il patch non è ancora applicato
-            from dialogs import PlannerCalendarWidget
+        from views.calendar_planner import PlannerCalendarWidget
 
         calendar_widget = PlannerCalendarWidget(
             self.deadline_service,

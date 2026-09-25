@@ -217,11 +217,17 @@ class DeadlineService:
             if not deadline:
                 return False
 
-            allowed_fields = ['title', 'description', 'due_date',
-                              'completed', 'property_id']
+            # description e property_id possono essere azzerati passando None
+            # esplicitamente; title, due_date e completed non ammettono None
+            allowed_fields  = ['title', 'description', 'due_date',
+                               'completed', 'property_id']
+            nullable_fields = {'description', 'property_id'}
             for field, value in kwargs.items():
-                if field in allowed_fields and value is not None:
-                    setattr(deadline, field, value)
+                if field not in allowed_fields:
+                    continue
+                if value is None and field not in nullable_fields:
+                    continue
+                setattr(deadline, field, value)
 
             session.commit()
             self.logger.info(f"DeadlineService: Scadenza aggiornata: {deadline_id}")
