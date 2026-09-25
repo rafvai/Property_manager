@@ -1,25 +1,58 @@
+"""
+views/dashboard_view.py
+=======================
+Panoramica: indicatori del periodo, saldo a ciambella, prossime scadenze
+e ultime transazioni. Ogni card è cliccabile e porta alla sezione relativa.
+"""
 from datetime import date, datetime, timedelta
 
-import matplotlib.patches as mpatches
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QComboBox, QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QSizePolicy, QVBoxLayout, QWidget
 
 from resources import icon_path
 from styles import (
     COLORE_BIANCO,
+    COLORE_ERROR,
     COLORE_GRIGIO,
+    COLORE_ITEM_HOVER,
     COLORE_ITEM_SELEZIONATO,
+    COLORE_SUCCESS,
+    COLORE_WARNING,
     COLORE_WIDGET_2,
     default_combo_box_style,
-    default_dashboard_widget,
-    default_style_text,
     default_title_style,
 )
 from validation_utils import format_currency
 from views.base_view import BaseView
+from views.calendar_planner import (
+    STATO_IMMINENTE,
+    STATO_OGGI,
+    STATO_SCADUTA,
+    colore_proprieta,
+    stato_scadenza,
+)
+from views.ui_helpers import icona_pallino, mescola, tinta
+
+COLORE_TESTO_SECONDARIO = "#94a3b8"
+COLORE_DIVISORE         = "#2b3a4f"
+COLORE_VERDE_OK         = "#2ecc71"
+
+STILE_CARD = f"""
+    QFrame#card {{
+        background-color: {COLORE_WIDGET_2};
+        border-radius: 10px;
+        border: 1px solid transparent;
+    }}
+    QFrame#card:hover {{ border: 1px solid {COLORE_ITEM_HOVER}; }}
+    QLabel {{ background: transparent; border: none; }}
+"""
+STILE_TITOLO_CARD = (
+    f"font-size: 11px; font-weight: 600; color: {COLORE_GRIGIO}; letter-spacing: 0.08em;"
+)
+STILE_VUOTO = f"color: {COLORE_GRIGIO}; font-size: 13px; padding: 8px 0;"
 
 
 class ClickableFrame(QFrame):
@@ -47,7 +80,7 @@ class DashboardView(BaseView):
         self.tm                  = translation_manager
         self.user_prefs_service  = user_prefs_service
 
-        self.proprieta         = property_service.get_all()
+        self.proprieta         = sorted(property_service.get_all(), key=lambda p: p["id"])
         self.selected_property = None
 
         self._saved_property_index = 0
@@ -68,13 +101,13 @@ class DashboardView(BaseView):
         return format_currency(value, symbol=self._currency())
 
     def _warning_days(self) -> int:
-        """
-        Giorni di preavviso scadenze letti dal DB.
-        Default 7 se non impostato o user_prefs_service non disponibile.
-        """
+        """Giorni di preavviso scadenze letti dal DB, 7 se non impostati."""
         if self.user_prefs_service:
             return self.user_prefs_service.get_deadline_warning_days()
         return 7
+
+    def _t(self, categoria: str, chiave: str, fallback: str) -> str:
+        return self.tm.get(categoria, chiave, fallback=fallback)
 
     # ──────────────────────────────────────────────────────────────
     #  UI
@@ -86,25 +119,45 @@ class DashboardView(BaseView):
             self.clear_layout(layout)
         else:
             layout = QVBoxLayout(self)
-            layout.setContentsMargins(30, 30, 30, 30)
-            layout.setSpacing(25)
+            layout.setContentsMargins(20, 20, 20, 20)
+            layout.setSpacing(14)
 
-        # ========== HEADER ========== #
-        header_layout = QVBoxLayout()
-        header_layout.setContentsMargins(0, 0, 0, 0)
-        header_layout.setSpacing(6)
+        layout.addLayout(self._costruisci_header())
+        layout.addLayout(self._costruisci_indicatori())
 
-        top_row = QHBoxLayout()
-        top_row.setSpacing(10)
+        centro = QHBoxLayout()
+        centro.setSpacing(14)
+        centro.addWidget(self._costruisci_card_saldo(), stretch=2)
+        centro.addWidget(self._costruisci_card_scadenze(), stretch=3)
+        layout.addLayout(centro, stretch=1)
 
-        prop_widget = QWidget()
-        prop_layout = QVBoxLayout(prop_widget)
-        prop_layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self._costruisci_card_transazioni(), stretch=0)
 
-        label_select = QLabel(self.tm.get("ETICHETTE", "SELEZIONA_PROPRIETA"))
-        label_select.setStyleSheet(default_style_text)
-        prop_layout.addWidget(label_select)
+        self._righe_mostrate = self._righe_visibili()
+        self.aggiorna_dati()
 
+    def _righe_visibili(self) -> int:
+        """Righe nelle liste: 5 su schermi bassi, fino a 8 su finestre alte."""
+        return 8 if self.height() >= 900 else 5
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        righe = self._righe_visibili()
+        if getattr(self, "_righe_mostrate", None) not in (None, righe):
+            self._righe_mostrate = righe
+            self.aggiorna_dati()
+
+    # ── header ────────────────────────────────────────────────────
+    def _costruisci_header(self) -> QHBoxLayout:
+        header = QHBoxLayout()
+        header.setSpacing(10)
+
+        titolo = QLabel(self.tm.get("ETICHETTE", "PANORAMICA"))
+        titolo.setStyleSheet(default_title_style)
+        header.addWidget(titolo)
+        header.addStretch()
+
+        header.addWidget(self._etichetta_selettore(self.tm.get("ETICHETTE", "PROPRIETA")))
         self.property_selector = QComboBox()
         self.property_selector.addItem(self.tm.get("ETICHETTE", "ALL_PROPERTIES"), None)
         for p in self.proprieta:
@@ -113,45 +166,9 @@ class DashboardView(BaseView):
         self.property_selector.setMinimumWidth(200)
         self.property_selector.setCurrentIndex(self._saved_property_index)
         self.property_selector.currentIndexChanged.connect(self.update_info_box)
-        prop_layout.addWidget(self.property_selector)
+        header.addWidget(self.property_selector)
 
-        top_row.addWidget(prop_widget, stretch=3)
-        top_row.addStretch()
-
-        # Cambio lingua
-        lang_container = QWidget()
-        lang_layout    = QHBoxLayout(lang_container)
-        lang_layout.setContentsMargins(0, 0, 0, 0)
-        lang_layout.setSpacing(5)
-
-        self.language_combo = QComboBox()
-        self.language_combo.addItem(QIcon(icon_path("flag-it.png")), "Italiano", "it")
-        self.language_combo.addItem(QIcon(icon_path("flag-uk.png")), "English",  "en")
-        self.language_combo.addItem(QIcon(icon_path("flag-es.png")), "Español",  "es")
-        self.language_combo.setIconSize(QSize(20, 20))
-        self.language_combo.setFixedWidth(150)
-
-        current_lang = self.preferences_service.get_language()
-        for i in range(self.language_combo.count()):
-            if self.language_combo.itemData(i) == current_lang:
-                self.language_combo.setCurrentIndex(i)
-                break
-        self.language_combo.currentIndexChanged.connect(self.on_language_changed)
-        lang_layout.addWidget(self.language_combo)
-        top_row.addWidget(lang_container)
-
-        mid_row = QHBoxLayout()
-        mid_row.setSpacing(10)
-
-        label_title = QLabel(self.tm.get("ETICHETTE", "PANORAMICA"))
-        label_title.setStyleSheet(default_title_style)
-        mid_row.addWidget(label_title)
-        mid_row.addStretch()
-
-        label_periodo = QLabel(self.tm.get("ETICHETTE", "PERIODO") + ":")
-        label_periodo.setStyleSheet("color: white;")
-        mid_row.addWidget(label_periodo)
-
+        header.addWidget(self._etichetta_selettore(self.tm.get("ETICHETTE", "PERIODO")))
         self.period_selector = QComboBox()
         self.period_selector.setStyleSheet(default_combo_box_style)
         self.period_selector.addItems([
@@ -161,101 +178,336 @@ class DashboardView(BaseView):
             self.tm.get("ETICHETTE", "3_YEARS"),
         ])
         self.period_selector.setCurrentIndex(self._saved_period_index)
-        self.period_selector.currentIndexChanged.connect(self.update_chart)
-        mid_row.addWidget(self.period_selector)
+        self.period_selector.currentIndexChanged.connect(self.aggiorna_dati)
+        header.addWidget(self.period_selector)
 
-        header_layout.addLayout(top_row)
-        header_layout.addLayout(mid_row)
-        layout.addLayout(header_layout)
+        header.addSpacing(8)
+        self.language_combo = QComboBox()
+        self.language_combo.addItem(QIcon(icon_path("flag-it.png")), "Italiano", "it")
+        self.language_combo.addItem(QIcon(icon_path("flag-uk.png")), "English",  "en")
+        self.language_combo.addItem(QIcon(icon_path("flag-es.png")), "Español",  "es")
+        self.language_combo.setIconSize(QSize(18, 18))
+        self.language_combo.setStyleSheet(default_combo_box_style)
+        self.language_combo.setFixedWidth(140)
+        current_lang = self.preferences_service.get_language()
+        for i in range(self.language_combo.count()):
+            if self.language_combo.itemData(i) == current_lang:
+                self.language_combo.setCurrentIndex(i)
+                break
+        self.language_combo.currentIndexChanged.connect(self.on_language_changed)
+        header.addWidget(self.language_combo)
+        return header
 
-        # ========== SEZIONE CENTRALE ========== #
-        middle_layout = QHBoxLayout()
-        middle_layout.setSpacing(25)
+    @staticmethod
+    def _etichetta_selettore(testo: str) -> QLabel:
+        lbl = QLabel(f"{testo}:")
+        lbl.setStyleSheet(f"color: {COLORE_TESTO_SECONDARIO}; font-size: 12px;")
+        return lbl
 
-        left_column = QVBoxLayout()
-        left_column.setSpacing(15)
+    # ── indicatori ────────────────────────────────────────────────
+    def _costruisci_indicatori(self) -> QHBoxLayout:
+        riga = QHBoxLayout()
+        riga.setSpacing(14)
+        self.kpi_saldo    = self._tile(COLORE_ITEM_SELEZIONATO, self.tm.get("ETICHETTE", "SALDO"), "FINANZE")
+        self.kpi_entrate  = self._tile(COLORE_SUCCESS, self._t("DASHBOARD", "ENTRATE", "Entrate"), "TRANSAZIONI")
+        self.kpi_uscite   = self._tile(COLORE_ERROR, self._t("DASHBOARD", "USCITE", "Uscite"), "TRANSAZIONI")
+        self.kpi_scadenze = self._tile(COLORE_WARNING, self._t("DASHBOARD", "SCADENZE_APERTE", "Scadenze aperte"), "CALENDAR")
+        for tile in (self.kpi_saldo, self.kpi_entrate, self.kpi_uscite, self.kpi_scadenze):
+            riga.addWidget(tile["frame"], stretch=1)
+        return riga
 
-        # Info proprietà
-        info_frame = ClickableFrame(
-            on_click=lambda: self.main_window.navigate_to_section("PROPERTIES")
-        )
-        info_frame.setStyleSheet(default_dashboard_widget)
-        info_layout = QVBoxLayout(info_frame)
-        info_layout.setSpacing(8)
+    def _tile(self, colore: str, etichetta: str, sezione: str) -> dict:
+        """Riquadro indicatore: barra colorata, etichetta, valore grande, nota."""
+        frame = self._card(sezione)
+        lay = QHBoxLayout(frame)
+        lay.setContentsMargins(14, 12, 16, 12)
+        lay.setSpacing(12)
 
-        info_title = QLabel(self.tm.get("ETICHETTE", "INFORMAZIONI_PROPRIETA"))
-        info_title.setStyleSheet(default_style_text)
-        info_layout.addWidget(info_title)
+        barra = QFrame()
+        barra.setFixedSize(4, 40)
+        barra.setStyleSheet(f"background-color: {colore}; border-radius: 2px;")
+        lay.addWidget(barra)
 
-        self.info_name    = QLabel()
-        self.info_address = QLabel()
-        self.info_owner   = QLabel()
-        for lbl in (self.info_name, self.info_address, self.info_owner):
-            lbl.setStyleSheet(default_style_text)
-        self.update_info_display()
-        info_layout.addWidget(self.info_name)
-        info_layout.addWidget(self.info_address)
-        info_layout.addWidget(self.info_owner)
-        info_layout.addStretch()
+        colonna = QVBoxLayout()
+        colonna.setSpacing(2)
+        lbl = QLabel(etichetta.upper())
+        lbl.setStyleSheet(STILE_TITOLO_CARD)
+        valore = QLabel("—")
+        valore.setStyleSheet(f"font-size: 22px; font-weight: 600; color: {COLORE_BIANCO};")
+        nota = QLabel("")
+        nota.setStyleSheet(f"font-size: 11px; color: {COLORE_TESTO_SECONDARIO};")
+        colonna.addWidget(lbl)
+        colonna.addWidget(valore)
+        colonna.addWidget(nota)
+        lay.addLayout(colonna)
+        lay.addStretch()
+        return {"frame": frame, "valore": valore, "nota": nota}
 
-        # Prossima scadenza
-        deadline_frame = ClickableFrame(
-            on_click=lambda: self.main_window.navigate_to_section("CALENDAR")
-        )
-        deadline_frame.setStyleSheet(default_dashboard_widget)
-        deadline_layout = QVBoxLayout(deadline_frame)
-        deadline_layout.setSpacing(8)
+    # ── card ──────────────────────────────────────────────────────
+    def _card(self, sezione: str) -> ClickableFrame:
+        frame = ClickableFrame(on_click=lambda: self.main_window.navigate_to_section(sezione))
+        frame.setObjectName("card")
+        frame.setStyleSheet(STILE_CARD)
+        return frame
 
-        deadline_title_label = QLabel(self.tm.get("ETICHETTE", "PROSSIMA_SCADENZA"))
-        deadline_title_label.setStyleSheet(default_style_text)
-        deadline_layout.addWidget(deadline_title_label)
+    def _card_con_titolo(self, sezione: str, titolo: str):
+        """Card con intestazione; ritorna (frame, layout del contenuto)."""
+        frame = self._card(sezione)
+        lay = QVBoxLayout(frame)
+        lay.setContentsMargins(18, 14, 18, 14)
+        lay.setSpacing(8)
+        lbl = QLabel(titolo.upper())
+        lbl.setStyleSheet(STILE_TITOLO_CARD)
+        lay.addWidget(lbl)
+        return frame, lay
 
-        self.deadline_title_label = QLabel()
-        self.deadline_date_label  = QLabel()
-        self.deadline_desc_label  = QLabel()
-        self.deadline_title_label.setStyleSheet(default_style_text)
-        self.deadline_date_label.setStyleSheet("color: #e74c3c; font-size: 12px;")
-        self.deadline_desc_label.setStyleSheet("color: #bdc3c7; font-size: 11px;")
-        self.deadline_desc_label.setWordWrap(True)
-        deadline_layout.addWidget(self.deadline_title_label)
-        deadline_layout.addWidget(self.deadline_date_label)
-        deadline_layout.addWidget(self.deadline_desc_label)
-        deadline_layout.addStretch()
-
-        left_column.addWidget(info_frame, stretch=1)
-        left_column.addWidget(deadline_frame, stretch=1)
-
-        # Grafico donut
-        chart_frame = ClickableFrame(
-            on_click=lambda: self.main_window.navigate_to_section("FINANZE")
-        )
-        chart_frame.setStyleSheet(default_dashboard_widget)
-        chart_layout = QVBoxLayout(chart_frame)
-        chart_layout.setSpacing(10)
-
-        self.fig = Figure(figsize=(4, 4), facecolor=COLORE_WIDGET_2)
+    def _costruisci_card_saldo(self) -> QFrame:
+        frame, lay = self._card_con_titolo("FINANZE", self._t("DASHBOARD", "SALDO_PERIODO", "Saldo del periodo"))
+        self.fig = Figure(figsize=(3.2, 3.2), facecolor=COLORE_WIDGET_2)
+        self.fig.subplots_adjust(left=0.04, right=0.96, top=0.96, bottom=0.04)
         self.chart_canvas = FigureCanvas(self.fig)
         self.chart_canvas.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        self.chart_canvas.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.ax = self.fig.add_subplot(111, facecolor=COLORE_WIDGET_2)
-        chart_layout.addWidget(self.chart_canvas)
+        lay.addWidget(self.chart_canvas, stretch=1)
 
-        middle_layout.addLayout(left_column, 2)
-        middle_layout.addWidget(chart_frame, 3)
-        layout.addLayout(middle_layout)
+        legenda = QHBoxLayout()
+        legenda.setSpacing(18)
+        legenda.addStretch()
+        self.legenda_entrate = self._voce_legenda(COLORE_ITEM_SELEZIONATO)
+        self.legenda_uscite  = self._voce_legenda(COLORE_GRIGIO)
+        legenda.addWidget(self.legenda_entrate["widget"])
+        legenda.addWidget(self.legenda_uscite["widget"])
+        legenda.addStretch()
+        lay.addLayout(legenda)
+        return frame
 
-        # Bottom
-        bottom_frame = ClickableFrame(
-            on_click=lambda: self.main_window.navigate_to_section("DOCUMENTS")
+    @staticmethod
+    def _voce_legenda(colore: str) -> dict:
+        w = QWidget()
+        w.setStyleSheet("background: transparent;")
+        lay = QHBoxLayout(w)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(6)
+        pallino = QLabel()
+        pallino.setPixmap(icona_pallino(colore, 9).pixmap(9, 9))
+        testo = QLabel("")
+        testo.setStyleSheet(f"font-size: 12px; color: {COLORE_BIANCO};")
+        lay.addWidget(pallino)
+        lay.addWidget(testo)
+        return {"widget": w, "testo": testo}
+
+    def _costruisci_card_scadenze(self) -> QFrame:
+        frame, lay = self._card_con_titolo("CALENDAR", self._t("DASHBOARD", "PROSSIME_SCADENZE", "Prossime scadenze"))
+        self.lista_scadenze = QVBoxLayout()
+        self.lista_scadenze.setSpacing(0)
+        lay.addLayout(self.lista_scadenze)
+        lay.addStretch()
+        return frame
+
+    def _costruisci_card_transazioni(self) -> QFrame:
+        frame, lay = self._card_con_titolo("TRANSAZIONI", self._t("DASHBOARD", "ULTIME_TRANSAZIONI", "Ultime transazioni"))
+        self.lista_transazioni = QGridLayout()
+        self.lista_transazioni.setHorizontalSpacing(14)
+        self.lista_transazioni.setVerticalSpacing(0)
+        lay.addLayout(self.lista_transazioni)
+        lay.addStretch()
+        return frame
+
+    # ──────────────────────────────────────────────────────────────
+    #  Dati
+    # ──────────────────────────────────────────────────────────────
+
+    def _periodo(self) -> tuple[datetime, datetime]:
+        self._saved_period_index = self.period_selector.currentIndex()
+        mesi = {0: 1, 1: 6, 2: 12, 3: 36}.get(self._saved_period_index, 1)
+        fine = datetime.today()
+        return fine - timedelta(days=30 * mesi), fine
+
+    def aggiorna_dati(self):
+        property_id = self.selected_property["id"] if self.selected_property else None
+        inizio, fine = self._periodo()
+        righe = self.transaction_service.get_all(
+            property_id=property_id,
+            start_date=inizio.strftime("%Y-%m-%d"),
+            end_date=fine.strftime("%Y-%m-%d"),
         )
-        bottom_frame.setStyleSheet(default_dashboard_widget)
-        bottom_layout = QVBoxLayout(bottom_frame)
-        bottom_label  = QLabel(self.tm.get("ETICHETTE", "DOCUMENTS"))
-        bottom_label.setStyleSheet("color: white; font-size: 14px;")
-        bottom_layout.addWidget(bottom_label)
-        layout.addWidget(bottom_frame)
+        entrate = sum(t["amount"] for t in righe if t["type"] == "Entrata")
+        uscite  = sum(t["amount"] for t in righe if t["type"] == "Uscita")
 
-        self.update_chart()
-        self.update_next_deadline()
+        scadenze = sorted(
+            self.deadline_service.get_all(property_id=property_id, include_completed=False),
+            key=lambda d: d["due_date"],
+        )
+        oggi    = date.today()
+        scadute = [d for d in scadenze if date.fromisoformat(d["due_date"][:10]) < oggi]
+
+        self._aggiorna_indicatori(entrate, uscite, scadenze, scadute)
+        self._aggiorna_ciambella(entrate, uscite)
+        righe = self._righe_visibili()
+        self._righe_mostrate = righe
+        self._aggiorna_scadenze(scadenze[:righe], oggi)
+        self._aggiorna_transazioni(self.transaction_service.get_all(property_id=property_id)[:righe])
+
+    def _aggiorna_indicatori(self, entrate, uscite, scadenze, scadute):
+        nel_periodo = self._t("DASHBOARD", "NEL_PERIODO", "nel periodo selezionato")
+        saldo = entrate - uscite
+        self.kpi_saldo["valore"].setText(self._fmt(saldo))
+        self.kpi_saldo["valore"].setStyleSheet(
+            f"font-size: 22px; font-weight: 600; color: {COLORE_BIANCO if saldo >= 0 else COLORE_ERROR};"
+        )
+        self.kpi_saldo["nota"].setText(nel_periodo)
+        self.kpi_entrate["valore"].setText(self._fmt(entrate))
+        self.kpi_entrate["nota"].setText(nel_periodo)
+        self.kpi_uscite["valore"].setText(self._fmt(uscite))
+        self.kpi_uscite["nota"].setText(nel_periodo)
+        self.kpi_scadenze["valore"].setText(str(len(scadenze)))
+        if scadute:
+            testo = self._t("DASHBOARD", "SCADUTE_N", "XXX già scadute").replace("XXX", str(len(scadute)))
+            self.kpi_scadenze["nota"].setStyleSheet(f"font-size: 11px; font-weight: 600; color: {COLORE_ERROR};")
+        else:
+            testo = self._t("DASHBOARD", "NESSUNA_SCADUTA", "nessuna scaduta")
+            self.kpi_scadenze["nota"].setStyleSheet(f"font-size: 11px; color: {COLORE_TESTO_SECONDARIO};")
+        self.kpi_scadenze["nota"].setText(testo)
+
+    def _aggiorna_ciambella(self, entrate: float, uscite: float):
+        self.ax.clear()
+        self.ax.set_aspect("equal")
+        totale = entrate + uscite
+        if totale == 0:
+            self.ax.pie([1], colors=[mescola(COLORE_GRIGIO, COLORE_WIDGET_2, 0.5)], startangle=90,
+                        wedgeprops=dict(width=0.32))
+            self.ax.text(0, 0, self.tm.get("MESSAGGI", "NESSUN_DATO"),
+                         ha="center", va="center", fontsize=10, color=COLORE_GRIGIO)
+            self.legenda_entrate["testo"].setText(self.tm.get("ETICHETTE", "GUADAGNI"))
+            self.legenda_uscite["testo"].setText(self.tm.get("ETICHETTE", "SPESE"))
+        else:
+            self.ax.pie([entrate, uscite], colors=[COLORE_ITEM_SELEZIONATO, COLORE_GRIGIO],
+                        startangle=90, counterclock=False, wedgeprops=dict(width=0.32))
+            self.ax.text(0, 0.08, self._fmt(entrate - uscite), ha="center", va="center",
+                         fontsize=13, fontweight="bold", color=COLORE_BIANCO)
+            self.ax.text(0, -0.16, self.tm.get("ETICHETTE", "SALDO"), ha="center", va="center",
+                         fontsize=8, color=COLORE_GRIGIO)
+            self.legenda_entrate["testo"].setText(
+                f"{self.tm.get('ETICHETTE', 'GUADAGNI')}  {entrate / totale * 100:.0f}%")
+            self.legenda_uscite["testo"].setText(
+                f"{self.tm.get('ETICHETTE', 'SPESE')}  {uscite / totale * 100:.0f}%")
+        self.chart_canvas.draw()
+
+    def _aggiorna_scadenze(self, scadenze: list, oggi: date):
+        self.clear_layout(self.lista_scadenze)
+        if not scadenze:
+            vuoto = QLabel(self.tm.get("ETICHETTE", "NESSUNA_SCADENZA"))
+            vuoto.setStyleSheet(STILE_VUOTO)
+            self.lista_scadenze.addWidget(vuoto)
+            return
+
+        ordine_ids   = [p["id"] for p in self.proprieta]
+        nomi         = {p["id"]: p["name"] for p in self.proprieta}
+        warning_days = self._warning_days()
+        for indice, d in enumerate(scadenze):
+            due = date.fromisoformat(d["due_date"][:10])
+            stato, giorni = stato_scadenza(due, oggi, warning_days)
+            self.lista_scadenze.addWidget(self._riga_scadenza(
+                d, colore_proprieta(d.get("property_id"), ordine_ids),
+                nomi.get(d.get("property_id"), self._t("CALENDARIO", "GENERALE", "Generale")),
+                stato, giorni, due, ultima=(indice == len(scadenze) - 1),
+            ))
+
+    def _riga_scadenza(self, d: dict, colore: str, nome_proprieta: str,
+                       stato: str, giorni: int, due: date, ultima: bool) -> QWidget:
+        riga = QFrame()
+        riga.setObjectName("riga")
+        bordo = "none" if ultima else f"1px solid {COLORE_DIVISORE}"
+        riga.setStyleSheet(f"QFrame#riga {{ border: none; border-bottom: {bordo}; }}")
+        lay = QHBoxLayout(riga)
+        lay.setContentsMargins(0, 7, 6, 7)
+        lay.setSpacing(10)
+
+        barra = QFrame()
+        barra.setFixedSize(3, 30)
+        barra.setStyleSheet(f"background-color: {colore}; border-radius: 1px;")
+        lay.addWidget(barra)
+
+        testi = QVBoxLayout()
+        testi.setSpacing(1)
+        titolo = QLabel(d["title"])
+        titolo.setStyleSheet(f"font-size: 13px; color: {COLORE_BIANCO};")
+        sotto = QLabel(f"{nome_proprieta}  ·  {due.strftime('%d/%m/%Y')}")
+        sotto.setStyleSheet(f"font-size: 11px; color: {COLORE_TESTO_SECONDARIO};")
+        testi.addWidget(titolo)
+        testi.addWidget(sotto)
+        lay.addLayout(testi, stretch=1)
+
+        if stato == STATO_SCADUTA:
+            testo = self._t("CALENDARIO", "SCADUTA_DA", "Scaduta da XXX giorni").replace("XXX", str(-giorni))
+            col   = COLORE_ERROR
+        elif stato == STATO_OGGI:
+            testo, col = self.tm.get("ETICHETTE", "OGGI"), COLORE_ERROR
+        elif giorni == 1:
+            testo, col = self.tm.get("ETICHETTE", "DOMANI"), COLORE_WARNING
+        else:
+            testo = self.tm.get("ETICHETTE", "IN_X_GIORNI").replace("XXX", str(giorni))
+            col   = COLORE_WARNING if stato == STATO_IMMINENTE else COLORE_VERDE_OK
+        quando = QLabel(testo)
+        quando.setStyleSheet(f"font-size: 12px; font-weight: 600; color: {col};")
+        lay.addWidget(quando)
+        return riga
+
+    def _aggiorna_transazioni(self, transazioni: list):
+        self.clear_layout(self.lista_transazioni)
+        if not transazioni:
+            vuoto = QLabel(self.tm.get("MESSAGGI", "NESSUN_DATO"))
+            vuoto.setStyleSheet(STILE_VUOTO)
+            self.lista_transazioni.addWidget(vuoto, 0, 0, 1, 5)
+            return
+
+        for r, t in enumerate(transazioni):
+            uscita = t["type"] == "Uscita"
+            colore = COLORE_ERROR if uscita else COLORE_SUCCESS
+            data_txt = date.fromisoformat(str(t["date"])[:10]).strftime("%d/%m/%Y")
+
+            self.lista_transazioni.addWidget(self._cella(data_txt, COLORE_TESTO_SECONDARIO, 12), r, 0)
+            self.lista_transazioni.addWidget(self._cella(t.get("provider") or "", COLORE_BIANCO, 13), r, 1)
+            self.lista_transazioni.addWidget(self._cella(t.get("service") or "", COLORE_TESTO_SECONDARIO, 12), r, 2)
+            importo = self._cella(f"{'−' if uscita else '+'} {self._fmt(t['amount'])}", COLORE_BIANCO, 13, peso=600)
+            importo.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            self.lista_transazioni.addWidget(importo, r, 3)
+            self.lista_transazioni.addWidget(self._badge(t["type"], colore), r, 4)
+        self.lista_transazioni.setColumnStretch(1, 3)
+        self.lista_transazioni.setColumnStretch(2, 2)
+        self.lista_transazioni.setColumnMinimumWidth(3, 110)
+
+    @staticmethod
+    def _cella(testo: str, colore: str, dimensione: int, peso: int = 400) -> QLabel:
+        lbl = QLabel(testo)
+        lbl.setStyleSheet(
+            f"font-size: {dimensione}px; color: {colore}; font-weight: {peso}; padding: 6px 0;"
+        )
+        return lbl
+
+    @staticmethod
+    def _badge(testo: str, colore: str) -> QWidget:
+        contenitore = QWidget()
+        contenitore.setStyleSheet("background: transparent;")
+        esterno = QHBoxLayout(contenitore)
+        esterno.setContentsMargins(0, 0, 0, 0)
+        esterno.setAlignment(Qt.AlignmentFlag.AlignRight)
+        badge = QFrame()
+        badge.setFixedHeight(22)
+        badge.setStyleSheet(
+            f"QFrame {{ background-color: {tinta(colore, 0.14)}; border-radius: 11px; }}"
+            f"QLabel {{ background: transparent; color: {COLORE_BIANCO}; font-size: 12px; }}"
+        )
+        lay = QHBoxLayout(badge)
+        lay.setContentsMargins(9, 0, 10, 0)
+        lay.setSpacing(6)
+        pallino = QLabel()
+        pallino.setPixmap(icona_pallino(colore, 7).pixmap(7, 7))
+        lay.addWidget(pallino)
+        lay.addWidget(QLabel(testo))
+        esterno.addWidget(badge)
+        return contenitore
 
     # ──────────────────────────────────────────────────────────────
     #  Lingua
@@ -278,7 +530,7 @@ class DashboardView(BaseView):
         if hasattr(self.main_window, 'menu'):
             self.main_window.menu.blockSignals(False)
 
-        self.proprieta = self.property_service.get_all()
+        self.proprieta = sorted(self.property_service.get_all(), key=lambda p: p["id"])
         self.setup_ui()
 
     def clear_layout(self, layout):
@@ -292,183 +544,6 @@ class DashboardView(BaseView):
                     self.clear_layout(item.layout())
 
     # ──────────────────────────────────────────────────────────────
-    #  Info proprietà
-    # ──────────────────────────────────────────────────────────────
-
-    def update_info_display(self):
-        if not self.proprieta:
-            self.info_name.setText(
-                self.tm.get("ETICHETTE", "NESSUNA_PROPRIETA_TROVATA")
-            )
-            self.info_address.setText("")
-            self.info_owner.setText("")
-        elif self.selected_property is None:
-            num_prop = len(self.proprieta)
-            self.info_name.setText(
-                f"🏡 {num_prop} {self.tm.get('ETICHETTE', 'PROPRIETA_TOTALI')}"
-            )
-            self.info_address.setText("")
-            self.info_owner.setText("")
-        else:
-            p = self.selected_property
-            self.info_name.setText(f"🏡 {p['name']}")
-            self.info_address.setText(f"📍 {p['address']}")
-
-            # Riga extra: gestita da / mq / classe energetica
-            extras = []
-            if p.get('managed_by'):
-                extras.append(f"🏢 {p['managed_by']}")
-            if p.get('square_meters'):
-                sqm = p['square_meters']
-                sqm_str = str(int(sqm)) if sqm == int(sqm) else str(sqm)
-                extras.append(f"📐 {sqm_str} m²")
-            if p.get('energy_class'):
-                extras.append(f"⚡ {p['energy_class']}")
-            self.info_owner.setText("  ·  ".join(extras) if extras else "")
-
-    # ──────────────────────────────────────────────────────────────
-    #  Prossima scadenza — usa warning_days dal DB
-    # ──────────────────────────────────────────────────────────────
-
-    def update_next_deadline(self):
-        """
-        Aggiorna il widget della prossima scadenza.
-
-        Logica colori basata su warning_days letto dal DB:
-          - Scaduta (days_left < 0)      → rosso    🔴
-          - Oggi (days_left == 0)        → rosso    🔴
-          - Entro warning_days giorni    → arancione 🟠  ← preferenza utente dal DB
-          - Oltre warning_days giorni    → verde    🟢
-        """
-        property_id   = self.selected_property["id"] if self.selected_property else None
-        next_deadline = self.deadline_service.get_next_deadline(property_id)
-        warning_days  = self._warning_days()   # ← letto dal DB
-
-        if not next_deadline:
-            self.deadline_title_label.setText(
-                self.tm.get("ETICHETTE", "NESSUNA_SCADENZA")
-            )
-            self.deadline_date_label.setStyleSheet(
-                "color: #2ecc71; font-size: 12px;"
-            )
-            self.deadline_date_label.setText("")
-            self.deadline_desc_label.setText("")
-            return
-
-        self.deadline_title_label.setText(f"📌 {next_deadline['title']}")
-
-        due_date  = datetime.strptime(next_deadline['due_date'], "%Y-%m-%d").date()
-        days_left = (due_date - date.today()).days
-
-        if days_left < 0:
-            # Scaduta
-            date_text = f"⚠️ Scaduta {abs(days_left)} giorni fa"
-            color     = "#e74c3c"   # rosso
-            weight    = "bold"
-        elif days_left == 0:
-            # Oggi
-            date_text = self.tm.get("ETICHETTE", "OGGI")
-            color     = "#e74c3c"   # rosso
-            weight    = "bold"
-        elif days_left <= warning_days:
-            # Imminente: entro la finestra di preavviso scelta dall'utente
-            if days_left == 1:
-                date_text = self.tm.get("ETICHETTE", "DOMANI")
-            else:
-                date_text = (
-                    self.tm.get("ETICHETTE", "IN_X_GIORNI")
-                    .replace('XXX', str(days_left))
-                )
-            color  = "#f59e0b"  # arancione COLORE_WARNING
-            weight = "bold"
-        else:
-            # Scadenza lontana, tutto ok
-            date_text = (
-                self.tm.get("ETICHETTE", "IN_X_GIORNI")
-                .replace('XXX', str(days_left))
-            )
-            color  = "#2ecc71"  # verde
-            weight = "normal"
-
-        self.deadline_date_label.setStyleSheet(
-            f"color: {color}; font-size: 12px; font-weight: {weight};"
-        )
-        self.deadline_date_label.setText(
-            f"{date_text} - {due_date.strftime('%d/%m/%Y')}"
-        )
-        self.deadline_desc_label.setText(
-            next_deadline.get('description')
-            or self.tm.get("ETICHETTE", "NESSUNA_DESCRIZIONE")
-        )
-
-    # ──────────────────────────────────────────────────────────────
-    #  Grafico donut
-    # ──────────────────────────────────────────────────────────────
-
-    def update_chart(self):
-        self._saved_period_index = self.period_selector.currentIndex()
-        text = self.period_selector.currentText()
-
-        period_map = {
-            self.tm.get("ETICHETTE", "1_MONTH"):  1,
-            self.tm.get("ETICHETTE", "6_MONTHS"): 6,
-            self.tm.get("ETICHETTE", "1_YEAR"):   12,
-            self.tm.get("ETICHETTE", "3_YEARS"):  36,
-        }
-        mesi       = period_map.get(text, 1)
-        end_date   = datetime.today()
-        start_date = end_date - timedelta(days=30 * mesi)
-
-        property_id = self.selected_property["id"] if self.selected_property else None
-        rows    = self.transaction_service.get_all(
-            property_id=property_id,
-            start_date=start_date.strftime("%Y-%m-%d"),
-            end_date=end_date.strftime("%Y-%m-%d"),
-        )
-        entrate = sum(t["amount"] for t in rows if t["type"] == "Entrata")
-        uscite  = sum(t["amount"] for t in rows if t["type"] == "Uscita")
-
-        self.ax.clear()
-        sizes  = [entrate, uscite]
-        colors = [COLORE_ITEM_SELEZIONATO, COLORE_GRIGIO]
-
-        if sum(sizes) == 0:
-            self.ax.pie([1], colors=[COLORE_GRIGIO], startangle=90,
-                        wedgeprops=dict(width=0.4))
-            self.ax.text(0, 0, self.tm.get("MESSAGGI", "NESSUN_DATO"),
-                         ha="center", va="center", fontsize=14, color=COLORE_GRIGIO)
-        else:
-            self.ax.pie(sizes, colors=colors, startangle=90,
-                        wedgeprops=dict(width=0.4))
-            self.ax.text(0, 0, self._fmt(entrate - uscite),
-                         ha='center', va='center',
-                         fontsize=14, fontweight='bold', color=COLORE_BIANCO)
-
-            labels      = [self.tm.get("ETICHETTE", "GUADAGNI"),
-                           self.tm.get("ETICHETTE", "SPESE")]
-            perc        = [f"{sizes[0] / sum(sizes) * 100:.0f}%",
-                           f"{sizes[1] / sum(sizes) * 100:.0f}%"]
-            x_positions = [-1.2, 1.1]
-            y_text      = -1.5
-            dot_offset  = -0.25
-            dot_size    = 0.1
-
-            for label, p, x, c in zip(labels, perc, x_positions, colors, strict=False):
-                self.ax.add_patch(mpatches.Circle(
-                    (x + dot_offset, y_text), dot_size, color=c,
-                    transform=self.ax.transData, clip_on=False)
-                )
-                self.ax.text(x, y_text, f"{label} {p}",
-                             ha='left', va='center',
-                             color=COLORE_BIANCO, fontsize=10)
-            self.ax.set_aspect('equal')
-
-        centre_circle = mpatches.Circle((0, 0), 0.70, fc=COLORE_WIDGET_2)
-        self.ax.add_artist(centre_circle)
-        self.ax.set_title(self.tm.get("ETICHETTE", "SALDO"), color=COLORE_BIANCO, y=1)
-        self.chart_canvas.draw()
-
-    # ──────────────────────────────────────────────────────────────
     #  Selezione proprietà
     # ──────────────────────────────────────────────────────────────
 
@@ -478,7 +553,4 @@ class DashboardView(BaseView):
             self.selected_property = None
         elif 0 < index <= len(self.proprieta):
             self.selected_property = self.proprieta[index - 1]
-
-        self.update_info_display()
-        self.update_chart()
-        self.update_next_deadline()
+        self.aggiorna_dati()
