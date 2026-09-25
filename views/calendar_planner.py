@@ -16,7 +16,7 @@ Il colore di ogni proprietà è stabile: dipende dall'ordine di creazione
 from datetime import date
 
 from PySide6.QtCore import QDate, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QFontMetrics, QIcon, QPainter, QPixmap
+from PySide6.QtGui import QFontMetrics, QIcon
 from PySide6.QtWidgets import (
     QComboBox,
     QDateEdit,
@@ -49,6 +49,7 @@ from styles import (
     default_dialog_style,
 )
 from validation_utils import ValidationError, validate_date, validate_required_text
+from views.ui_helpers import icona_pallino, tinta
 
 # ──────────────────────────────────────────────────────────────────
 #  Palette proprietà: tinte sobrie e ben distinguibili su fondo scuro
@@ -82,12 +83,6 @@ def colore_proprieta(property_id, ordine_ids: list) -> str:
     return PALETTE_PROPRIETA[ordine_ids.index(property_id) % len(PALETTE_PROPRIETA)]
 
 
-def tinta(colore_hex: str, alpha: float) -> str:
-    """Versione trasparente di un colore, per gli sfondi dei chip."""
-    c = QColor(colore_hex)
-    return f"rgba({c.red()}, {c.green()}, {c.blue()}, {alpha:.2f})"
-
-
 def stato_scadenza(due: date, oggi: date, warning_days: int) -> tuple[str, int]:
     """Ritorna (stato, giorni_mancanti). Giorni negativi = scaduta."""
     giorni = (due - oggi).days
@@ -98,19 +93,6 @@ def stato_scadenza(due: date, oggi: date, warning_days: int) -> tuple[str, int]:
     if giorni <= warning_days:
         return STATO_IMMINENTE, giorni
     return STATO_OK, giorni
-
-
-def icona_pallino(colore_hex: str, diametro: int = 12) -> QIcon:
-    """Icona a cerchio pieno, usata nelle combo e nella legenda."""
-    pix = QPixmap(diametro, diametro)
-    pix.fill(Qt.GlobalColor.transparent)
-    painter = QPainter(pix)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    painter.setBrush(QColor(colore_hex))
-    painter.setPen(Qt.PenStyle.NoPen)
-    painter.drawEllipse(0, 0, diametro, diametro)
-    painter.end()
-    return QIcon(pix)
 
 
 def _data_da_iso(valore) -> date:

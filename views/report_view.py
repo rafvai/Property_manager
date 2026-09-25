@@ -1,6 +1,6 @@
 from calendar import monthrange
 from collections import defaultdict
-from datetime import datetime
+from datetime import date, datetime
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QIcon
@@ -25,18 +25,36 @@ from resources import icon_path
 from services.export_service import ExportService
 from services.import_service import ImportService
 from styles import (
-    COLORE_BACKGROUND,
     COLORE_BIANCO,
     COLORE_ERROR,
+    COLORE_ITEM_HOVER,
     COLORE_SUCCESS,
     COLORE_WIDGET_2,
     default_aggiungi_button,
     default_combo_box_style,
-    default_style_secondary_buttons,
     default_title_style,
 )
 from validation_utils import ValidationError, format_currency, parse_decimal
 from views.base_view import BaseView
+from views.ui_helpers import (
+    BottoneIcona,
+    icona_cestino,
+    icona_pallino,
+    mescola,
+    stile_scrollbar,
+    tinta,
+)
+
+COLORE_TESTO_SECONDARIO = "#94a3b8"
+COLORE_DIVISORE         = "#2b3a4f"
+
+STILE_BOTTONE_ICONA = f"""
+    QPushButton {{
+        background: transparent; border: 1px solid #334155; border-radius: 6px;
+        padding: 6px 12px; min-width: 20px;
+    }}
+    QPushButton:hover {{ border-color: {COLORE_ITEM_HOVER}; background-color: {COLORE_WIDGET_2}; }}
+"""
 
 
 class ReportView(BaseView):
@@ -111,32 +129,28 @@ class ReportView(BaseView):
         self.month_selector.currentIndexChanged.connect(self.update_report)
         header_layout.addWidget(self.month_selector)
 
-        main_layout.addLayout(header_layout)
-
-        # ── Header riga 2: azioni ──────────────────────────────────
-        actions_layout = QHBoxLayout()
-        actions_layout.addStretch()
+        header_layout.addSpacing(12)
 
         add_btn = QPushButton(f"+ {self.tm.get('PULSANTI', 'AGGIUNGI')}")
         add_btn.setStyleSheet(default_aggiungi_button)
         add_btn.clicked.connect(self.add_transaction)
-        actions_layout.addWidget(add_btn)
+        header_layout.addWidget(add_btn)
 
         import_btn = QPushButton()
         import_btn.setIcon(QIcon(icon_path("import.png")))
         import_btn.setToolTip(self.tm.get("TOOLTIP", "IMPORTA_DA_EXCEL"))
-        import_btn.setStyleSheet(default_style_secondary_buttons)
+        import_btn.setStyleSheet(STILE_BOTTONE_ICONA)
         import_btn.clicked.connect(self.import_from_excel)
-        actions_layout.addWidget(import_btn)
+        header_layout.addWidget(import_btn)
 
         export_btn = QPushButton()
         export_btn.setIcon(QIcon(icon_path("export.png")))
         export_btn.setToolTip(self.tm.get("TOOLTIP", "ESPORTA"))
-        export_btn.setStyleSheet(default_style_secondary_buttons)
+        export_btn.setStyleSheet(STILE_BOTTONE_ICONA)
         export_btn.clicked.connect(self.open_export_dialog)
-        actions_layout.addWidget(export_btn)
+        header_layout.addWidget(export_btn)
 
-        main_layout.addLayout(actions_layout)
+        main_layout.addLayout(header_layout)
 
         # ── Tabelle categorie Spese / Guadagni ─────────────────────
         tables_layout = QHBoxLayout()
@@ -161,12 +175,15 @@ class ReportView(BaseView):
         transactions_layout.setSpacing(0)
 
         # Header storico
-        trans_header_widget = QWidget()
+        # Stesso fondo della scheda, separato dal contenuto da un filo
+        trans_header_widget = QFrame()
+        trans_header_widget.setObjectName("intestazione")
         trans_header_widget.setStyleSheet(
-            f"background-color: {COLORE_BACKGROUND}; border-radius: 10px 10px 0 0;"
+            f"QFrame#intestazione {{ background: transparent; border: none;"
+            f" border-bottom: 1px solid {COLORE_DIVISORE}; }}"
         )
         trans_header_layout = QHBoxLayout(trans_header_widget)
-        trans_header_layout.setContentsMargins(20, 12, 20, 12)
+        trans_header_layout.setContentsMargins(20, 10, 20, 10)
 
         trans_title = QLabel(self.tm.get("ETICHETTE", "STORICO_TRANSAZIONI").upper())
         trans_title.setStyleSheet(
@@ -201,16 +218,18 @@ class ReportView(BaseView):
                 font-size: 13px;
                 border: none;
                 border-radius: 0 0 10px 10px;
+                outline: none;
             }}
             QTableWidget::item {{
                 padding: 10px 8px;
-                border-bottom: 1px solid #334155;
+                border-bottom: 1px solid {COLORE_DIVISORE};
             }}
+            QTableWidget::item:hover {{ background-color: {tinta(COLORE_ITEM_HOVER, 0.10)}; }}
             QTableWidget::item:selected {{
-                background-color: #1e3a5f;
+                background-color: {tinta(COLORE_ITEM_HOVER, 0.18)};
                 color: white;
             }}
-        """)
+        """ + stile_scrollbar())
         self.transactions_table.horizontalHeader().setSectionResizeMode(
             2, QHeaderView.ResizeMode.Stretch
         )
@@ -229,9 +248,12 @@ class ReportView(BaseView):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
 
-        header_widget = QWidget()
+        header_widget = QFrame()
+        header_widget.setObjectName("intestazione")
         header_widget.setStyleSheet(
-            f"background-color: {COLORE_BACKGROUND}; border-radius: 10px 10px 0 0;"
+            f"QFrame#intestazione {{ background: transparent; border: none;"
+            f" border-bottom: 1px solid {COLORE_DIVISORE}; }}"
+            f"QLabel {{ background: transparent; border: none; }}"
         )
         header_layout = QHBoxLayout(header_widget)
         header_layout.setContentsMargins(16, 14, 20, 14)
@@ -253,9 +275,10 @@ class ReportView(BaseView):
         )
         text_col.addWidget(lbl_small)
 
+        # Il colore lo porta la barra: il totale resta bianco e leggibile
         total_label = QLabel(f"0,00 {self._currency()}")
         total_label.setStyleSheet(
-            f"font-size: 20px; font-weight: 600; color: {accent_color};"
+            f"font-size: 22px; font-weight: 600; color: {COLORE_BIANCO};"
         )
         text_col.addWidget(total_label)
 
@@ -275,16 +298,17 @@ class ReportView(BaseView):
                 font-size: 13px;
                 border: none;
                 border-radius: 0 0 10px 10px;
+                outline: none;
             }}
             QTableWidget::item {{
                 padding: 10px 0px;
-                border-bottom: 1px solid #334155;
+                border-bottom: 1px solid {COLORE_DIVISORE};
             }}
             QTableWidget::item:selected {{
                 background-color: transparent;
                 color: white;
             }}
-        """)
+        """ + stile_scrollbar())
         table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
@@ -371,11 +395,13 @@ class ReportView(BaseView):
             cat_layout.setContentsMargins(20, 0, 8, 0)
             cat_layout.setSpacing(10)
 
+            # Pallino sempre più tenue scendendo in classifica: colore
+            # mescolato con lo sfondo, perché opacity nei QSS non esiste
             dot = QFrame()
             dot.setFixedSize(8, 8)
-            alpha = max(0.35, 1.0 - i * 0.15)
+            quota = max(0.35, 1.0 - i * 0.15)
             dot.setStyleSheet(
-                f"background-color: {accent_color}; border-radius: 4px; opacity: {alpha};"
+                f"background-color: {mescola(accent_color, COLORE_WIDGET_2, quota)}; border-radius: 4px;"
             )
             cat_layout.addWidget(dot)
 
@@ -388,11 +414,11 @@ class ReportView(BaseView):
 
             # Importo con simbolo valuta corretto
             amount_item = QTableWidgetItem(self._fmt(amount))
-            amount_item.setForeground(QColor(accent_color))
+            amount_item.setForeground(QColor(COLORE_BIANCO))
             amount_item.setTextAlignment(
                 Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
             )
-            amount_item.setFont(QFont("", -1, QFont.Weight.Medium))
+            amount_item.setFont(self._font(table, QFont.Weight.Medium))
             table.setItem(i, 1, amount_item)
 
             bar_widget = QWidget()
@@ -412,14 +438,14 @@ class ReportView(BaseView):
                     border: none;
                 }}
                 QProgressBar::chunk {{
-                    background-color: {accent_color};
+                    background-color: {mescola(accent_color, COLORE_WIDGET_2, 0.85)};
                     border-radius: 2px;
                 }}
             """)
             bar_layout.addWidget(bar, stretch=1)
 
             perc_lbl = QLabel(f"{percentage:.0f}%")
-            perc_lbl.setStyleSheet("color: #7f8c8d; font-size: 12px;")
+            perc_lbl.setStyleSheet(f"color: {COLORE_TESTO_SECONDARIO}; font-size: 12px;")
             perc_lbl.setFixedWidth(32)
             perc_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             bar_layout.addWidget(perc_lbl)
@@ -445,7 +471,7 @@ class ReportView(BaseView):
         total_item.setTextAlignment(
             Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
         )
-        total_item.setFont(QFont("", -1, QFont.Weight.Bold))
+        total_item.setFont(self._font(table, QFont.Weight.Bold))
         table.setItem(tot_row, 1, total_item)
         table.setItem(tot_row, 2, QTableWidgetItem(""))
         table.setRowHeight(tot_row, 36)
@@ -499,42 +525,40 @@ class ReportView(BaseView):
             self.tm.get("ETICHETTE", "TIPO"),
             ""
         ]
+        font_intestazione = self._font(self.transactions_table, QFont.Weight.DemiBold)
+        font_intestazione.setPointSizeF(max(7.5, font_intestazione.pointSizeF() - 1))
         for col, text in enumerate(headers):
-            item = QTableWidgetItem(text)
-            item.setForeground(QColor("#7f8c8d"))
-            item.setFont(QFont("", -1, QFont.Weight.Normal))
-            item.setBackground(QColor(COLORE_BACKGROUND))
+            item = QTableWidgetItem(text.upper())
+            item.setForeground(QColor(COLORE_TESTO_SECONDARIO))
+            item.setFont(font_intestazione)
             item.setTextAlignment(
                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
                 if col == 2 else Qt.AlignmentFlag.AlignCenter
             )
             self.transactions_table.setItem(0, col, item)
-        self.transactions_table.setRowHeight(0, 36)
+        self.transactions_table.setRowHeight(0, 32)
         self.transactions_table.setColumnWidth(5, 48)
 
+        font_importo = self._font(self.transactions_table, QFont.Weight.Medium)
+
         for i, trans in enumerate(filtered, start=1):
-            date_val = trans['date']
-            date_str = (date_val.strftime("%d/%m/%Y")
-                        if hasattr(date_val, 'strftime') else str(date_val))
+            is_uscita   = trans['type'] == 'Uscita'
+            colore_tipo = COLORE_ERROR if is_uscita else COLORE_SUCCESS
 
-            is_uscita    = trans['type'] == 'Uscita'
-            amount_color = COLORE_ERROR if is_uscita else COLORE_SUCCESS
-            bg_color     = COLORE_WIDGET_2 if i % 2 == 1 else COLORE_BACKGROUND
-
-            def _cell(text, align=Qt.AlignmentFlag.AlignCenter, color=COLORE_BIANCO, bg=bg_color):
+            def _cell(text, align=Qt.AlignmentFlag.AlignCenter, color=COLORE_BIANCO):
                 item = QTableWidgetItem(text)
                 item.setForeground(QColor(color))
-                item.setBackground(QColor(bg))
                 item.setTextAlignment(align | Qt.AlignmentFlag.AlignVCenter)
                 return item
 
-            self.transactions_table.setItem(i, 0, _cell(date_str))
-            # Importo con simbolo valuta corretto
-            self.transactions_table.setItem(
-                i, 1,
-                _cell(self._fmt(trans['amount']),
-                      Qt.AlignmentFlag.AlignRight, amount_color)
-            )
+            self.transactions_table.setItem(i, 0, _cell(self._data_breve(trans['date'])))
+
+            # Importo neutro con segno: il colore lo porta il badge del tipo
+            segno   = "\u2212" if is_uscita else "+"
+            importo = _cell(f"{segno} {self._fmt(trans['amount'])}", Qt.AlignmentFlag.AlignRight)
+            importo.setFont(font_importo)
+            self.transactions_table.setItem(i, 1, importo)
+
             self.transactions_table.setItem(
                 i, 2,
                 _cell(trans.get('provider') or trans.get('service', ''),
@@ -543,40 +567,68 @@ class ReportView(BaseView):
             self.transactions_table.setItem(
                 i, 3,
                 _cell(trans.get('service') or 'Altro',
-                      Qt.AlignmentFlag.AlignLeft, "#7f8c8d")
+                      Qt.AlignmentFlag.AlignLeft, COLORE_TESTO_SECONDARIO)
             )
-            self.transactions_table.setItem(
-                i, 4,
-                _cell(trans['type'], color=amount_color)
-            )
+            self.transactions_table.setCellWidget(i, 4, self._badge_tipo(trans['type'], colore_tipo))
 
-            del_btn = QPushButton("🗑")
-            del_btn.setFixedSize(20, 20)
-            del_btn.setStyleSheet(f"""
-                QPushButton {{
-                    background-color: transparent;
-                    color: #7f8c8d;
-                    border: none;
-                    border-radius: 4px;
-                    font-size: 14px;
-                }}
-                QPushButton:hover {{
-                    background-color: {COLORE_ERROR};
-                    color: white;
-                }}
-            """)
+            del_btn = BottoneIcona(
+                icona_cestino(COLORE_TESTO_SECONDARIO), icona_cestino(COLORE_ERROR),
+                tooltip=self.tm.get("PULSANTI", "ELIMINA"),
+            )
+            del_btn.setFixedSize(26, 26)
             del_btn.clicked.connect(
                 lambda checked=False, t=trans: self.delete_transaction(t)
             )
-
             container = QWidget()
-            container.setStyleSheet(f"background-color: {bg_color};")
+            container.setStyleSheet("background: transparent;")
             cl = QHBoxLayout(container)
             cl.setContentsMargins(0, 0, 8, 0)
             cl.addStretch()
             cl.addWidget(del_btn)
             self.transactions_table.setCellWidget(i, 5, container)
             self.transactions_table.setRowHeight(i, 40)
+
+    # ── helper di presentazione ────────────────────────────────────
+    @staticmethod
+    def _font(widget, peso) -> QFont:
+        """Font del widget con un peso diverso: QFont("") userebbe una famiglia vuota."""
+        f = QFont(widget.font())
+        f.setWeight(peso)
+        return f
+
+    @staticmethod
+    def _data_breve(valore) -> str:
+        """dd/MM/yyyy da date o da stringa ISO."""
+        if isinstance(valore, date):
+            return valore.strftime("%d/%m/%Y")
+        try:
+            return date.fromisoformat(str(valore)[:10]).strftime("%d/%m/%Y")
+        except ValueError:
+            return str(valore)
+
+    def _badge_tipo(self, testo: str, colore: str) -> QWidget:
+        """Badge discreto: pallino colorato e testo su sfondo tinto."""
+        contenitore = QWidget()
+        contenitore.setStyleSheet("background: transparent;")
+        esterno = QHBoxLayout(contenitore)
+        esterno.setContentsMargins(0, 0, 0, 0)
+        esterno.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        badge = QFrame()
+        badge.setStyleSheet(
+            f"QFrame {{ background-color: {tinta(colore, 0.14)}; border-radius: 11px; }}"
+            f"QLabel {{ background: transparent; color: {COLORE_BIANCO}; font-size: 12px; }}"
+        )
+        badge.setFixedHeight(22)
+        lay = QHBoxLayout(badge)
+        lay.setContentsMargins(9, 0, 10, 0)
+        lay.setSpacing(6)
+        pallino = QLabel()
+        pallino.setPixmap(icona_pallino(colore, 7).pixmap(7, 7))
+        lay.addWidget(pallino)
+        lay.addWidget(QLabel(testo))
+        esterno.addWidget(badge)
+        return contenitore
 
     def delete_transaction(self, trans):
         reply = QMessageBox.question(

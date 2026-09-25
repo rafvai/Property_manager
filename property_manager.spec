@@ -58,6 +58,7 @@ a = Analysis(
         'views.accounting_view',
         'views.calendar_view',
         'views.calendar_planner',
+        'views.ui_helpers',
         'views.dashboard_view',
         'views.documents_view',
         'views.properties_view',
