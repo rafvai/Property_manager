@@ -163,7 +163,9 @@ class ReportView(BaseView):
 
         tables_layout.addWidget(self.gastos_frame)
         tables_layout.addWidget(self.ganancias_frame)
-        main_layout.addLayout(tables_layout)
+        # Pannelli e storico si dividono l'altezza 2:3, così i pannelli
+        # crescono con la finestra invece di restare alla misura minima
+        main_layout.addLayout(tables_layout, stretch=2)
 
         # ── Tabella storico transazioni ────────────────────────────
         transactions_frame = QFrame()
@@ -230,12 +232,19 @@ class ReportView(BaseView):
                 color: white;
             }}
         """ + stile_scrollbar())
-        self.transactions_table.horizontalHeader().setSectionResizeMode(
-            2, QHeaderView.ResizeMode.Stretch
-        )
+        # Larghezze: descrizione e categoria si dividono lo spazio libero
+        # (2:1), le altre colonne hanno misura fissa
+        intestazione = self.transactions_table.horizontalHeader()
+        for colonna in (0, 1, 3, 4, 5):
+            intestazione.setSectionResizeMode(colonna, QHeaderView.ResizeMode.Fixed)
+        intestazione.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self.transactions_table.setColumnWidth(0, 120)
+        self.transactions_table.setColumnWidth(1, 130)
+        self.transactions_table.setColumnWidth(4, 130)
+        self.transactions_table.setColumnWidth(5, 48)
         transactions_layout.addWidget(self.transactions_table)
 
-        main_layout.addWidget(transactions_frame, stretch=1)
+        main_layout.addWidget(transactions_frame, stretch=3)
 
         self.update_report()
 
@@ -310,10 +319,11 @@ class ReportView(BaseView):
             }}
         """ + stile_scrollbar())
         table.setSelectionMode(QTableWidget.SelectionMode.NoSelection)
+        # Nome e barra si dividono lo spazio, l'importo prende quello che serve
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
-        table.setColumnWidth(2, 120)
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        table.setMinimumHeight(180)
 
         layout.addWidget(table)
         return frame, table, total_label
@@ -537,7 +547,7 @@ class ReportView(BaseView):
             )
             self.transactions_table.setItem(0, col, item)
         self.transactions_table.setRowHeight(0, 32)
-        self.transactions_table.setColumnWidth(5, 48)
+        self._ridimensiona_colonne_storico()
 
         font_importo = self._font(self.transactions_table, QFont.Weight.Medium)
 
@@ -587,6 +597,17 @@ class ReportView(BaseView):
             cl.addWidget(del_btn)
             self.transactions_table.setCellWidget(i, 5, container)
             self.transactions_table.setRowHeight(i, 40)
+
+    def _ridimensiona_colonne_storico(self):
+        """La categoria prende un terzo dello spazio libero, la descrizione il resto."""
+        tabella = self.transactions_table
+        fisse   = sum(tabella.columnWidth(c) for c in (0, 1, 4, 5))
+        libero  = max(0, tabella.viewport().width() - fisse)
+        tabella.setColumnWidth(3, max(140, libero // 3))
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._ridimensiona_colonne_storico()
 
     # ── helper di presentazione ────────────────────────────────────
     @staticmethod
