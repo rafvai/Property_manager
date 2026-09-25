@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import matplotlib.patches as mpatches
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
@@ -356,8 +356,8 @@ class DashboardView(BaseView):
 
         self.deadline_title_label.setText(f"📌 {next_deadline['title']}")
 
-        due_date  = datetime.strptime(next_deadline['due_date'], "%Y-%m-%d")
-        days_left = (due_date - datetime.now()).days
+        due_date  = datetime.strptime(next_deadline['due_date'], "%Y-%m-%d").date()
+        days_left = (due_date - date.today()).days
 
         if days_left < 0:
             # Scaduta
