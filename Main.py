@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 
+from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 # ── Config è il primo import: carica .env prima di tutto il resto ──
@@ -53,8 +54,7 @@ class AppController:
     def _skip_login(self):
         self.logger.warning("⚠️  DEV MODE: login bypassato (DEV_SKIP_LOGIN=true)")
         win = self._build_dashboard(is_admin=True)
-        win.show()
-        self._window = win
+        self._present(win)
 
     # ──────────────────────────────────────────────
     #  LOGIN
@@ -70,14 +70,12 @@ class AppController:
             if Config.DEV_LOGIN_PASSWORD:
                 win.password_input.setText(Config.DEV_LOGIN_PASSWORD)
 
-        win.show()
-        self._window = win
+        self._present(win)
 
     def _on_login_ok(self, email: str, token: str, is_admin: bool):
         self.logger.info(f"AppController: accesso confermato per {email}, admin={is_admin}")
         win = self._build_dashboard(is_admin=is_admin)
-        win.show()
-        self._window = win
+        self._present(win)
 
     # ──────────────────────────────────────────────
     #  REGISTER
@@ -87,8 +85,7 @@ class AppController:
         win = RegisterWindow(self.services['auth'], self.logger)
         win.register_successful.connect(self._on_register_ok)
         win.back_to_login.connect(self._on_back_to_login)
-        win.show()
-        self._window = win
+        self._present(win)
 
     def _on_register_ok(self):
         # Il server dopo la registrazione non rilascia un token:
@@ -105,6 +102,27 @@ class AppController:
     # ──────────────────────────────────────────────
     #  HELPER
     # ──────────────────────────────────────────────
+    def _present(self, win):
+        """Mostra la finestra e la porta in primo piano.
+
+        Le finestre senza cornice e lo splash di PyInstaller non ricevono
+        il fuoco da Windows in modo affidabile: raise + activate, ripetuti
+        un attimo dopo, quando lo splash è già stato chiuso.
+        """
+        self._window = win
+        win.show()
+        self.bring_to_front()
+        QTimer.singleShot(150, self.bring_to_front)
+
+    def bring_to_front(self):
+        win = self._window
+        if win is None or not win.isVisible():
+            return
+        if win.isMinimized():
+            win.showNormal()
+        win.raise_()
+        win.activateWindow()
+
     def _build_dashboard(self, is_admin: bool) -> DashboardWindow:
         s = self.services
         return DashboardWindow(
@@ -241,5 +259,6 @@ if __name__ == "__main__":
         pyi_splash.close()
     except ImportError:
         pass
+    controller.bring_to_front()
 
     sys.exit(app.exec())
