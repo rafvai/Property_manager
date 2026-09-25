@@ -61,18 +61,23 @@ class RegisterWindow(QWidget):
         self._drag_pos    = None
 
         self.setWindowTitle("Property Manager — Registrazione")
-        self.setMinimumSize(480, 580)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
 
-        geo = QApplication.primaryScreen().geometry()
-        self.setGeometry((geo.width() - 480) // 2, (geo.height() - 580) // 2, 480, 580)
-
         self._build_ui()
+
+        # Finestra senza cornice, quindi non ridimensionabile dall'utente:
+        # l'altezza va calcolata dal contenuto, un valore fisso troppo basso
+        # fa sovrapporre etichette e campi
+        self.setFixedWidth(480)
+        self.ensurePolished()
+        self.setFixedHeight(self.sizeHint().height())
+        geo = QApplication.primaryScreen().availableGeometry()
+        self.move(geo.center() - self.rect().center())
 
     def _build_ui(self):
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(20, 20, 20, 20)
+        outer.setContentsMargins(12, 12, 12, 12)
 
         card = QFrame()
         card.setObjectName("regCard")
@@ -80,8 +85,8 @@ class RegisterWindow(QWidget):
         outer.addWidget(card)
 
         lay = QVBoxLayout(card)
-        lay.setContentsMargins(40, 32, 40, 32)
-        lay.setSpacing(14)
+        lay.setContentsMargins(36, 20, 36, 20)
+        lay.setSpacing(8)
 
         # drag / close bar
         drag_row = QHBoxLayout()
@@ -96,7 +101,7 @@ class RegisterWindow(QWidget):
         lay.addLayout(drag_row)
 
         # header
-        icon = self._lbl("🎟️", "font-size:40px;")
+        icon = self._lbl("🎟️", "font-size:32px;")
         icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lay.addWidget(icon)
 
@@ -108,14 +113,12 @@ class RegisterWindow(QWidget):
         sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lay.addWidget(sub)
 
-        lay.addSpacing(4)
-
         # Codice invito
         lay.addWidget(self._lbl("Codice invito *", f"color:{COLORE_BIANCO};font-size:13px;font-weight:600;"))
         self.invite_input = QLineEdit()
         self.invite_input.setPlaceholderText("es. AB3X7K9M")
         self.invite_input.setStyleSheet(_INPUT)
-        self.invite_input.setMinimumHeight(46)
+        self.invite_input.setMinimumHeight(40)
         self.invite_input.textChanged.connect(
             lambda t: self.invite_input.setText(t.upper())
         )
@@ -126,7 +129,7 @@ class RegisterWindow(QWidget):
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Mario Rossi")
         self.name_input.setStyleSheet(_INPUT)
-        self.name_input.setMinimumHeight(46)
+        self.name_input.setMinimumHeight(40)
         lay.addWidget(self.name_input)
 
         # Email
@@ -134,7 +137,7 @@ class RegisterWindow(QWidget):
         self.email_input = QLineEdit()
         self.email_input.setPlaceholderText("tua@email.com")
         self.email_input.setStyleSheet(_INPUT)
-        self.email_input.setMinimumHeight(46)
+        self.email_input.setMinimumHeight(40)
         lay.addWidget(self.email_input)
 
         # Password
@@ -143,7 +146,7 @@ class RegisterWindow(QWidget):
         self.pwd_input.setEchoMode(QLineEdit.EchoMode.Password)
         self.pwd_input.setPlaceholderText("Scegli una password sicura…")
         self.pwd_input.setStyleSheet(_INPUT)
-        self.pwd_input.setMinimumHeight(46)
+        self.pwd_input.setMinimumHeight(40)
         lay.addWidget(self.pwd_input)
 
         # Conferma password
@@ -152,7 +155,7 @@ class RegisterWindow(QWidget):
         self.pwd_confirm.setEchoMode(QLineEdit.EchoMode.Password)
         self.pwd_confirm.setPlaceholderText("Ripeti la password…")
         self.pwd_confirm.setStyleSheet(_INPUT)
-        self.pwd_confirm.setMinimumHeight(46)
+        self.pwd_confirm.setMinimumHeight(40)
         self.pwd_confirm.returnPressed.connect(self._on_submit)
         lay.addWidget(self.pwd_confirm)
 
@@ -160,14 +163,14 @@ class RegisterWindow(QWidget):
         self.msg_label = QLabel("")
         self.msg_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.msg_label.setWordWrap(True)
+        self.msg_label.setFixedHeight(32)
         self.msg_label.setStyleSheet(f"color:{COLORE_ERROR};font-size:12px;")
-        self.msg_label.hide()
         lay.addWidget(self.msg_label)
 
         # Bottone registra
         self.submit_btn = QPushButton("Crea account")
         self.submit_btn.setStyleSheet(_BTN_PRIMARY)
-        self.submit_btn.setMinimumHeight(50)
+        self.submit_btn.setMinimumHeight(44)
         self.submit_btn.clicked.connect(self._on_submit)
         lay.addWidget(self.submit_btn)
 
