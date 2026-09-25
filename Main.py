@@ -86,6 +86,7 @@ class AppController:
         self._window.close()
         win = RegisterWindow(self.services['auth'], self.logger)
         win.register_successful.connect(self._on_register_ok)
+        win.back_to_login.connect(self._on_back_to_login)
         win.show()
         self._window = win
 
@@ -93,6 +94,11 @@ class AppController:
         # Il server dopo la registrazione non rilascia un token:
         # si torna al login, come indicato nel messaggio di conferma.
         self.logger.info("AppController: registrazione completata, ritorno al login")
+        self._window.close()
+        self._show_login()
+
+    def _on_back_to_login(self):
+        self.logger.info("AppController: ritorno al login da registrazione")
         self._window.close()
         self._show_login()
 
