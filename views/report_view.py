@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from dialogs import ExportDialog, TransactionDialogWithSuppliers
 from dialogs_import import ImportDialog
+from resources import icon_path
 from services.export_service import ExportService
 from services.import_service import ImportService
 from styles import (
@@ -122,14 +123,14 @@ class ReportView(BaseView):
         actions_layout.addWidget(add_btn)
 
         import_btn = QPushButton()
-        import_btn.setIcon(QIcon("./icons/import.png"))
+        import_btn.setIcon(QIcon(icon_path("import.png")))
         import_btn.setToolTip(self.tm.get("TOOLTIP", "IMPORTA_DA_EXCEL"))
         import_btn.setStyleSheet(default_style_secondary_buttons)
         import_btn.clicked.connect(self.import_from_excel)
         actions_layout.addWidget(import_btn)
 
         export_btn = QPushButton()
-        export_btn.setIcon(QIcon("./icons/export.png"))
+        export_btn.setIcon(QIcon(icon_path("export.png")))
         export_btn.setToolTip(self.tm.get("TOOLTIP", "ESPORTA"))
         export_btn.setStyleSheet(default_style_secondary_buttons)
         export_btn.clicked.connect(self.open_export_dialog)

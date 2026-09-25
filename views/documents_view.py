@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from dialogs import DocumentMetadataDialog
+from resources import icon_path
 from styles import (
     COLORE_BIANCO,
     COLORE_ITEM_HOVER,
@@ -40,10 +41,9 @@ class DocumentsView(BaseView):
         self.tm = translation_service
         self.logger = logger
         # Icone
-        icon_path = os.path.join(os.path.dirname(__file__), "..", "icons", "folder.png")
-        self.folder_icon = QIcon(icon_path) if os.path.exists(icon_path) else QIcon()
-        self.file_icon = QIcon("icons/file.png")
-        self.open_folder_icon = QIcon("icons/folder.png")
+        self.folder_icon = QIcon(icon_path("folder.png"))
+        self.file_icon = QIcon(icon_path("file.png"))
+        self.open_folder_icon = QIcon(icon_path("folder.png"))
 
         super().__init__(property_service, transaction_service, document_service, parent)
 

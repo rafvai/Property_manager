@@ -31,6 +31,7 @@ a = Analysis(
         'transaction_types',
         'security_manager',
         'log_manager',
+        'resources',
         'config',
         'ui_main',
         'ui_login',

@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
 )
 
 from dialogs import AddDeadlineDialog
+from resources import icon_path
 from styles import (
     COLORE_BIANCO,
     COLORE_ERROR,
@@ -554,10 +555,10 @@ class PlannerCalendarWidget(QWidget):
             QPushButton:hover {{ border-color: {COLORE_ITEM_HOVER}; }}
         """
         prev_btn = QPushButton()
-        prev_btn.setIcon(QIcon("./icons/left-arrow.png"))
+        prev_btn.setIcon(QIcon(icon_path("left-arrow.png")))
         prev_btn.setStyleSheet(stile_nav)
         next_btn = QPushButton()
-        next_btn.setIcon(QIcon("./icons/right-arrow.png"))
+        next_btn.setIcon(QIcon(icon_path("right-arrow.png")))
         next_btn.setStyleSheet(stile_nav)
         header.addWidget(prev_btn)
         header.addWidget(next_btn)

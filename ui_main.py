@@ -4,6 +4,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QHBoxLayout, QListWidget, QListWidgetItem, QMainWindow, QSizePolicy, QVBoxLayout, QWidget
 
 from dialogs import CustomTitleBar
+from resources import icon_path
 from services.deadline_service import DeadlineService
 from services.document_service import DocumentService
 from services.property_service import PropertyService
@@ -143,22 +144,22 @@ class DashboardWindow(QMainWindow):
         self.menu.clear()
 
         menu_items = [
-            ("icons/homepage.png",  self.tm.get("ETICHETTE", "DASHBOARD")),
-            ("icons/property.png",  self.tm.get("ETICHETTE", "PROPERTIES")),
-            ("icons/document.png",  self.tm.get("ETICHETTE", "DOCUMENTS")),
-            ("icons/bar-chart.png", self.tm.get("ETICHETTE", "FINANZE")),
-            ("icons/pie-chart.png", self.tm.get("ETICHETTE", "TRANSAZIONI")),
-            ("icons/calendar.png",  self.tm.get("ETICHETTE", "CALENDAR")),
-            ("icons/security.png",  self.tm.get("ETICHETTE", "FORNITORI")),
-            ("icons/settings.png",  self.tm.get("ETICHETTE", "IMPOSTAZIONI")),
+            (icon_path("homepage.png"),  self.tm.get("ETICHETTE", "DASHBOARD")),
+            (icon_path("property.png"),  self.tm.get("ETICHETTE", "PROPERTIES")),
+            (icon_path("document.png"),  self.tm.get("ETICHETTE", "DOCUMENTS")),
+            (icon_path("bar-chart.png"), self.tm.get("ETICHETTE", "FINANZE")),
+            (icon_path("pie-chart.png"), self.tm.get("ETICHETTE", "TRANSAZIONI")),
+            (icon_path("calendar.png"),  self.tm.get("ETICHETTE", "CALENDAR")),
+            (icon_path("security.png"),  self.tm.get("ETICHETTE", "FORNITORI")),
+            (icon_path("settings.png"),  self.tm.get("ETICHETTE", "IMPOSTAZIONI")),
         ]
         if self.is_admin:
             menu_items.append(
-                ("icons/translation.png", self.tm.get("MENU", "TRADUZIONI"))
+                (icon_path("translation.png"), self.tm.get("MENU", "TRADUZIONI"))
             )
 
-        for icon_path, text in menu_items:
-            item = QListWidgetItem(QIcon(icon_path), text)
+        for percorso_icona, text in menu_items:
+            item = QListWidgetItem(QIcon(percorso_icona), text)
             self.menu.addItem(item)
 
     def show_view(self, view):

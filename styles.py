@@ -1,5 +1,7 @@
 ########### COLORS ####################
 # Schema colori professionale: Dark Blue Corporate
+from resources import icon_url
+
 COLORE_BACKGROUND = "#0f1419"  # Nero-blu molto scuro
 COLORE_SECONDARIO = "#1a2332"  # Blu scuro
 COLORE_TERZIARIO = "#2c3e50"
@@ -40,7 +42,7 @@ default_combo_box_style = f"""
         width: 30px;
     }}
     QComboBox::down-arrow {{
-        image: url(icons/down-arrow.png);
+        image: url({icon_url('down-arrow.png')});
         width: 12px;
         height: 12px;
     }}
@@ -195,7 +197,7 @@ default_dialog_style = f"""
                 width: 30px;
             }}
             QComboBox::down-arrow {{
-                image: url(icons/down-arrow.png);
+                image: url({icon_url('down-arrow.png')});
                 width: 12px;
                 height: 12px;
             }}
@@ -250,12 +252,12 @@ default_dialog_style = f"""
                 background-color: {COLORE_ITEM_HOVER};
             }}
             QSpinBox::up-arrow {{
-                image: url(icons/up-arrow.png);
+                image: url({icon_url('up-arrow.png')});
                 width: 10px;
                 height: 10px;
             }}
             QSpinBox::down-arrow {{
-                image: url(icons/down-arrow.png);
+                image: url({icon_url('down-arrow.png')});
                 width: 10px;
                 height: 10px;
             }}

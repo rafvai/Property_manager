@@ -7,6 +7,7 @@ from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QComboBox, QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
+from resources import icon_path
 from styles import (
     COLORE_BIANCO,
     COLORE_GRIGIO,
@@ -124,9 +125,9 @@ class DashboardView(BaseView):
         lang_layout.setSpacing(5)
 
         self.language_combo = QComboBox()
-        self.language_combo.addItem(QIcon("icons/flag-it.png"), "Italiano", "it")
-        self.language_combo.addItem(QIcon("icons/flag-uk.png"), "English",  "en")
-        self.language_combo.addItem(QIcon("icons/flag-es.png"), "Español",  "es")
+        self.language_combo.addItem(QIcon(icon_path("flag-it.png")), "Italiano", "it")
+        self.language_combo.addItem(QIcon(icon_path("flag-uk.png")), "English",  "en")
+        self.language_combo.addItem(QIcon(icon_path("flag-es.png")), "Español",  "es")
         self.language_combo.setIconSize(QSize(20, 20))
         self.language_combo.setFixedWidth(150)
 
