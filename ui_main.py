@@ -1,6 +1,6 @@
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import QHBoxLayout, QListWidget, QListWidgetItem, QMainWindow, QSizePolicy, QVBoxLayout, QWidget
 
 from dialogs import CustomTitleBar
@@ -113,6 +113,52 @@ class DashboardWindow(QMainWindow):
 
         # SCHERMO INTERO DI DEFAULT
         self.showMaximized()
+
+        # Guida con F1; tour di benvenuto solo al primo avvio, a finestra già visibile
+        QShortcut(QKeySequence(Qt.Key.Key_F1), self).activated.connect(lambda: self.open_guide())
+        QTimer.singleShot(300, self._mostra_onboarding_se_primo_avvio)
+
+    # ──────────────────────────────────────────────
+    #  Onboarding e guida
+    # ──────────────────────────────────────────────
+
+    def _mostra_onboarding_se_primo_avvio(self):
+        if not self.user_prefs_service.is_onboarding_completed():
+            self.start_onboarding()
+
+    def start_onboarding(self):
+        from views.onboarding_dialog import OnboardingDialog
+        dialog = OnboardingDialog(
+            tm=self.tm,
+            user_prefs_service=self.user_prefs_service,
+            preferences_service=self.preferences_service,
+            property_service=self.property_service,
+            main_window=self,
+            logger=self.logger,
+            parent=self,
+        )
+        dialog.exec()
+        if dialog.sezione_scelta:
+            self.navigate_to_section(dialog.sezione_scelta)
+        elif dialog.proprieta_creata:
+            self.navigate_to_section("DASHBOARD")
+
+    def open_guide(self, argomento: str | None = None):
+        from views.guide_dialog import GuideDialog
+        dialog = GuideDialog(self.tm, argomento_iniziale=argomento, parent=self)
+        dialog.exec()
+        if dialog.sezione_scelta:
+            self.navigate_to_section(dialog.sezione_scelta)
+
+    def apply_language(self, lang_code: str):
+        """Cambia lingua e ricostruisce menu e dashboard."""
+        self.preferences_service.set_language(lang_code)
+        self.tm.set_language(lang_code)
+        self.menu.blockSignals(True)
+        self.update_menu_items()
+        self.menu.setCurrentRow(0)
+        self.menu.blockSignals(False)
+        self.show_view(self._build_dashboard_view())
 
     # ──────────────────────────────────────────────
     #  Helpers privati

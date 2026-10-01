@@ -680,6 +680,16 @@ class ReportView(BaseView):
         ).exec()
 
     def add_transaction(self):
+        # Senza proprietà la transazione non può essere salvata: meglio dirlo prima
+        if not self.property_service.get_all():
+            risposta = QMessageBox.question(
+                self,
+                self.tm.get("GUIDA", "SERVE_PROPRIETA_TITOLO"),
+                self.tm.get("GUIDA", "SERVE_PROPRIETA_TESTO"),
+            )
+            if risposta == QMessageBox.StandardButton.Yes:
+                self.window().navigate_to_section("PROPERTIES")
+            return
         dialog = TransactionDialogWithSuppliers(
             self.property_service, self.supplier_service, self.tm, self
         )

@@ -13,20 +13,21 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
 from styles import (
     COLORE_BACKGROUND,
+    COLORE_BIANCO,
     COLORE_ERROR,
     COLORE_GRIGIO,
     COLORE_ITEM_HOVER,
-    COLORE_RIGA_1,
-    COLORE_RIGA_2,
     COLORE_SECONDARIO,
     COLORE_SUCCESS,
     COLORE_WARNING,
+    COLORE_WIDGET_2,
     default_aggiungi_button,
     default_dialog_style,
     default_style_search_line,
@@ -34,6 +35,27 @@ from styles import (
 )
 from validation_utils import format_currency
 from views.base_view import BaseView
+from views.calendar_planner import colore_proprieta
+
+COLORE_TESTO_SECONDARIO = "#94a3b8"
+COLORI_CLASSE_ENERGETICA = {
+    "A+++": "#1a7a1a", "A++": "#1a7a1a", "A+": "#2ecc71", "A": "#2ecc71",
+    "B": "#a8d45a", "C": "#f1c40f", "D": "#f39c12",
+    "E": "#e67e22", "F": "#e74c3c", "G": "#c0392b",
+}
+STILE_TITOLO_INDICATORE = (
+    f"font-size: 10px; font-weight: 600; color: {COLORE_GRIGIO}; letter-spacing: 0.08em;"
+)
+STILE_BOTTONE_CARD = f"""
+    QPushButton {{
+        background: transparent; color: {COLORE_BIANCO}; border: 1px solid #334155;
+        border-radius: 6px; padding: 5px 14px; font-size: 12px; min-width: 70px;
+    }}
+    QPushButton:hover {{ border-color: {COLORE_ITEM_HOVER}; background-color: #263449; }}
+"""
+STILE_BOTTONE_CARD_ELIMINA = STILE_BOTTONE_CARD.replace(
+    f"border-color: {COLORE_ITEM_HOVER}", f"border-color: {COLORE_ERROR}; color: {COLORE_ERROR}"
+)
 
 
 class PropertiesView(BaseView):
@@ -129,6 +151,7 @@ class PropertiesView(BaseView):
                 item.widget().deleteLater()
 
         properties = self.property_service.get_all()
+        ordine_ids = sorted(p['id'] for p in properties)
 
         if search_text:
             search_lower = search_text.lower()
@@ -137,6 +160,11 @@ class PropertiesView(BaseView):
                 if search_lower in p['name'].lower()
                 or search_lower in p['address'].lower()
             ]
+
+        if not properties and not search_text:
+            self.cards_layout.addWidget(self._card_prima_proprieta())
+            self.cards_layout.addStretch()
+            return
 
         if not properties:
             no_data_label = QLabel(
@@ -153,11 +181,55 @@ class PropertiesView(BaseView):
         # Legge warning_days una sola volta per tutto il loop
         warning_days = self._warning_days()
 
-        for index, prop in enumerate(properties):
-            card = self.create_property_card(prop, index, warning_days)
+        for prop in properties:
+            card = self.create_property_card(prop, ordine_ids, warning_days)
             self.cards_layout.addWidget(card)
 
         self.cards_layout.addStretch()
+
+    def _card_prima_proprieta(self) -> QFrame:
+        """Stato vuoto guidato: invito ad aggiungere la prima proprietà o aprire la guida."""
+        card = QFrame()
+        card.setStyleSheet(f"""
+            QFrame {{ background-color: {COLORE_WIDGET_2}; border-radius: 10px; }}
+            QLabel {{ background: transparent; }}
+        """)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(40, 48, 40, 48)
+        layout.setSpacing(12)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        titolo = QLabel(self.tm.get("GUIDA", "PRIMA_PROPRIETA_TITOLO"))
+        titolo.setStyleSheet("color: white; font-size: 20px; font-weight: 700;")
+        titolo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(titolo)
+
+        testo = QLabel(self.tm.get("GUIDA", "PRIMA_PROPRIETA_TESTO"))
+        testo.setStyleSheet(f"color: {COLORE_GRIGIO}; font-size: 14px;")
+        testo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        testo.setWordWrap(True)
+        layout.addWidget(testo)
+
+        bottoni = QHBoxLayout()
+        bottoni.setSpacing(12)
+        bottoni.addStretch()
+        aggiungi = QPushButton(self.tm.get("GUIDA", "PRIMA_PROPRIETA_BOTTONE"))
+        aggiungi.setStyleSheet(default_aggiungi_button)
+        aggiungi.setFixedHeight(38)
+        aggiungi.clicked.connect(self.add_property)
+        bottoni.addWidget(aggiungi)
+        guida = QPushButton(self.tm.get("GUIDA", "APRI_GUIDA"))
+        guida.setStyleSheet(f"""
+            QPushButton {{ background: transparent; color: white; border: 1px solid #334155;
+                           border-radius: 6px; padding: 0 18px; font-size: 14px; }}
+            QPushButton:hover {{ border-color: {COLORE_ITEM_HOVER}; }}
+        """)
+        guida.setFixedHeight(38)
+        guida.clicked.connect(lambda: self.window().open_guide("PROPRIETA"))
+        bottoni.addWidget(guida)
+        bottoni.addStretch()
+        layout.addLayout(bottoni)
+        return card
 
     def get_property_stats(self, property_id):
         transactions = self.transaction_service.get_all(property_id=property_id)
@@ -237,166 +309,149 @@ class PropertiesView(BaseView):
                 if d.get('due_date') and today <= _parse_date(d['due_date']) <= deadline_limit
             )
 
-    def create_property_card(self, prop, index, warning_days: int):
+    def create_property_card(self, prop, ordine_ids: list, warning_days: int):
         """
-        Crea una card per una proprietà.
+        Card proprietà in stile dashboard: barra colore, dati, indicatori, azioni.
 
-        Il badge scadenze usa tre colori:
-          - Rosso   → ci sono scadenze già scadute
+        Il colore delle scadenze segue tre stati:
+          - Rosso     → ci sono scadenze già scadute
           - Arancione → ci sono scadenze entro warning_days giorni (preferenza DB)
-          - Grigio  → nessuna scadenza imminente
+          - Grigio    → nessuna scadenza imminente
         """
-        bg_color = COLORE_RIGA_1 if index % 2 == 0 else COLORE_RIGA_2
-
         card = QFrame()
+        card.setObjectName("card")
+        card.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
         card.setStyleSheet(f"""
-            QFrame {{
-                background-color: {bg_color};
-                border-radius: 8px;
-                padding: 15px 20px;
+            QFrame#card {{
+                background-color: {COLORE_WIDGET_2};
+                border-radius: 10px;
+                border: 1px solid transparent;
             }}
+            QFrame#card:hover {{ border: 1px solid {COLORE_ITEM_HOVER}; }}
+            QLabel {{ background: transparent; border: none; }}
         """)
 
-        main_layout = QVBoxLayout(card)
-        main_layout.setSpacing(10)
-        main_layout.setContentsMargins(0, 0, 0, 0)
+        layout = QHBoxLayout(card)
+        layout.setContentsMargins(14, 14, 16, 14)
+        layout.setSpacing(18)
 
-        # RIGA 1: Nome e azioni
-        top_row = QHBoxLayout()
-        top_row.setSpacing(15)
+        barra = QFrame()
+        barra.setFixedWidth(4)
+        barra.setStyleSheet(
+            f"background-color: {colore_proprieta(prop['id'], ordine_ids)}; border-radius: 2px;"
+        )
+        layout.addWidget(barra)
 
-        name_label = QLabel(f"{prop['name']}")
-        name_label.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
-        top_row.addWidget(name_label)
-        top_row.addStretch()
+        stats = self.get_property_stats(prop['id'])
 
-        edit_btn = QPushButton(self.tm.get("PULSANTI", "MODIFICA"))
-        edit_btn.setFixedHeight(28)
-        edit_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3498db; color: white; border: none;
-                border-radius: 5px; padding: 4px 12px;
-                font-size: 12px; font-weight: 500;
-            }
-            QPushButton:hover { background-color: #2980b9; }
-        """)
-        edit_btn.clicked.connect(lambda: self.edit_property(prop))
-        top_row.addWidget(edit_btn)
+        # Colonna dati: nome, indirizzo, metadati
+        dati = QVBoxLayout()
+        dati.setSpacing(4)
+        nome = QLabel(prop['name'])
+        nome.setStyleSheet(f"color: {COLORE_BIANCO}; font-size: 16px; font-weight: 600;")
+        dati.addWidget(nome)
+        indirizzo = QLabel(prop['address'])
+        indirizzo.setStyleSheet(f"color: {COLORE_TESTO_SECONDARIO}; font-size: 12px;")
+        dati.addWidget(indirizzo)
+        metadati = self._metadati_proprieta(prop, stats)
+        if metadati:
+            meta_label = QLabel(metadati)
+            meta_label.setTextFormat(Qt.TextFormat.RichText)
+            meta_label.setStyleSheet(f"color: {COLORE_GRIGIO}; font-size: 11px;")
+            dati.addWidget(meta_label)
+        dati.addStretch()
+        layout.addLayout(dati, stretch=1)
 
-        delete_btn = QPushButton(self.tm.get("PULSANTI", "ELIMINA"))
-        delete_btn.setFixedHeight(28)
-        delete_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #e74c3c; color: white; border: none;
-                border-radius: 5px; padding: 4px 12px;
-                font-size: 12px; font-weight: 500;
-            }
-            QPushButton:hover { background-color: #c0392b; }
-        """)
-        delete_btn.clicked.connect(lambda: self.delete_property(prop))
-        top_row.addWidget(delete_btn)
+        # Indicatori
+        saldo_colore = COLORE_SUCCESS if stats['saldo'] >= 0 else COLORE_ERROR
+        layout.addWidget(self._indicatore(
+            self.tm.get('ETICHETTE', 'SALDO'), self._fmt(stats['saldo']), saldo_colore, larghezza=150
+        ))
 
-        main_layout.addLayout(top_row)
-
-        # RIGA 2: Info base
-        info_row = QHBoxLayout()
-        info_row.setSpacing(20)
-
-        address_label = QLabel(f"{self.tm.get('ETICHETTE', 'INDIRIZZO')}: {prop['address']}")
-        address_label.setStyleSheet("color: #bdc3c7; font-size: 12px;")
-        info_row.addWidget(address_label)
-
-        if prop.get('managed_by'):
-            managed_label = QLabel(f"🏢 {self.tm.get('ETICHETTE', 'GESTITA_DA')}: {prop['managed_by']}")
-            managed_label.setStyleSheet("color: #bdc3c7; font-size: 12px;")
-            info_row.addWidget(managed_label)
-
-        info_row.addStretch()
-        main_layout.addLayout(info_row)
-
-        # RIGA 2b: MQ e classe energetica (solo se presenti)
-        extra_info = []
-        if prop.get('square_meters'):
-            sqm = prop['square_meters']
-            sqm_str = str(int(sqm)) if sqm == int(sqm) else str(sqm)
-            extra_info.append(f"📐 {sqm_str} m²")
-        if prop.get('energy_class'):
-            _ec_color = {
-                "A+++": "#1a7a1a", "A++": "#1a7a1a", "A+": "#2ecc71", "A": "#2ecc71",
-                "B": "#a8d45a", "C": "#f1c40f", "D": "#f39c12",
-                "E": "#e67e22", "F": "#e74c3c", "G": "#c0392b",
-            }.get(prop['energy_class'], "#95a5a6")
-            extra_info.append(
-                f'<span style="color:{_ec_color};font-weight:bold;">⚡ {prop["energy_class"]}</span>'
-            )
-
-        if extra_info:
-            extra_row = QHBoxLayout()
-            extra_label = QLabel(" &nbsp;·&nbsp; ".join(extra_info))
-            extra_label.setStyleSheet("color: #95a5a6; font-size: 11px;")
-            extra_label.setTextFormat(Qt.TextFormat.RichText)
-            extra_row.addWidget(extra_label)
-            extra_row.addStretch()
-            main_layout.addLayout(extra_row)
-
-        # RIGA 3: Statistiche con valuta e colore scadenze corretti
-        stats     = self.get_property_stats(prop['id'])
-        stats_row = QHBoxLayout()
-        stats_row.setSpacing(25)
-
-        if stats['start_date']:
-            start_str     = stats['start_date'].strftime('%d/%m/%Y')
-            managed_label = QLabel(f"Gestita dal: {start_str}")
-            managed_label.setStyleSheet("color: #95a5a6; font-size: 11px;")
-            stats_row.addWidget(managed_label)
-
-        # Badge scadenze — colore basato su overdue/upcoming/nessuna
         num_active   = stats['num_deadlines_active']
         num_overdue  = len(self.deadline_service.get_overdue(property_id=prop['id']))
         num_upcoming = self._count_upcoming_deadlines(prop['id'], warning_days)
-
         if num_overdue > 0:
-            deadline_color = COLORE_ERROR  # rosso — scadute
-            deadline_icon  = "⚠️"
+            scadenze_colore = COLORE_ERROR
+            scadenze_nota   = self.tm.get("DASHBOARD", "SCADUTE_N").replace("XXX", str(num_overdue))
         elif num_upcoming > 0:
-            deadline_color = COLORE_WARNING  # arancione — imminenti entro warning_days
-            deadline_icon  = "🔔"
+            scadenze_colore = COLORE_WARNING
+            scadenze_nota   = self.tm.get("ETICHETTE", "IMMINENTI_N").replace("XXX", str(num_upcoming))
         else:
-            deadline_color = COLORE_GRIGIO  # grigio — tutto ok
-            deadline_icon  = ""
-
-        deadline_label = QLabel(
-            f"{deadline_icon} {self.tm.get('ETICHETTE', 'SCADENZE')}: {num_active}"
-            .strip()
-        )
-        deadline_label.setStyleSheet(
-            f"color: {deadline_color}; font-size: 11px;"
-            + (" font-weight: bold;" if num_overdue > 0 or num_upcoming > 0 else "")
-        )
-        stats_row.addWidget(deadline_label)
+            scadenze_colore = COLORE_BIANCO if num_active else COLORE_GRIGIO
+            scadenze_nota   = self.tm.get("DASHBOARD", "NESSUNA_SCADUTA")
+        layout.addWidget(self._indicatore(
+            self.tm.get('ETICHETTE', 'SCADENZE'), str(num_active), scadenze_colore, scadenze_nota,
+            larghezza=150,
+        ))
 
         if stats['mesi_gestione'] > 0:
-            avg_label = QLabel(
-                f"{self.tm.get('ETICHETTE', 'MEDIA_MENSILE')}: "
-                f"+{self._fmt(stats['media_entrate'])} / "
-                f"-{self._fmt(stats['media_uscite'])}"
-            )
-            avg_label.setStyleSheet("color: #95a5a6; font-size: 11px;")
-            stats_row.addWidget(avg_label)
+            media = f"+{self._fmt(stats['media_entrate'])}  /  -{self._fmt(stats['media_uscite'])}"
+        else:
+            media = "—"
+        layout.addWidget(self._indicatore(
+            self.tm.get('ETICHETTE', 'MEDIA_MENSILE'), media,
+            COLORE_BIANCO if stats['mesi_gestione'] > 0 else COLORE_GRIGIO, larghezza=230,
+        ))
 
-        saldo_color = COLORE_SUCCESS if stats['saldo'] >= 0 else "#e74c3c"
-        saldo_label = QLabel(
-            f"{self.tm.get('ETICHETTE', 'SALDO')}: {self._fmt(stats['saldo'])}"
-        )
-        saldo_label.setStyleSheet(
-            f"color: {saldo_color}; font-size: 12px; font-weight: bold;"
-        )
-        stats_row.addWidget(saldo_label)
-
-        stats_row.addStretch()
-        main_layout.addLayout(stats_row)
+        # Azioni
+        azioni = QVBoxLayout()
+        azioni.setSpacing(6)
+        edit_btn = QPushButton(self.tm.get("PULSANTI", "MODIFICA"))
+        edit_btn.setStyleSheet(STILE_BOTTONE_CARD)
+        edit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        edit_btn.clicked.connect(lambda: self.edit_property(prop))
+        azioni.addWidget(edit_btn)
+        delete_btn = QPushButton(self.tm.get("PULSANTI", "ELIMINA"))
+        delete_btn.setStyleSheet(STILE_BOTTONE_CARD_ELIMINA)
+        delete_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        delete_btn.clicked.connect(lambda: self.delete_property(prop))
+        azioni.addWidget(delete_btn)
+        azioni.addStretch()
+        layout.addLayout(azioni)
 
         return card
+
+    def _metadati_proprieta(self, prop, stats) -> str:
+        """Riga di metadati separati da punto: gestore, superficie, classe, inizio gestione."""
+        voci = []
+        if prop.get('managed_by'):
+            voci.append(f"{self.tm.get('ETICHETTE', 'GESTITA_DA')} {prop['managed_by']}")
+        if prop.get('square_meters'):
+            mq = prop['square_meters']
+            voci.append(f"{int(mq) if mq == int(mq) else mq} m²")
+        if prop.get('energy_class'):
+            colore = COLORI_CLASSE_ENERGETICA.get(prop['energy_class'], COLORE_GRIGIO)
+            voci.append(
+                f"{self.tm.get('ETICHETTE', 'CLASSE_ENERGETICA')} "
+                f'<span style="color:{colore}; font-weight:600;">{prop["energy_class"]}</span>'
+            )
+        if stats['start_date']:
+            voci.append(f"{self.tm.get('ETICHETTE', 'DAL')} {stats['start_date'].strftime('%d/%m/%Y')}")
+        return "  ·  ".join(voci)
+
+    @staticmethod
+    def _indicatore(etichetta: str, valore: str, colore_valore: str, nota: str = "",
+                    larghezza: int = 150) -> QWidget:
+        """Indicatore in stile dashboard: etichetta in maiuscoletto, valore, nota facoltativa."""
+        box = QWidget()
+        box.setFixedWidth(larghezza)
+        box.setStyleSheet("background: transparent;")
+        colonna = QVBoxLayout(box)
+        colonna.setContentsMargins(0, 0, 0, 0)
+        colonna.setSpacing(2)
+        titolo = QLabel(etichetta.upper())
+        titolo.setStyleSheet(STILE_TITOLO_INDICATORE)
+        colonna.addWidget(titolo)
+        testo_valore = QLabel(valore)
+        testo_valore.setStyleSheet(f"font-size: 15px; font-weight: 600; color: {colore_valore};")
+        colonna.addWidget(testo_valore)
+        if nota:
+            testo_nota = QLabel(nota)
+            testo_nota.setStyleSheet(f"font-size: 11px; color: {COLORE_TESTO_SECONDARIO};")
+            colonna.addWidget(testo_nota)
+        colonna.addStretch()
+        return box
 
     # ──────────────────────────────────────────────────────────────
     #  CRUD

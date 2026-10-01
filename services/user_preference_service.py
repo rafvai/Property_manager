@@ -14,6 +14,7 @@ class UserPreferenceService:
     DEFAULTS = {
         "deadline_warning_days": "7",
         "currency": "€",
+        "onboarding_completed": "0",
     }
 
     def __init__(self, logger):
@@ -105,3 +106,10 @@ class UserPreferenceService:
         if symbol not in ["€", "$", "£"]:
             return False
         return self.set("currency", symbol)
+
+    def is_onboarding_completed(self) -> bool:
+        """True se il tour di benvenuto è stato completato o saltato."""
+        return self.get("onboarding_completed") == "1"
+
+    def set_onboarding_completed(self, completato: bool = True) -> bool:
+        return self.set("onboarding_completed", "1" if completato else "0")

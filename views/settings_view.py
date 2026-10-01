@@ -333,6 +333,22 @@ class SettingsView(BaseView):
         ))
         scroll_layout.addWidget(prefs_section)
 
+        # === SEZIONE AIUTO ===
+        help_section = SettingsSection(self.tm.get("GUIDA", "SEZIONE_AIUTO"))
+        help_section.add_item(SettingItem(
+            "📖",
+            self.tm.get("GUIDA", "TITOLO"),
+            self.tm.get("GUIDA", "DESCR"),
+            lambda: self.window().open_guide()
+        ))
+        help_section.add_item(SettingItem(
+            "🧭",
+            self.tm.get("GUIDA", "RIVEDI_TOUR"),
+            self.tm.get("GUIDA", "RIVEDI_TOUR_DESCR"),
+            lambda: self.window().start_onboarding()
+        ))
+        scroll_layout.addWidget(help_section)
+
         # === SEZIONE ACCOUNT & LICENZA ===
         account_section = SettingsSection(self.tm.get("ETICHETTE", "account_section"))
         account_section.add_item(SettingItem(

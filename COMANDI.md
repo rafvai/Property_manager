@@ -14,7 +14,7 @@ del progetto (`Property_manager`), salvo dove indicato.
 # Avvia l'app in sviluppo (salta il login grazie a DEV_SKIP_LOGIN nel .env)
 python Main.py
 
-# Lancia tutti i test (devono essere 316 verdi)
+# Lancia tutti i test (devono essere 327 verdi)
 python -m pytest tests/ -q
 
 # Test rapidi (esclude quelli lenti PBKDF2)
